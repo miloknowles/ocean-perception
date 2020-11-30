@@ -15,6 +15,8 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
   nav_msgs
   message_generation
+  cv_bridge
+  image_transport
 )
 
 ## System dependencies are found with CMake's conventions
@@ -111,7 +113,7 @@ generate_messages(
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES auv
- CATKIN_DEPENDS roscpp roscpp std_msgs geometry_msgs sensor_msgs nav_msgs message_runtime
+ CATKIN_DEPENDS roscpp roscpp std_msgs geometry_msgs sensor_msgs nav_msgs message_runtime cv_bridge image_transport
 #  DEPENDS system_lib
 )
 
