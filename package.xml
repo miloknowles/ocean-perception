@@ -15,6 +15,10 @@
   <!-- Examples: -->
   <!-- Use depend as a shortcut for packages that are both build and exec dependencies -->
   <depend>roscpp</depend>
+  <depend>std_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <depend>nav_msgs</depend>
   <!--   Note that this is equivalent to the following: -->
   <!--   <build_depend>roscpp</build_depend> -->
   <!--   <exec_depend>roscpp</exec_depend> -->
@@ -31,6 +35,8 @@
   <!-- Use doc_depend for packages you need only for building documentation: -->
   <!--   <doc_depend>doxygen</doc_depend> -->
   <buildtool_depend>catkin</buildtool_depend>
+  <exec_depend>rospy</exec_depend>
+  <exec_depend>message_runtime</exec_depend>
 
 
   <!-- The export tag contains other, unspecified, tags -->
