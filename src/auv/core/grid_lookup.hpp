@@ -28,13 +28,13 @@ class GridLookup final {
   }
 
   // Immutable accessor.
-  std::list<Scalar>& GetCell(int row, int col)
+  std::list<Scalar> GetCell(int row, int col) const
   {
     assert(row >= 0 && row < rows_ && col >= 0 && col <= cols_);
     return grid_.at(row).at(col);
   }
 
-  std::list<Scalar> GetRoi(const core::Box2i& roi)
+  std::list<Scalar> GetRoi(const core::Box2i& roi) const
   {
     std::list<Scalar> out;  // Must support out.insert(item.begin(), item.end()).
 

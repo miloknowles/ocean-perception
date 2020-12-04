@@ -3,6 +3,7 @@ enable_testing()
 set(TEST_SOURCES
   core/stereo_camera_test.cpp
   core/grid_lookup_test.cpp
+  vo/feature_matching_test.cpp
   vo/point_detector_test.cpp)
 
 # Add one big executable with all of the tests. Filter for specific tests with:
@@ -13,6 +14,7 @@ target_include_directories(${PROJECT_NAME}_test PRIVATE ${PROJECT_SOURCE_DIR}/te
 target_link_libraries(${PROJECT_NAME}_test
   gtest
   ${PROJECT_NAME}_core
+  ${PROJECT_NAME}_viz
   ${PROJECT_NAME}_vo)
 
 add_test(NAME ${PROJECT_NAME}_test COMMAND ${PROJECT_NAME}_test --gtest_color=yes)
