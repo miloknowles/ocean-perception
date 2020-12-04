@@ -3,6 +3,7 @@ SET(LIBRARY_NAME ${PROJECT_NAME}_core)
 SET(LIBRARY_SRC
   eigen_types.hpp
   cv_types.hpp
+  grid_lookup.hpp
   pinhole_model.hpp
   stereo_camera.hpp
   math_util.cpp)
