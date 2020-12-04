@@ -1,7 +1,7 @@
 add_executable(${PROJECT_NAME}_debug_image_node
   debug_image_node.cpp)
 target_link_libraries(${PROJECT_NAME}_debug_image_node
-  ${PROJECT_NAME}_math_util
+  ${PROJECT_NAME}_core
   ${catkin_LIBRARIES}
   opencv_core
   opencv_highgui)

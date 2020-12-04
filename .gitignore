@@ -4,3 +4,6 @@ build/
 # Python
 *.pyc
 *.pycache
+
+# Visual Studio
+.vscode

@@ -19,6 +19,30 @@ find_package(catkin REQUIRED COMPONENTS
   image_transport
 )
 
+# Find non-catkin pacakges.
+find_package(OpenCV 3.4.0 REQUIRED)
+find_package(Boost        REQUIRED COMPONENTS regex thread system filesystem)
+find_package(g2o          REQUIRED)
+find_package(Eigen3       REQUIRED)
+find_package(yaml-cpp     REQUIRED CONFIG PATHS ${YAML_PATHS}) # YAML library
+
+include_directories(
+  include
+  ${Eigen3_INCLUDE_DIRS}
+  ${OpenCV_INCLUDE_DIRS}
+  ${Boost_INCLUDE_DIRS}
+  ${YAML_CPP_INCLUDE_DIR}
+)
+
+# Set link libraries
+# list(APPEND LINK_LIBS
+#   ${OpenCV_LIBS}
+#   ${Boost_LIBRARIES}
+#   ${YAML_CPP_LIBRARIES}
+#   ${PROJECT_SOURCE_DIR}/3rdparty/line_descriptor/lib/liblinedesc.so
+#   /usr/lib/x86_64-linux-gnu/libopencv_ximgproc.so.3.2
+# )
+
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 
@@ -124,7 +148,7 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-# include
+./src/auv/
 ${catkin_INCLUDE_DIRS}
 )
 
@@ -214,3 +238,4 @@ add_subdirectory(./src)
 
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
+add_subdirectory(./test)
