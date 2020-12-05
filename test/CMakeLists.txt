@@ -4,7 +4,8 @@ set(TEST_SOURCES
   core/stereo_camera_test.cpp
   core/grid_lookup_test.cpp
   vo/feature_matching_test.cpp
-  vo/point_detector_test.cpp)
+  vo/point_detector_test.cpp
+  vo/line_detector_test.cpp)
 
 # Add one big executable with all of the tests. Filter for specific tests with:
 # --gtest_filter=TestModuleName.UnitTestName.

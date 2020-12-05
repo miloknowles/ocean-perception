@@ -40,9 +40,9 @@ TEST(FeatureMatchingTest, TestMatchLR)
   const int grid_cols = imleft.cols / 16;
 
   // Map each keypoint location to a compressed grid cell location.
-  const auto& cells_left = vo::ComputeGridCells(kpl, imleft.rows, imleft.cols, grid_rows, grid_cols);
-  const auto& cells_right = vo::ComputeGridCells(kpr, imright.rows, imright.cols, grid_rows, grid_cols);
-  GridLookup<int> grid = vo::PrecomputeGrid(cells_right, grid_rows, grid_cols);
+  const auto& cells_left = vo::MapToGridCells(kpl, imleft.rows, imleft.cols, grid_rows, grid_cols);
+  const auto& cells_right = vo::MapToGridCells(kpr, imright.rows, imright.cols, grid_rows, grid_cols);
+  GridLookup<int> grid = vo::PopulateGrid(cells_right, grid_rows, grid_cols);
 
   // 10 cells in x (epipolar direction), only 1 cell in y.
   const Box2i search_region_in_right(Vector2i(-10, -1), Vector2i(10, 1));
