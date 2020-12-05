@@ -7,7 +7,8 @@ SET(LIBRARY_SRC
   pinhole_model.hpp
   stereo_camera.hpp
   math_util.hpp
-  math_util.cpp)
+  math_util.cpp
+  random.hpp)
 
 add_library(${LIBRARY_NAME} SHARED ${LIBRARY_SRC})
 set_target_properties(${LIBRARY_NAME} PROPERTIES LINKER_LANGUAGE CXX)

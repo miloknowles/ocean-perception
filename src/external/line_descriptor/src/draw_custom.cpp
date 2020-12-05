@@ -41,48 +41,40 @@
 
 #include "precomp_custom.hpp"
 
-namespace cv
-{
-namespace line_descriptor
-{
-/* draw matches between two images */
+namespace cv {
+namespace line_descriptor {
+
 void drawLineMatches( const Mat& img1, const std::vector<KeyLine>& keylines1, const Mat& img2, const std::vector<KeyLine>& keylines2,
                       const std::vector<DMatch>& matches1to2, Mat& outImg, const Scalar& matchColor, const Scalar& singleLineColor,
                       const std::vector<char>& matchesMask, int flags )
 {
-
-  if(img1.type() != img2.type())
-  {
+  if (img1.type() != img2.type()) {
     std::cout << "Input images have different types" << std::endl;
     CV_Assert(img1.type() == img2.type());
   }
 
   /* initialize output matrix (if necessary) */
-  if( flags == DrawLinesMatchesFlags::DEFAULT )
-  {
+  if (flags == DrawLinesMatchesFlags::DEFAULT) {
     /* check how many rows are necessary for output matrix */
     int totalRows = img1.rows >= img2.rows ? img1.rows : img2.rows;
 
     /* initialize output matrix */
     outImg = Mat::zeros( totalRows, img1.cols + img2.cols, img1.type() );
-
   }
 
   /* initialize random seed: */
   srand( (unsigned int) time( NULL ) );
 
+  // If no color specified, choose a random color to draw keylines with.
   Scalar singleLineColorRGB;
-  if( singleLineColor == Scalar::all( -1 ) )
-  {
+  if (singleLineColor == Scalar::all(-1)) {
     int R = ( rand() % (int) ( 255 + 1 ) );
     int G = ( rand() % (int) ( 255 + 1 ) );
     int B = ( rand() % (int) ( 255 + 1 ) );
-
     singleLineColorRGB = Scalar( R, G, B );
-  }
-
-  else
+  } else {
     singleLineColorRGB = singleLineColor;
+  }
 
   /* copy input images to output images */
   Mat roi_left( outImg, Rect( 0, 0, img1.cols, img1.rows ) );
@@ -94,47 +86,46 @@ void drawLineMatches( const Mat& img1, const std::vector<KeyLine>& keylines1, co
   int offset = img1.cols;
 
   /* if requested, draw lines from both images */
-  if( flags != DrawLinesMatchesFlags::NOT_DRAW_SINGLE_LINES )
-  {
-    for ( size_t i = 0; i < keylines1.size(); i++ )
-    {
-      KeyLine k1 = keylines1[i];
-      //line( outImg, Point2f( k1.startPointX, k1.startPointY ), Point2f( k1.endPointX, k1.endPointY ), singleLineColorRGB, 2 );
-      line( outImg, Point2f( k1.sPointInOctaveX, k1.sPointInOctaveY ), Point2f( k1.ePointInOctaveX, k1.ePointInOctaveY ), singleLineColorRGB, 2 );
+  // if( flags != DrawLinesMatchesFlags::NOT_DRAW_SINGLE_LINES )
+  // {
+  //   for ( size_t i = 0; i < keylines1.size(); i++ )
+  //   {
+  //     KeyLine k1 = keylines1[i];
+  //     //line( outImg, Point2f( k1.startPointX, k1.startPointY ), Point2f( k1.endPointX, k1.endPointY ), singleLineColorRGB, 2 );
+  //     line( outImg, Point2f( k1.sPointInOctaveX, k1.sPointInOctaveY ), Point2f( k1.ePointInOctaveX, k1.ePointInOctaveY ), singleLineColorRGB, 2 );
 
-    }
+  //   }
 
-    for ( size_t j = 0; j < keylines2.size(); j++ )
-    {
-      KeyLine k2 = keylines2[j];
-      line( outImg, Point2f( k2.sPointInOctaveX + offset, k2.sPointInOctaveY ), Point2f( k2.ePointInOctaveX + offset, k2.ePointInOctaveY ), singleLineColorRGB, 2 );
-    }
-  }
+  //   for ( size_t j = 0; j < keylines2.size(); j++ )
+  //   {
+  //     KeyLine k2 = keylines2[j];
+  //     line( outImg, Point2f( k2.sPointInOctaveX + offset, k2.sPointInOctaveY ), Point2f( k2.ePointInOctaveX + offset, k2.ePointInOctaveY ), singleLineColorRGB, 2 );
+  //   }
+  // }
 
   /* draw matches */
-  for ( size_t counter = 0; counter < matches1to2.size(); counter++ )
-  {
-    if( matchesMask[counter] != 0 )
-    {
+  for (size_t counter = 0; counter < matches1to2.size(); counter++) {
+    // NOTE(milo): Added a matchesMask.size() == 0 here to allow for an empty mask.
+    if (matchesMask.size() == 0 || matchesMask[counter] != 0 ) {
       DMatch dm = matches1to2[counter];
       KeyLine left = keylines1[dm.queryIdx];
       KeyLine right = keylines2[dm.trainIdx];
 
       Scalar matchColorRGB;
-      if( matchColor == Scalar::all( -1 ) )
-      {
+      if (matchColor == Scalar::all(-1)) {
         int R = ( rand() % (int) ( 255 + 1 ) );
         int G = ( rand() % (int) ( 255 + 1 ) );
         int B = ( rand() % (int) ( 255 + 1 ) );
-
         matchColorRGB = Scalar( R, G, B );
 
-        if( singleLineColor == Scalar::all( -1 ) )
+        if (singleLineColor == Scalar::all(-1)) {
           singleLineColorRGB = matchColorRGB;
+        }
+      } else {
+        matchColorRGB = matchColor;
       }
 
-      else
-        matchColorRGB = matchColor;
+      singleLineColorRGB = Scalar(255, 0, 0);
 
       /* draw lines if necessary */
 //      line( outImg, Point2f( left.startPointX, left.startPointY ), Point2f( left.endPointX, left.endPointY ), singleLineColorRGB, 2 );
@@ -145,13 +136,15 @@ void drawLineMatches( const Mat& img1, const std::vector<KeyLine>& keylines1, co
 //      /* link correspondent lines */
 //      line( outImg, Point2f( left.startPointX, left.startPointY ), Point2f( right.startPointX + offset, right.startPointY ), matchColorRGB, 1 );
 
-      line( outImg, Point2f( left.sPointInOctaveX, left.sPointInOctaveY ), Point2f( left.ePointInOctaveX, left.ePointInOctaveY ), singleLineColorRGB, 2 );
+      line( outImg, Point2f( left.sPointInOctaveX, left.sPointInOctaveY ),
+                    Point2f( left.ePointInOctaveX, left.ePointInOctaveY ), singleLineColorRGB, 2 );
 
-        line( outImg, Point2f( right.sPointInOctaveX + offset, right.sPointInOctaveY ), Point2f( right.ePointInOctaveX + offset, right.ePointInOctaveY ), singleLineColorRGB,
-              2 );
+      line( outImg, Point2f( right.sPointInOctaveX + offset, right.sPointInOctaveY ),
+                    Point2f( right.ePointInOctaveX + offset, right.ePointInOctaveY ), singleLineColorRGB, 2 );
 
-        /* link correspondent lines */
-        line( outImg, Point2f( left.sPointInOctaveX, left.sPointInOctaveY ), Point2f( right.sPointInOctaveX + offset, right.sPointInOctaveY ), matchColorRGB, 1 );
+      /* link correspondent lines */
+      line( outImg, Point2f( left.sPointInOctaveX, left.sPointInOctaveY ),
+                    Point2f( right.sPointInOctaveX + offset, right.sPointInOctaveY ), matchColorRGB, 1 );
     }
   }
 }

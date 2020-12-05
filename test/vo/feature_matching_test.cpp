@@ -50,12 +50,12 @@ TEST(FeatureMatchingTest, TestMatchPointsLR)
 
   // 10 cells in x (epipolar direction), only 1 cell in y.
   const Box2i search_region_in_right(Vector2i(-10, -1), Vector2i(1, 1));
-  std::vector<int> matches12;
-  const int N_match = vo::MatchPointsGrid(grid, cells_left, search_region_in_right, descl, descr, 0.9, matches12);
+  std::vector<int> matches_12;
+  const int N_match = vo::MatchPointsGrid(grid, cells_left, search_region_in_right, descl, descr, 0.9, matches_12);
 
   printf("Matched %d features from left to right\n", N_match);
 
-  const auto& dmatches = viz::ConvertToDMatch(matches12);
+  const auto& dmatches = viz::ConvertToDMatch(matches_12);
   cv::Mat draw;
   cv::drawMatches(iml, kpl, imr, kpr, dmatches, draw);
   cv::imshow("matches", draw);
@@ -79,11 +79,11 @@ TEST(FeatureMatchingTest, TestMatchLinesLR)
   const int nr = detector.Detect(imr, lines_out_right, desc_out_right);
   printf("Detected %d|%d keypoints in left|right images\n", nl, nr);
 
-  ld::drawKeylines(iml, lines_out_left, rgb_left);
-  ld::drawKeylines(iml, lines_out_right, rgb_right);
-  cv::imshow("lines_left", rgb_left);
-  cv::imshow("lines_right", rgb_right);
-  cv::waitKey(0);
+  // ld::drawKeylines(iml, lines_out_left, rgb_left);
+  // ld::drawKeylines(iml, lines_out_right, rgb_right);
+  // cv::imshow("lines_left", rgb_left);
+  // cv::imshow("lines_right", rgb_right);
+  // cv::waitKey(0);
 
   const int grid_rows = iml.rows / 16;
   const int grid_cols = iml.cols / 16;
@@ -97,12 +97,20 @@ TEST(FeatureMatchingTest, TestMatchLinesLR)
   const auto& dirs_left = NormalizedDirection(lines_out_left);
   const auto& dirs_right = NormalizedDirection(lines_out_right);
 
-  std::vector<int> matches12;
+  std::vector<int> matches_12;
   const int N_match = vo::MatchLinesGrid(
       grid, glines_left, search_region_in_right,
       desc_out_left, desc_out_right,
       dirs_left, dirs_right,
-      0.9, std::cos(DegToRad(40)), matches12);
+      0.9, std::cos(DegToRad(40)), matches_12);
 
   printf("Matched %d features from left to right\n", N_match);
+
+  cv::Mat draw_img;
+  std::vector<cv::DMatch> dmatches = viz::ConvertToDMatch(matches_12);
+
+  viz::DrawLineMatches(rgb_left, lines_out_left, rgb_right, lines_out_right, dmatches, draw_img, std::vector<char>());
+
+  cv::imshow("matches_12", draw_img);
+  cv::waitKey(0);
 }

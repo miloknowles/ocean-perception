@@ -199,6 +199,9 @@ int MatchLinesGrid(const Grid& grid,
                    std::vector<int>& matches_12)
 {
   assert(grid_lines.size() == desc1.rows);
+  assert(directions1.size() == grid_lines.size());
+  assert(directions2.size() == desc2.rows);
+  assert(min_distance_ratio > 0 && min_distance_ratio < 1.0);
 
   int num_matches = 0;
   matches_12.resize(desc1.rows, -1);          // Fill with -1 to indicate no match.

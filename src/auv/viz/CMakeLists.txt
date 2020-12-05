@@ -1,7 +1,8 @@
 SET(LIBRARY_NAME ${PROJECT_NAME}_viz)
 
 SET(LIBRARY_SRC
-  visualize_matches.hpp)
+  colormap.hpp
+  visualize_matches.cpp)
 
 add_library(${LIBRARY_NAME} SHARED ${LIBRARY_SRC})
 set_target_properties(${LIBRARY_NAME} PROPERTIES LINKER_LANGUAGE CXX)
