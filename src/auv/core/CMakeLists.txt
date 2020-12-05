@@ -6,6 +6,7 @@ SET(LIBRARY_SRC
   grid_lookup.hpp
   pinhole_model.hpp
   stereo_camera.hpp
+  math_util.hpp
   math_util.cpp)
 
 add_library(${LIBRARY_NAME} SHARED ${LIBRARY_SRC})

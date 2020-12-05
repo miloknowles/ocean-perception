@@ -1,4 +1,7 @@
 #include <limits>
+#include <cassert>
+
+#include <opencv2/imgproc/imgproc.hpp>
 
 #include "feature_matching.hpp"
 
@@ -6,6 +9,8 @@ namespace bm {
 namespace vo {
 
 using namespace core;
+
+static const int kConnectivity8 = 8;
 
 
 Grid PopulateGrid(const std::vector<Vector2i>& grid_cells, int grid_rows, int grid_cols)
@@ -23,6 +28,32 @@ Grid PopulateGrid(const std::vector<Vector2i>& grid_cells, int grid_rows, int gr
 }
 
 
+Grid PopulateGrid(const std::vector<LineSegment2i>& grid_lines, int grid_rows, int grid_cols)
+{
+  Grid grid(grid_rows, grid_cols);
+
+  // TODO(milo): Find a way around this useless allocation.
+  const cv::Mat1b bounds(grid_rows, grid_cols);
+
+  for (int i = 0; i < grid_lines.size(); ++i) {
+    const Vector2i& p0 = grid_lines.at(i).p0;
+    const Vector2i& p1 = grid_lines.at(i).p1;
+    cv::Point pt0(p0.x(), p0.y());
+    cv::Point pt1(p1.x(), p1.y());
+    cv::LineIterator it(bounds, pt0, pt1, kConnectivity8, false);
+
+    // Add index 'i' to all of the cells that this line enters.
+    for(int li = 0; li < it.count; li++, ++it) {
+      const int g_row = it.pos().y;
+      const int g_col = it.pos().x;
+      grid.GetCellMutable(g_row, g_col).emplace_back(i);
+    }
+  }
+
+  return grid;
+}
+
+
 std::vector<Vector2i> MapToGridCells(std::vector<cv::KeyPoint>& keypoints,
                                               int image_rows, int image_cols,
                                               int grid_rows, int grid_cols)
@@ -34,9 +65,36 @@ std::vector<Vector2i> MapToGridCells(std::vector<cv::KeyPoint>& keypoints,
 
   for (int i = 0; i < keypoints.size(); ++i) {
     const cv::KeyPoint& kp = keypoints.at(i);
-    const int grid_row = std::min(static_cast<int>(kp.pt.y) / px_per_row, grid_rows);
-    const int grid_col = std::min(static_cast<int>(kp.pt.x) / px_per_col, grid_cols);
+    const int grid_row = std::max(0, std::min(static_cast<int>(kp.pt.y) / px_per_row, grid_rows));
+    const int grid_col = std::max(0, std::min(static_cast<int>(kp.pt.x) / px_per_col, grid_cols));
     out.at(i) = Vector2i(grid_col, grid_row);
+  }
+
+  return out;
+}
+
+
+std::vector<LineSegment2i> MapToGridCells(std::vector<ld::KeyLine>& keylines,
+                                          int image_rows, int image_cols,
+                                          int grid_rows, int grid_cols)
+{
+  std::vector<LineSegment2i> out(keylines.size());
+
+  const int px_per_row = image_rows / grid_rows;
+  const int px_per_col = image_cols / grid_cols;
+
+  for (int i = 0; i < keylines.size(); ++i) {
+    const float x0 = keylines.at(i).getStartPoint().x;
+    const float y0 = keylines.at(i).getStartPoint().y;
+    const float x1 = keylines.at(i).getEndPoint().x;
+    const float y1 = keylines.at(i).getEndPoint().y;
+
+    const int x0i = std::max(0, std::min(static_cast<int>(x0) / px_per_row, grid_rows));
+    const int y0i = std::max(0, std::min(static_cast<int>(y0) / px_per_col, grid_cols));
+    const int x1i = std::max(0, std::min(static_cast<int>(x1) / px_per_row, grid_rows));
+    const int y1i = std::max(0, std::min(static_cast<int>(y1) / px_per_col, grid_cols));
+
+    out.at(i) = LineSegment2i(Vector2i(x0i, y0i), Vector2i(x1i, y1i));
   }
 
   return out;
@@ -62,13 +120,13 @@ static int distance(const cv::Mat &a, const cv::Mat &b)
 
 
 // Adapted from: https://github.com/rubengooj/stvo-pl
-int MatchFeaturesGrid(const Grid& grid,
-                      const std::vector<Vector2i> cells1,
-                      const core::Box2i& search_region,
-                      const cv::Mat& desc1,
-                      const cv::Mat& desc2,
-                      float min_distance_ratio,
-                      std::vector<int>& matches_12)
+int MatchPointsGrid(const Grid& grid,
+                    const std::vector<Vector2i> cells1,
+                    const core::Box2i& search_region,
+                    const cv::Mat& desc1,
+                    const cv::Mat& desc2,
+                    float min_distance_ratio,
+                    std::vector<int>& matches_12)
 {
   int num_matches = 0;
   matches_12.resize(desc1.rows, -1);       // Fill with -1 to indicate no match.
@@ -92,6 +150,89 @@ int MatchFeaturesGrid(const Grid& grid,
     for (const int i2 : candidates2) {
       const int d = distance(desc, desc2.row(i2));
 
+      if (d < distances2.at(i2)) {
+        distances2.at(i2) = d;
+        matches_21.at(i2) = i1;
+      } else {
+        continue;
+      }
+
+      // Update the best (and 2nd best) match index and distance.
+      if (d < best_d) {
+        best_d2 = best_d;
+        best_d = d;
+        best_idx = i2;
+      } else if (d < best_d2) {
+        best_d2 = d;
+      }
+    }
+
+    if (best_d < (best_d2 * min_distance_ratio)) {
+      matches_12.at(i1) = best_idx;
+      ++num_matches;
+    }
+  }
+
+  // Require a mutual best match between descriptors in 1 and 2.
+  for (int i1 = 0; i1 < matches_12.size(); ++i1) {
+    int &i2 = matches_12.at(i1);
+    if (i2 >= 0 && matches_21.at(i2) != i1) {
+      i2 = -1;
+      --num_matches;
+    }
+  }
+
+  return num_matches;
+}
+
+
+// Adapted from: https://github.com/rubengooj/stvo-pl
+int MatchLinesGrid(const Grid& grid,
+                   const std::vector<LineSegment2i> grid_lines,
+                   const core::Box2i& search_region,
+                   const cv::Mat& desc1,
+                   const cv::Mat& desc2,
+                   const std::vector<Vector2f>& directions1,
+                   const std::vector<Vector2f>& directions2,
+                   float min_distance_ratio,
+                   float line_cosine_sim_th,
+                   std::vector<int>& matches_12)
+{
+  assert(grid_lines.size() == desc1.rows);
+
+  int num_matches = 0;
+  matches_12.resize(desc1.rows, -1);          // Fill with -1 to indicate no match.
+
+  std::vector<int> matches_21(desc2.rows, -1); // Fill with -1 to indicate no match.
+  std::vector<int> distances2(desc2.rows, std::numeric_limits<int>::max());
+
+  for (int i1 = 0; i1 < grid_lines.size(); ++i1) {
+    int best_d = std::numeric_limits<int>::max();
+    int best_d2 = std::numeric_limits<int>::max();
+    int best_idx = -1;
+
+    const cv::Mat& desc = desc1.row(i1);
+    const Vector2i& grid_p0 = grid_lines.at(i1).p0;
+    const Vector2i& grid_p1 = grid_lines.at(i1).p1;
+    const std::list<int>& cand_p0 = grid.GetRoi(core::Box2i(grid_p0 + search_region.min(), grid_p0 + search_region.max()));
+    const std::list<int>& cand_p1 = grid.GetRoi(core::Box2i(grid_p1 + search_region.min(), grid_p1 + search_region.max()));
+
+    // Combine candidates near both endpoints.
+    std::list<int> candidates2;
+    candidates2.insert(candidates2.end(), cand_p0.begin(), cand_p0.end());
+    candidates2.insert(candidates2.end(), cand_p1.begin(), cand_p1.end());
+
+    if (candidates2.empty()) { continue; }
+
+    for (const int &i2 : candidates2) {
+      if (i2 < 0 || i2 >= desc2.rows) { continue; }
+
+      const float cosine_sim = std::abs(directions1.at(i1).dot(directions2.at(i2)));
+      if (cosine_sim < line_cosine_sim_th) {
+        continue;
+      }
+
+      const int d = distance(desc, desc2.row(i2));
       if (d < distances2.at(i2)) {
         distances2.at(i2) = d;
         matches_21.at(i2) = i1;
