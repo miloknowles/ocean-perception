@@ -20,10 +20,6 @@ TEST(LineDetectorTest, TestDetect)
   core::Image3b rgb_left = cv::imread("./resources/farmsim_01_left.png", cv::IMREAD_COLOR);
   core::Image3b rgb_right = cv::imread("./resources/farmsim_01_right.png", cv::IMREAD_COLOR);
 
-  // cv::imshow("imleft", imleft);
-  // cv::imshow("imright", imright);
-  // cv::waitKey(0);
-
   std::vector<ld::KeyLine> lines_out_left, lines_out_right;
   cv::Mat desc_out_left, desc_out_right;
   const int nl = detector.Detect(imleft, lines_out_left, desc_out_left);

@@ -11,6 +11,9 @@ namespace vo {
 using namespace core;
 
 static const int kConnectivity8 = 8;
+static const int kGridRows = 16;
+static const int kGridCols = 16;
+static const float kMinDepth = 0.2;
 
 
 Grid PopulateGrid(const std::vector<Vector2i>& grid_cells, int grid_rows, int grid_cols)
@@ -54,9 +57,9 @@ Grid PopulateGrid(const std::vector<LineSegment2i>& grid_lines, int grid_rows, i
 }
 
 
-std::vector<Vector2i> MapToGridCells(std::vector<cv::KeyPoint>& keypoints,
-                                              int image_rows, int image_cols,
-                                              int grid_rows, int grid_cols)
+std::vector<Vector2i> MapToGridCells(const std::vector<cv::KeyPoint>& keypoints,
+                                    int image_rows, int image_cols,
+                                    int grid_rows, int grid_cols)
 {
   std::vector<Vector2i> out(keypoints.size());
 
@@ -74,7 +77,7 @@ std::vector<Vector2i> MapToGridCells(std::vector<cv::KeyPoint>& keypoints,
 }
 
 
-std::vector<LineSegment2i> MapToGridCells(std::vector<ld::KeyLine>& keylines,
+std::vector<LineSegment2i> MapToGridCells(const std::vector<ld::KeyLine>& keylines,
                                           int image_rows, int image_cols,
                                           int grid_rows, int grid_cols)
 {
@@ -269,6 +272,33 @@ int MatchLinesGrid(const Grid& grid,
   }
 
   return num_matches;
+}
+
+
+int StereoMatchPoints(const std::vector<cv::KeyPoint>& kpl,
+                      const cv::Mat& desc_l,
+                      const std::vector<cv::KeyPoint>& kpr,
+                      const cv::Mat& desc_r,
+                      const StereoCamera& stereo_cam,
+                      float max_epipolar_dist,
+                      float min_distance_ratio,
+                      std::vector<int>& matches_lr)
+{
+  const int height = stereo_cam.Height();
+  const int width = stereo_cam.Width();
+
+  // Map each keypoint location to a compressed grid cell location.
+  const std::vector<Vector2i> gridpt_l = MapToGridCells(kpl, height, width, kGridRows, kGridCols);
+  const std::vector<Vector2i> gridpt_r = MapToGridCells(kpr, height, width, kGridRows, kGridCols);
+  GridLookup<int> grid = PopulateGrid(gridpt_r, kGridRows, kGridCols);
+
+  // Depth = f * b / Disp
+  float max_disp = stereo_cam.LeftIntrinsics().fx * stereo_cam.Baseline() / kMinDepth;
+  int max_boxes = std::ceil(static_cast<float>(kGridCols) * max_disp / static_cast<float>(width));
+
+  const Box2i search_region(Vector2i(-max_boxes, 0), Vector2i(0, 0));
+
+  return MatchPointsGrid(grid, gridpt_l, search_region, desc_l, desc_r, 0.9, matches_lr);
 }
 
 }
