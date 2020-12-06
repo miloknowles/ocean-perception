@@ -62,5 +62,14 @@ int StereoMatchPoints(const std::vector<cv::KeyPoint>& kpl,
                       float min_distance_ratio,
                       std::vector<int>& matches_lr);
 
+
+int StereoMatchLines(const std::vector<ld::KeyLine>& kll,
+                     const std::vector<ld::KeyLine>& klr,
+                     const cv::Mat& ldl,
+                     const cv::Mat& ldr,
+                     const core::StereoCamera& stereo_cam,
+                     float min_distance_ratio,
+                     float line_cosine_sim_th,
+                     std::vector<int>& matches_lr);
 }
 }

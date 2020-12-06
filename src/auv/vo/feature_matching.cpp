@@ -4,6 +4,7 @@
 #include <opencv2/imgproc/imgproc.hpp>
 
 #include "feature_matching.hpp"
+#include "core/math_util.hpp"
 
 namespace bm {
 namespace vo {
@@ -275,6 +276,16 @@ int MatchLinesGrid(const Grid& grid,
 }
 
 
+static Box2i StereoSearchRegion(const core::StereoCamera& stereo_cam,
+                                float min_depth, int grid_cols, int width)
+{
+  // Depth = f * b / Disp
+  float max_disp = stereo_cam.LeftIntrinsics().fx * stereo_cam.Baseline() / min_depth;
+  const int max_boxes = std::ceil(static_cast<float>(grid_cols) * max_disp / static_cast<float>(width));
+  return Box2i(Vector2i(-max_boxes, 0), Vector2i(0, 0));
+}
+
+
 int StereoMatchPoints(const std::vector<cv::KeyPoint>& kpl,
                       const cv::Mat& desc_l,
                       const std::vector<cv::KeyPoint>& kpr,
@@ -291,14 +302,48 @@ int StereoMatchPoints(const std::vector<cv::KeyPoint>& kpl,
   const std::vector<Vector2i> gridpt_l = MapToGridCells(kpl, height, width, kGridRows, kGridCols);
   const std::vector<Vector2i> gridpt_r = MapToGridCells(kpr, height, width, kGridRows, kGridCols);
   GridLookup<int> grid = PopulateGrid(gridpt_r, kGridRows, kGridCols);
+  const Box2i search_region = StereoSearchRegion(stereo_cam, kMinDepth, kGridCols, width);
 
-  // Depth = f * b / Disp
-  float max_disp = stereo_cam.LeftIntrinsics().fx * stereo_cam.Baseline() / kMinDepth;
-  int max_boxes = std::ceil(static_cast<float>(kGridCols) * max_disp / static_cast<float>(width));
+  int Nm = MatchPointsGrid(grid, gridpt_l, search_region, desc_l, desc_r, min_distance_ratio, matches_lr);
 
-  const Box2i search_region(Vector2i(-max_boxes, 0), Vector2i(0, 0));
+  for (int il = 0; il < matches_lr.size(); ++il) {
+    if (matches_lr.at(il) < 0) { continue; }
+    const float yl = kpl.at(il).pt.y;
+    const float yr = kpr.at(matches_lr.at(il)).pt.y;
 
-  return MatchPointsGrid(grid, gridpt_l, search_region, desc_l, desc_r, 0.9, matches_lr);
+    if (std::abs(yl - yr) > max_epipolar_dist) {
+      matches_lr.at(il) = -1;
+      --Nm;
+    }
+  }
+
+  return Nm;
+}
+
+
+int StereoMatchLines(const std::vector<ld::KeyLine>& kll,
+                     const std::vector<ld::KeyLine>& klr,
+                     const cv::Mat& ldl,
+                     const cv::Mat& ldr,
+                     const core::StereoCamera& stereo_cam,
+                     float min_distance_ratio,
+                     float line_cosine_sim_th,
+                     std::vector<int>& matches_lr)
+{
+  const int height = stereo_cam.Height();
+  const int width = stereo_cam.Width();
+
+  // Map each keypoint location to a compressed grid cell location.
+  const std::vector<LineSegment2i> gridln_l = MapToGridCells(kll, height, width, kGridRows, kGridCols);
+  const std::vector<LineSegment2i> gridln_r = MapToGridCells(klr, height, width, kGridRows, kGridCols);
+  GridLookup<int> grid = PopulateGrid(gridln_r, kGridRows, kGridCols);
+
+  const auto& dir_l = core::NormalizedDirection(kll);
+  const auto& dir_r = core::NormalizedDirection(klr);
+
+  const Box2i search_region = StereoSearchRegion(stereo_cam, kMinDepth, kGridCols, width);
+  return MatchLinesGrid(grid, gridln_l, search_region, ldl, ldr, dir_l, dir_r,
+                        min_distance_ratio, line_cosine_sim_th, matches_lr);
 }
 
 }

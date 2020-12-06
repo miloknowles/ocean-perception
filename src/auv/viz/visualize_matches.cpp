@@ -41,7 +41,7 @@ void DrawLineMatches(const cv::Mat& img1,
   const int offset = img1.cols;
 
   for (size_t counter = 0; counter < matches1to2.size(); counter++) {
-    if (matches_mask.size() == 0 || matches_mask.at(counter) != 0 ) {
+    if (matches_mask.size() == 0 || matches_mask.at(counter) != 0) {
       const cv::DMatch& dm = matches1to2.at(counter);
       const ld::KeyLine& left = keylines1.at(dm.queryIdx);
       const ld::KeyLine& right = keylines2.at(dm.trainIdx);

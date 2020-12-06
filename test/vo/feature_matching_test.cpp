@@ -138,12 +138,43 @@ TEST(FeatureMatchingTest, TestStereoMatchPoints)
   const core::PinholeModel cam(415.876509, 415.876509, 276.0, 240.0, 480, 752);
   const core::StereoCamera stereo_cam(cam, cam, 0.2);
   const int Nm = vo::StereoMatchPoints(kpl, descl, kpr, descr, stereo_cam, 5.0, 0.9, matches_lr);
-
   printf("Matched %d features from left to right\n", Nm);
 
   const auto& dmatches = viz::ConvertToDMatch(matches_lr);
   cv::Mat draw;
   cv::drawMatches(iml, kpl, imr, kpr, dmatches, draw);
   cv::imshow("matches", draw);
+  cv::waitKey(0);
+}
+
+TEST(FeatureMatchingTest, TestStereoMatchLines)
+{
+  vo::LineDetector::Options opt;
+  vo::LineDetector detector(opt);
+
+  core::Image1b iml = cv::imread("./resources/farmsim_01_left.png", cv::IMREAD_GRAYSCALE);
+  core::Image1b imr = cv::imread("./resources/farmsim_01_right.png", cv::IMREAD_GRAYSCALE);
+  core::Image3b rgb_left = cv::imread("./resources/farmsim_01_left.png", cv::IMREAD_COLOR);
+  core::Image3b rgb_right = cv::imread("./resources/farmsim_01_right.png", cv::IMREAD_COLOR);
+
+  std::vector<ld::KeyLine> kll, klr;
+  cv::Mat ldl, ldr;
+  const int nl = detector.Detect(iml, kll, ldl);
+  const int nr = detector.Detect(imr, klr, ldr);
+  printf("Detected %d|%d keypoints in left|right images\n", nl, nr);
+
+  std::vector<int> matches_lr;
+  const core::PinholeModel cam(415.876509, 415.876509, 276.0, 240.0, 480, 752);
+  const core::StereoCamera stereo_cam(cam, cam, 0.2);
+  const int Nm = vo::StereoMatchLines(kll, klr, ldl, ldr, stereo_cam, 0.8, std::cos(DegToRad(5)), matches_lr);
+
+  printf("Matched %d features from left to right\n", Nm);
+
+  cv::Mat draw_img;
+  std::vector<cv::DMatch> dmatches = viz::ConvertToDMatch(matches_lr);
+
+  viz::DrawLineMatches(rgb_left, kll, rgb_right, klr, dmatches, draw_img, std::vector<char>(), true);
+
+  cv::imshow("matches_lr", draw_img);
   cv::waitKey(0);
 }
