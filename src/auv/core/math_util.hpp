@@ -14,6 +14,8 @@ namespace core {
 static const float DEG_TO_RAD_FACTOR = M_PI / 180.0;
 static const float RAD_TO_DEG_FACTOR = 180.0 / M_PI;
 
+
+// Return the unit direction vector.
 inline Vector2f NormalizedDirection(const ld::KeyLine& kl)
 {
   const cv::Point2f diff = kl.getEndPoint() - kl.getStartPoint();
@@ -22,6 +24,7 @@ inline Vector2f NormalizedDirection(const ld::KeyLine& kl)
 }
 
 
+// Returns the unit direction vectors for a list of line segments.
 inline std::vector<Vector2f> NormalizedDirection(const std::vector<ld::KeyLine>& kls)
 {
   std::vector<Vector2f> out(kls.size());

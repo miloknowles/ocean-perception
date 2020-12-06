@@ -280,7 +280,7 @@ static Box2i StereoSearchRegion(const core::StereoCamera& stereo_cam,
                                 float min_depth, int grid_cols, int width)
 {
   // Depth = f * b / Disp
-  float max_disp = stereo_cam.LeftIntrinsics().fx * stereo_cam.Baseline() / min_depth;
+  float max_disp = stereo_cam.LeftIntrinsics().fx() * stereo_cam.Baseline() / min_depth;
   const int max_boxes = std::ceil(static_cast<float>(grid_cols) * max_disp / static_cast<float>(width));
   return Box2i(Vector2i(-max_boxes, 0), Vector2i(0, 0));
 }

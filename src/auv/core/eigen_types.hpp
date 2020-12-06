@@ -19,6 +19,13 @@ typedef Eigen::Vector4f Vector4f;
 typedef Eigen::Vector4d Vector4d;
 typedef Eigen::Vector4i Vector4i;
 
+// Put Eigen matrix types in our namespace.
+typedef Eigen::Matrix3f Matrix3f;
+typedef Eigen::Matrix4f Matrix4f;
+
+typedef Eigen::Matrix3d Matrix3d;
+typedef Eigen::Matrix4d Matrix4d;
+
 // 3D transformations.
 typedef Eigen::AffineCompact3f Transform3f;
 typedef Eigen::AffineCompact3d Transform3d;
