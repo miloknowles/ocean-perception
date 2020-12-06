@@ -1,0 +1,9 @@
+# Don't track any build outputs.
+build/
+
+# Python
+*.pyc
+*.pycache
+
+# Visual Studio
+.vscode
