@@ -45,6 +45,23 @@ inline float RadToDeg(const float rad)
   return rad * RAD_TO_DEG_FACTOR;
 }
 
+// From: https://github.com/rubengooj/stvo-pl/blob/master/src/auxiliar.cpp
+Matrix3d skew(Vector3d v);
+
+// From: https://github.com/rubengooj/stvo-pl/blob/master/src/auxiliar.cpp
+Matrix3d fast_skewexp(Vector3d v);
+
+// From: https://github.com/rubengooj/stvo-pl/blob/master/src/auxiliar.cpp
+Vector3d skewcoords(Matrix3d M);
+
+// From: https://github.com/rubengooj/stvo-pl/blob/master/src/auxiliar.cpp
+Matrix4d inverse_se3(Matrix4d T);
+
+// From: https://github.com/rubengooj/stvo-pl/blob/master/src/auxiliar.cpp
+Matrix4d expmap_se3(Vector6d x);
+
+// From: https://github.com/rubengooj/stvo-pl/blob/master/src/auxiliar.cpp
+Vector6d logmap_se3(Matrix4d T);
 
 }
 }
