@@ -29,6 +29,17 @@ int OptimizePoseGaussNewton(const std::vector<Vector3d>& P0_list,
                             double min_error,
                             double min_error_delta);
 
+int OptimizePoseLevenbergMarquardt(const std::vector<Vector3d>& P0_list,
+                            const std::vector<Vector2d>& p1_obs_list,
+                            const std::vector<double>& p1_sigma_list,
+                            const StereoCamera& stereo_cam,
+                            Matrix4d& T_01,
+                            Matrix6d& C_01,
+                            double& error,
+                            int max_iters,
+                            double min_error,
+                            double min_error_delta);
+
 void LinearizeProjection(const std::vector<Vector3d>& P0_list,
                          const std::vector<Vector2d>& p1_obs_list,
                          const std::vector<double>& p1_sigma_list,

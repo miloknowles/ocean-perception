@@ -65,11 +65,20 @@ Matrix4d expmap_se3(Vector6d x);
 // From: https://github.com/rubengooj/stvo-pl/blob/master/src/auxiliar.cpp
 Vector6d logmap_se3(Matrix4d T);
 
+
+// Project a 3D point from the 'world' frame to the image plane of the camera.
 inline Vector2d ProjectWorldPoint(const PinholeCamera& camera,
                                   const Matrix4d& T_world_cam,
                                   const Vector3d& P_world)
 {
   return camera.Project(T_world_cam.block<3, 3>(0, 0) * P_world + T_world_cam.block<3, 1>(0, 3));
+}
+
+
+// Transform a 3D point from the 'ref' frame to the 'target' frame.
+inline Vector3d ApplyTransform(const Matrix4d& T_ref_target, const Vector3d& P_ref)
+{
+  return T_ref_target.block<3, 3>(0, 0) * P_ref + T_ref_target.block<3, 1>(0, 3);
 }
 
 }

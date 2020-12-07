@@ -31,42 +31,42 @@ int OptimizePoseGaussNewton(const std::vector<Vector3d>& P0_list,
 
     int iters;
     for (iters = 0; iters < max_iters; ++iters) {
-      printf("iter=%d\n", iters);
+      // printf("iter=%d\n", iters);
       LinearizeProjection(P0_list, p1_obs_list, p1_sigma_list, stereo_cam, T_01, H, g, err);
 
       // Stop if error increases.
       if (err > err_prev) {
-        printf("[STOP] Error increased! err=%lf err_prev=%lf\n", err, err_prev);
+        // printf("[STOP] Error increased! err=%lf err_prev=%lf\n", err, err_prev);
         break;
       }
 
       // Stop if error is small or hasn't changed much.
-      if ((err < min_error) || (std::abs(err - err_prev) < min_error_delta)) {
-        printf("[STOP] err=%lf min_error=%lf || min_error_delta=%lf\n", err, min_error, min_error_delta);
+      if ((err < min_error) || (std::fabs(err - err_prev) < min_error_delta)) {
+        // printf("[STOP] err=%lf min_error=%lf || min_error_delta=%lf\n", err, min_error, min_error_delta);
         break;
       }
 
-      std::cout << "H:\n" << H << std::endl;
-      std::cout << "g:\n" << g << std::endl;
+      // std::cout << "H:\n" << H << std::endl;
+      // std::cout << "g:\n" << g << std::endl;
 
       // Solve the equation H * T_eps = g.
       // T_eps will be the right-multiply transform that sets the error gradient to zero.
       Eigen::ColPivHouseholderQR<Matrix6d> solver(H);
       T_eps = solver.solve(g);
-      std::cout << "solution error:\n" << H * T_eps - g << std::endl;
-      std::cout << "[INFO] " << solver.logAbsDeterminant() << " " << solver.info() << std::endl;
+      // std::cout << "solution error:\n" << H * T_eps - g << std::endl;
+      // std::cout << "[INFO] " << solver.logAbsDeterminant() << " " << solver.info() << std::endl;
 
       // NOTE(milo): They seem to follow the '2nd' option on page 47.
       // See: https://jinyongjeong.github.io/Download/SE3/jlblanco2010geometry3d_techrep.pdf
       T_01 << T_01 * inverse_se3(expmap_se3(T_eps));
       // T_01 << expmap_se3(T_eps) * T_01;
 
-      std::cout << "T_eps:\n" << T_eps << std::endl;
-      std::cout << "SO3(T_eps):\n" << expmap_se3(T_eps) << std::endl;
-      std::cout << "SO3(T_eps)^-1:\n" << inverse_se3(expmap_se3(T_eps)) << std::endl;
-      std::cout << "T_01:\n" << T_01 << std::endl;
+      // std::cout << "T_eps:\n" << T_eps << std::endl;
+      // std::cout << "SO3(T_eps):\n" << expmap_se3(T_eps) << std::endl;
+      // std::cout << "SO3(T_eps)^-1:\n" << inverse_se3(expmap_se3(T_eps)) << std::endl;
+      // std::cout << "T_01:\n" << T_01 << std::endl;
 
-      // Stop if the pose solution hasn't  changed much.
+      // Stop if the pose solution hasn't changed much.
       if (T_eps.head(3).norm() < min_error_delta && T_eps.tail(3).norm() < min_error_delta) {
         break;
       }
@@ -79,12 +79,88 @@ int OptimizePoseGaussNewton(const std::vector<Vector3d>& P0_list,
     // Error of -1 indicates failure.
     error = iters > 0 ? err : -1;
 
-    // Normalizse error by the number of points.
-    error /= static_cast<double>(P0_list.size());
-
     return iters;
 }
 
+int OptimizePoseLevenbergMarquardt(const std::vector<Vector3d>& P0_list,
+                            const std::vector<Vector2d>& p1_obs_list,
+                            const std::vector<double>& p1_sigma_list,
+                            const StereoCamera& stereo_cam,
+                            Matrix4d& T_01,
+                            Matrix6d& C_01,
+                            double& error,
+                            int max_iters,
+                            double min_error,
+                            double min_error_delta)
+{
+  // Set the initial guess (if not already set).
+  if (T_01(3, 3) != 1.0) {
+    T_01 = Matrix4d::Identity();
+  }
+
+  Matrix6d H;       // Current estimated Hessian of error w.r.t T_eps.
+  Vector6d g;       // Current estimated gradient of error w.r.t T_eps.
+  Vector6d T_eps;   // An incremental update to T_01.
+  double err_prev = std::numeric_limits<double>::max();
+  double err = err_prev - 1;
+
+  const double lambda_k_increase = 2.0;
+  const double lambda_k_decrease = 3.0;
+
+  LinearizeProjection(P0_list, p1_obs_list, p1_sigma_list, stereo_cam, T_01, H, g, err);
+
+  double H_max = 0.0;
+  for (int i = 0; i < 6; ++i) {
+    if (H(i, i) > H_max || H(i, i) < -H_max) {
+      H_max = std::fabs(H(i, i));
+    }
+  }
+  double lambda  = 1e-5 * H_max;
+
+  H.diagonal() += Vector6d::Constant(lambda);
+  Eigen::ColPivHouseholderQR<Matrix6d> solver(H);
+  T_eps = solver.solve(g);
+  T_01 << T_01 * inverse_se3(expmap_se3(T_eps));
+  err_prev = err;
+
+  int iters;
+  for (iters = 1; iters < max_iters; ++iters) {
+    LinearizeProjection(P0_list, p1_obs_list, p1_sigma_list, stereo_cam, T_01, H, g, err);
+
+    if (err < min_error) {
+      std::cout << "stopping due to min_error" << std::endl;
+      break;
+    }
+
+    H.diagonal() += Vector6d::Constant(lambda);
+
+    Eigen::ColPivHouseholderQR<Matrix6d> solver(H);
+    T_eps = solver.solve(g);
+
+    if (err > err_prev) {
+      lambda /= lambda_k_decrease;
+      // lambda *= lambda_k_increase;
+      printf("err increased! err=%lf lambda=%lf\n", err, lambda);
+    } else {
+      lambda *= lambda_k_increase;
+      // lambda /= lambda_k_decrease;
+      T_01 << T_01 * inverse_se3(expmap_se3(T_eps));
+      printf("err decreased! err=%lf lambda=%lf\n", err, lambda);
+    }
+
+    // Stop if the pose solution hasn't changed much.
+    if (T_eps.head(3).norm() < min_error_delta && T_eps.tail(3).norm() < min_error_delta) {
+      break;
+    }
+
+    err_prev = err;
+  }
+
+  error = err;
+  C_01 = H.inverse();
+
+  return iters;
+}
 
 /**
  * Linearize image projection error around the SE3 manifold at the current pose.
@@ -164,6 +240,8 @@ void LinearizeProjection(const std::vector<Vector3d>& P0_list,
     g += J * residual * weight;
     error += residual * residual * weight;
   }
+
+  error /= static_cast<double>(P0_list.size());
 }
 
 }
