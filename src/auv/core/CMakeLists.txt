@@ -6,7 +6,6 @@ SET(LIBRARY_SRC
   grid_lookup.hpp
   pinhole_camera.hpp
   stereo_camera.hpp
-  math_util.hpp
   math_util.cpp
   random.hpp)
 

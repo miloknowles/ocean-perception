@@ -1,6 +1,6 @@
 #pragma once
 
-#include "eigen_types.hpp"
+#include "core/eigen_types.hpp"
 
 namespace bm {
 namespace core {
@@ -40,15 +40,15 @@ class PinholeCamera final {
   // Project 3D point in the camera's RDF frame.
   Vector2d Project(const Vector3d& p_cam) const
   {
-    const Vector3d uv_h = K_ * p_cam;
-    return uv_h.head<2>() / uv_h(2);
+    const Vector3d xy_h = K_ * p_cam;
+    return xy_h.head<2>() / xy_h(2);
   }
 
   // Backproject a pixel location to a 3D point in the camera's RDF frame.
-  Vector3d Backproject(const Vector2d& p_uv, double depth) const
+  Vector3d Backproject(const Vector2d& xy, double depth) const
   {
-    const Vector3d p_uv_h(p_uv.x(), p_uv.y(), 1);
-    return depth * K_inv_ * p_uv_h;
+    const Vector3d xy_h(xy.x(), xy.y(), 1);
+    return depth * K_inv_ * xy_h;
   }
 
 

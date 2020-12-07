@@ -1,4 +1,4 @@
-#include "point_detector.hpp"
+#include "vo/point_detector.hpp"
 
 namespace bm {
 namespace vo {

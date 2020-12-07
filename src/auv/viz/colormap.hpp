@@ -10,10 +10,12 @@ namespace viz {
 
 
 // Can represent RGB, BGR, HSV, etc.
-typedef core::Vector3f Color;
+typedef core::Vector3f Colorf;
+typedef core::Vector3d Colord;
 
 
 // Useful for interpolating between a palette of colors.
+template <typename Color>
 class Colormap {
  public:
   Colormap(const std::vector<Color>& palette) : palette_(palette) {
@@ -39,6 +41,7 @@ class Colormap {
 
 
 // Convert a floating point color to OpenCV's [0, 255] color space.
+template <typename Color>
 inline cv::Vec3b ToCvColor(const Color& c)
 {
   return cv::Vec3b(255.0 * c.x(), 255.0 * c.y(), 255.0 * c.z());

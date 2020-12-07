@@ -1,7 +1,7 @@
 #pragma once
 
-#include "eigen_types.hpp"
-#include "pinhole_camera.hpp"
+#include "core/eigen_types.hpp"
+#include "core/pinhole_camera.hpp"
 
 namespace bm {
 namespace core {
@@ -41,6 +41,7 @@ class StereoCamera final {
   double Baseline() const { return baseline_; }
   double fx() const { return cam_left_.fx(); }
   double fy() const { return cam_right_.fy(); }
+  Transform3d Extrinsics() const { return T_right_left_; }
 
 
  private:

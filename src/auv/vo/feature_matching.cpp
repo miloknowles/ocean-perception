@@ -3,7 +3,7 @@
 
 #include <opencv2/imgproc/imgproc.hpp>
 
-#include "feature_matching.hpp"
+#include "vo/feature_matching.hpp"
 #include "core/math_util.hpp"
 
 namespace bm {
@@ -196,8 +196,8 @@ int MatchLinesGrid(const Grid& grid,
                    const core::Box2i& search_region,
                    const cv::Mat& desc1,
                    const cv::Mat& desc2,
-                   const std::vector<Vector2f>& directions1,
-                   const std::vector<Vector2f>& directions2,
+                   const std::vector<Vector2d>& directions1,
+                   const std::vector<Vector2d>& directions2,
                    float min_distance_ratio,
                    float line_cosine_sim_th,
                    std::vector<int>& matches_12)

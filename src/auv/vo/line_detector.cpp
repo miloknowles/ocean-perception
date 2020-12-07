@@ -1,4 +1,4 @@
-#include "line_detector.hpp"
+#include "vo/line_detector.hpp"
 
 namespace bm {
 namespace vo {
