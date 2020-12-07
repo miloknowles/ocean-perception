@@ -35,14 +35,12 @@ inline std::vector<Vector2d> NormalizedDirection(const std::vector<ld::KeyLine>&
   return out;
 }
 
-template <typename Scalar>
-inline Scalar DegToRad(const Scalar deg)
+inline double DegToRad(const double deg)
 {
   return deg * DEG_TO_RAD_D;
 }
 
-template <typename Scalar>
-inline Scalar RadToDeg(const Scalar rad)
+inline double RadToDeg(const double rad)
 {
   return rad * RAD_TO_DEG_D;
 }
@@ -79,6 +77,13 @@ inline Vector2d ProjectWorldPoint(const PinholeCamera& camera,
 inline Vector3d ApplyTransform(const Matrix4d& T_ref_target, const Vector3d& P_ref)
 {
   return T_ref_target.block<3, 3>(0, 0) * P_ref + T_ref_target.block<3, 1>(0, 3);
+}
+
+
+// Returns the rotation of 1 in 0.
+inline Matrix3d RelativeRotation(const Matrix3d& R_0_w, const Matrix3d& R_1_w)
+{
+  return R_0_w.transpose() * R_1_w;
 }
 
 }

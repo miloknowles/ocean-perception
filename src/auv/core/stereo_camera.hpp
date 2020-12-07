@@ -43,7 +43,6 @@ class StereoCamera final {
   double fy() const { return cam_right_.fy(); }
   Transform3d Extrinsics() const { return T_right_left_; }
 
-
  private:
   PinholeCamera cam_left_;
   PinholeCamera cam_right_;

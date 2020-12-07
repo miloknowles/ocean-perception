@@ -102,7 +102,7 @@ TEST(FeatureMatchingTest, TestMatchLinesLR)
       grid, glines_left, search_region_in_right,
       desc_out_left, desc_out_right,
       dirs_left, dirs_right,
-      0.9, std::cos(DegToRad<double>(40)), matches_12);
+      0.9, std::cos(DegToRad(40)), matches_12);
 
   printf("Matched %d features from left to right\n", N_match);
 
@@ -166,7 +166,7 @@ TEST(FeatureMatchingTest, TestStereoMatchLines)
   std::vector<int> matches_lr;
   const core::PinholeCamera cam(415.876509, 415.876509, 376.0, 240.0, 480, 752);
   const core::StereoCamera stereo_cam(cam, cam, 0.2);
-  const int Nm = vo::StereoMatchLines(kll, klr, ldl, ldr, stereo_cam, 0.8, std::cos(DegToRad<double>(5)), matches_lr);
+  const int Nm = vo::StereoMatchLines(kll, klr, ldl, ldr, stereo_cam, 0.8, std::cos(DegToRad(5)), matches_lr);
 
   printf("Matched %d features from left to right\n", Nm);
 

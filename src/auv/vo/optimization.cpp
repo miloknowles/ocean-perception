@@ -137,13 +137,16 @@ int OptimizePoseLevenbergMarquardt(const std::vector<Vector3d>& P0_list,
     Eigen::ColPivHouseholderQR<Matrix6d> solver(H);
     T_eps = solver.solve(g);
 
+    // If error gets worse, want to increase the damping factor (more like gradient descent).
+    // See: https://en.wikipedia.org/wiki/Levenberg%E2%80%93Marquardt_algorithm
     if (err > err_prev) {
-      lambda /= lambda_k_decrease;
-      // lambda *= lambda_k_increase;
-      printf("err increased! err=%lf lambda=%lf\n", err, lambda);
-    } else {
       lambda *= lambda_k_increase;
-      // lambda /= lambda_k_decrease;
+      printf("err increased! err=%lf lambda=%lf\n", err, lambda);
+
+    // If error improves, decrease the damping factor (more like Gauss-Newton).
+    // See: https://en.wikipedia.org/wiki/Levenberg%E2%80%93Marquardt_algorithm
+    } else {
+      lambda /= lambda_k_decrease;
       T_01 << T_01 * inverse_se3(expmap_se3(T_eps));
       printf("err decreased! err=%lf lambda=%lf\n", err, lambda);
     }

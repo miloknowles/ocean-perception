@@ -34,6 +34,8 @@ typedef Eigen::Matrix4d Matrix4d;
 // 3D transformations.
 typedef Eigen::AffineCompact3f Transform3f;
 typedef Eigen::AffineCompact3d Transform3d;
+typedef Eigen::AngleAxisf AngleAxisf;
+typedef Eigen::AngleAxisd AngleAxisd;
 
 // Bounding boxes.
 typedef Eigen::AlignedBox2f Box2f;
