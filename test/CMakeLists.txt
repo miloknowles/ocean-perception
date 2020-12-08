@@ -6,7 +6,8 @@ set(TEST_SOURCES
   vo/feature_matching_test.cpp
   vo/point_detector_test.cpp
   vo/line_detector_test.cpp
-  vo/optimization_test.cpp)
+  vo/optimization_test.cpp
+  vo/vo_test.cpp)
 
 # Add one big executable with all of the tests. Filter for specific tests with:
 # --gtest_filter=TestModuleName.UnitTestName.

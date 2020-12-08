@@ -276,6 +276,35 @@ int MatchLinesGrid(const Grid& grid,
 }
 
 
+// Only search +/- 1/4 of the image dimensions for matches.
+static Box2i TemporalSearchRegion(int grid_rows, int grid_cols)
+{
+  return Box2i(Vector2i(-grid_cols / 4, -grid_rows / 4), Vector2i(grid_cols / 4, grid_rows / 4));
+}
+
+int TemporalMatchPoints(const std::vector<cv::KeyPoint>& kp0,
+                        const cv::Mat& desc0,
+                        const std::vector<cv::KeyPoint>& kp1,
+                        const cv::Mat& desc1,
+                        const StereoCamera& stereo_cam,
+                        float min_distance_ratio,
+                        std::vector<int>& matches_01)
+{
+  const int height = stereo_cam.Height();
+  const int width = stereo_cam.Width();
+
+  // Map each keypoint location to a compressed grid cell location.
+  const std::vector<Vector2i> gridpt0 = MapToGridCells(kp0, height, width, kGridRows, kGridCols);
+  const std::vector<Vector2i> gridpt1 = MapToGridCells(kp1, height, width, kGridRows, kGridCols);
+  GridLookup<int> grid = PopulateGrid(gridpt1, kGridRows, kGridCols);
+  const Box2i search_region = TemporalSearchRegion(kGridCols, kGridRows);
+
+  int Nm = MatchPointsGrid(grid, gridpt0, search_region, desc0, desc1, min_distance_ratio, matches_01);
+
+  return Nm;
+}
+
+
 static Box2i StereoSearchRegion(const core::StereoCamera& stereo_cam,
                                 float min_depth, int grid_cols, int width)
 {

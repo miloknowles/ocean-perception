@@ -53,6 +53,15 @@ int MatchLinesGrid(const Grid& grid,
                    std::vector<int>& matches_12);
 
 
+int TemporalMatchPoints(const std::vector<cv::KeyPoint>& kp0,
+                      const cv::Mat& desc0,
+                      const std::vector<cv::KeyPoint>& kp1,
+                      const cv::Mat& desc1,
+                      const StereoCamera& stereo_cam,
+                      float min_distance_ratio,
+                      std::vector<int>& matches_01);
+
+
 int StereoMatchPoints(const std::vector<cv::KeyPoint>& kpl,
                       const cv::Mat& desc_l,
                       const std::vector<cv::KeyPoint>& kpr,
