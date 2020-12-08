@@ -67,40 +67,26 @@ int OptimizePoseGaussNewton(const std::vector<Vector3d>& P0_list,
 
     int iters;
     for (iters = 0; iters < max_iters; ++iters) {
-      // printf("iter=%d\n", iters);
       LinearizePointProjection(P0_list, p1_obs_list, p1_sigma_list, stereo_cam, T_01, H, g, err);
 
       // Stop if error increases.
       if (err > err_prev) {
-        // printf("[STOP] Error increased! err=%lf err_prev=%lf\n", err, err_prev);
         break;
       }
 
       // Stop if error is small or hasn't changed much.
       if ((err < min_error) || (std::fabs(err - err_prev) < min_error_delta)) {
-        // printf("[STOP] err=%lf min_error=%lf || min_error_delta=%lf\n", err, min_error, min_error_delta);
         break;
       }
-
-      // std::cout << "H:\n" << H << std::endl;
-      // std::cout << "g:\n" << g << std::endl;
 
       // Solve the equation H * T_eps = g.
       // T_eps will be the right-multiply transform that sets the error gradient to zero.
       Eigen::ColPivHouseholderQR<Matrix6d> solver(H);
       T_eps = solver.solve(g);
-      // std::cout << "solution error:\n" << H * T_eps - g << std::endl;
-      // std::cout << "[INFO] " << solver.logAbsDeterminant() << " " << solver.info() << std::endl;
 
       // NOTE(milo): They seem to follow the '2nd' option on page 47.
       // See: https://jinyongjeong.github.io/Download/SE3/jlblanco2010geometry3d_techrep.pdf
       T_01 << T_01 * inverse_se3(expmap_se3(T_eps));
-      // T_01 << expmap_se3(T_eps) * T_01;
-
-      // std::cout << "T_eps:\n" << T_eps << std::endl;
-      // std::cout << "SO3(T_eps):\n" << expmap_se3(T_eps) << std::endl;
-      // std::cout << "SO3(T_eps)^-1:\n" << inverse_se3(expmap_se3(T_eps)) << std::endl;
-      // std::cout << "T_01:\n" << T_01 << std::endl;
 
       // Stop if the pose solution hasn't changed much.
       if (T_eps.head(3).norm() < min_error_delta && T_eps.tail(3).norm() < min_error_delta) {
@@ -164,7 +150,6 @@ int OptimizePoseLevenbergMarquardt(const std::vector<Vector3d>& P0_list,
     LinearizePointProjection(P0_list, p1_obs_list, p1_sigma_list, stereo_cam, T_01, H, g, err);
 
     if (err < min_error) {
-      std::cout << "stopping due to min_error" << std::endl;
       break;
     }
 
@@ -177,14 +162,12 @@ int OptimizePoseLevenbergMarquardt(const std::vector<Vector3d>& P0_list,
     // See: https://en.wikipedia.org/wiki/Levenberg%E2%80%93Marquardt_algorithm
     if (err > err_prev) {
       lambda *= lambda_k_increase;
-      printf("err increased! err=%lf lambda=%lf\n", err, lambda);
 
     // If error improves, decrease the damping factor (more like Gauss-Newton).
     // See: https://en.wikipedia.org/wiki/Levenberg%E2%80%93Marquardt_algorithm
     } else {
       lambda /= lambda_k_decrease;
       T_01 << T_01 * inverse_se3(expmap_se3(T_eps));
-      printf("err decreased! err=%lf lambda=%lf\n", err, lambda);
     }
 
     // Stop if the pose solution hasn't changed much.
@@ -243,12 +226,6 @@ void LinearizePointProjection(const std::vector<Vector3d>& P0_list,
     const Vector2d err = (p1 - p1_obs_list.at(i));
     const double err_norm = err.norm();
 
-    // printf("Computing projection error for point %d\n", i);
-    // std::cout << "P1:\n" << P1 << std::endl;
-    // std::cout << "p1:\n" << p1 << std::endl;
-    // std::cout << "p1_obs\n" << p1_obs_list.at(i) << std::endl;
-    // std::cout << "err:\n" << err << std::endl;
-
     // NOTE(milo): See page 54 for derivation of the Jacobian below.
     // https://jinyongjeong.github.io/Download/SE3/jlblanco2010geometry3d_techrep.pdf
     const double Px = P1(0);
@@ -269,7 +246,6 @@ void LinearizePointProjection(const std::vector<Vector3d>& P0_list,
          + fx_Pz_sq * (Px*Pz*ey - Py*Pz*ex);
 
     J = J / std::max(1e-7, err_norm);
-    // std::cout << "J:\n" << J << std::endl;
     const double p1_sigma = p1_sigma_list.at(i);
     const double residual = err_norm / p1_sigma;
     const double weight = RobustWeightCauchy(residual);
