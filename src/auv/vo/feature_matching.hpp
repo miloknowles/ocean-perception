@@ -41,6 +41,10 @@ int MatchPointsGrid(const Grid& grid,
                     std::vector<int>& matches_12);
 
 
+int MatchPointsNN(const cv::Mat& desc1, const cv::Mat& desc2,
+                  float nn_ratio, std::vector<int>& matches_12);
+
+
 int MatchLinesGrid(const Grid& grid,
                    const std::vector<LineSegment2i> grid_lines,
                    const core::Box2i& search_region,

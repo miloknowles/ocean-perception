@@ -190,6 +190,32 @@ int MatchPointsGrid(const Grid& grid,
 }
 
 
+int MatchPointsNN(const cv::Mat& desc1, const cv::Mat& desc2, float nn_ratio, std::vector<int>& matches_12)
+{
+    int Nm = 0;
+    matches_12.resize(desc1.rows, -1);
+
+    std::vector<std::vector<cv::DMatch>> dmatches;
+
+    // Don't do cross check (false).
+    cv::Ptr<cv::BFMatcher> bfm = cv::BFMatcher::create(cv::NORM_HAMMING, false);
+    bfm->knnMatch(desc1, desc2, dmatches, 2);
+
+    assert(desc1.rows == dmatches.size());
+
+    for (int i = 0; i < desc1.rows; ++i) {
+      const float d1 = dmatches.at(i).at(0).distance;
+      const float d2 = dmatches.at(i).at(1).distance;
+      if (d1 < (nn_ratio * d2)) {
+        matches_12.at(i) = dmatches.at(i).at(0).trainIdx;
+        ++Nm;
+      }
+    }
+
+    return Nm;
+}
+
+
 // Adapted from: https://github.com/rubengooj/stvo-pl
 int MatchLinesGrid(const Grid& grid,
                    const std::vector<LineSegment2i> grid_lines,

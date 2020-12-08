@@ -18,6 +18,8 @@ TEST(VOTest, TestSeq01)
 {
   const double max_epipolar_dist = 5.0;
   const double min_distance_ratio = 0.9;
+  const double matching_nn_ratio = 0.9;
+
   const double min_error = 1e-7;
   const double min_error_delta = 1e-9;
   const int max_iters = 20;
@@ -42,19 +44,20 @@ TEST(VOTest, TestSeq01)
 
   assert(filenames_l.size() == filenames_r.size());
 
+  cv::Mat rgbl_prev;
   std::vector<cv::KeyPoint> kpl_prev, kpr_prev;
   std::vector<double> disp_prev;
   cv::Mat orbl_prev, orbr_prev;
 
-  Matrix4d T_prev = Matrix4d::Identity();
-  Matrix4d T_curr = Matrix4d::Identity();
+  Matrix4d T_prev_w = Matrix4d::Identity();
+  Matrix4d T_curr_w = Matrix4d::Identity();
 
   for (int t = 0; t < filenames_l.size(); ++t) {
     printf("-----------------------------------FRAME #%d-------------------------------------\n", t);
     const Image1b iml = cv::imread(filenames_l.at(t), cv::IMREAD_GRAYSCALE);
     const Image1b imr = cv::imread(filenames_r.at(t), cv::IMREAD_GRAYSCALE);
-    Image3b drawleft = cv::imread(filenames_l.at(t), cv::IMREAD_COLOR);
-    Image3b drawright = cv::imread(filenames_r.at(t), cv::IMREAD_COLOR);
+    Image3b rgbl = cv::imread(filenames_l.at(t), cv::IMREAD_COLOR);
+    Image3b rgbr = cv::imread(filenames_r.at(t), cv::IMREAD_COLOR);
 
     std::cout << "---------------------------- STEREO MATCHING ---------------------------------\n";
     std::vector<cv::KeyPoint> kpl, kpr;
@@ -69,10 +72,12 @@ TEST(VOTest, TestSeq01)
     printf("Matched %d features from left to right\n", Np_stereo);
 
     const auto& dmatches = ConvertToDMatch(matches_lr);
-    cv::Mat draw;
-    cv::drawMatches(iml, kpl, imr, kpr, dmatches, draw);
-    cv::imshow("matches", draw);
-    cv::waitKey(0);
+    cv::Mat draw_stereo, draw_temporal;
+    cv::drawMatches(rgbl, kpl, rgbr, kpr, dmatches, draw_stereo,
+          cv::Scalar::all(-1), cv::Scalar::all(-1), std::vector<char>(),
+          cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
+    cv::imshow("stereo_matches", draw_stereo);
+    // cv::waitKey(0);
 
     std::cout << "----------------------------TEMPORAL MATCHING --------------------------------\n";
     if (t > 0) {
@@ -83,8 +88,16 @@ TEST(VOTest, TestSeq01)
       assert(kpl_prev.size() == orbl_prev.rows && kpr_prev.size() == orbr_prev.rows);
 
       std::vector<int> matches_01;
-      const int Np_temporal = TemporalMatchPoints(kpl_prev, orbl_prev, kpl, orbl, stereo_cam, min_distance_ratio, matches_01);
+      // const int Np_temporal = TemporalMatchPoints(kpl_prev, orbl_prev, kpl, orbl, stereo_cam, min_distance_ratio, matches_01);
+      const int Np_temporal = MatchPointsNN(orbl_prev, orbl, matching_nn_ratio, matches_01);
       printf("Matched %d temporal features (left)\n", Np_temporal);
+      cv::drawMatches(
+          rgbl_prev, kpl_prev, rgbl, kpl, ConvertToDMatch(matches_01), draw_temporal,
+          cv::Scalar::all(-1), cv::Scalar::all(-1), std::vector<char>(),
+          cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
+      cv::imshow("temporal_matches", draw_temporal);
+      cv::waitKey(0);
+
 
       assert(matches_01.size() == kpl_prev.size());
 
@@ -108,29 +121,29 @@ TEST(VOTest, TestSeq01)
         p1_sigma_list.emplace_back(2.0);
       }
 
-      Matrix4d T_01;
-      Matrix6d C_01;
+      Matrix4d T_01 = Matrix4d::Identity();
+      Matrix6d C_01 = Matrix6d::Identity();
       double error;
 
       const int lm_iters = OptimizePoseLevenbergMarquardt(
           P0_list, p1_list, p1_sigma_list, stereo_cam, T_01, C_01, error,
           max_iters, min_error, min_error_delta);
 
-      const Matrix4d tmp = T_curr;
-      T_curr = T_01.inverse() * T_prev;
-      T_prev = tmp;
-      std::cout << "Current pose:\n" << T_curr << std::endl;
+      const Matrix4d tmp = T_curr_w;
+      T_curr_w = T_01.inverse() * T_prev_w;
+      T_prev_w = tmp;
+      std::cout << "Odom:\n" << T_01 << std::endl;
+      std::cout << "Current pose:\n" << T_curr_w << std::endl;
     }
 
-    // std::cout << "before resize" << std::endl;
-
+    // Store everything needed for temporal matching.
     kpl_prev.resize(Np_stereo);
     kpr_prev.resize(Np_stereo);
     orbl_prev = cv::Mat(Np_stereo, orbl.cols, orbl.type());
     orbr_prev = cv::Mat(Np_stereo, orbr.cols, orbr.type());
     disp_prev.resize(Np_stereo);
 
-    // std::cout << "after resize" << std::endl;
+    rgbl_prev = rgbl;
 
     // Only store the triangulated points.
     int match_ctr = 0;
@@ -138,20 +151,17 @@ TEST(VOTest, TestSeq01)
       if (matches_lr.at(j) < 0) {
         continue;
       }
-      // printf("j=%d match_ctr=%d kpl.size()=%zu kpr.size()=%zu Np_stereo=d\n", j, match_ctr, kpl.size(), kpr.size(), Np_stereo);
 
-      const cv::KeyPoint& kplj = kpl.at(j);
-      const cv::KeyPoint& kprj = kpr.at(matches_lr.at(j));
-
-      const Vector2d pl(kpl.at(j).pt.x, kpl.at(j).pt.y);
-      const Vector2d pr(kpr.at(matches_lr.at(j)).pt.y, kpr.at(matches_lr.at(j)).pt.y);
+      const cv::KeyPoint kplj = kpl.at(j);
+      const cv::KeyPoint kprj = kpr.at(matches_lr.at(j));
 
       disp_prev.at(match_ctr) = std::fabs(kplj.pt.x - kprj.pt.x);
       kpl_prev.at(match_ctr) = kplj;
       kpr_prev.at(match_ctr) = kprj;
-      orbl_prev.row(match_ctr) = orbl.row(j);
-      orbr_prev.row(match_ctr) = orbr.row(matches_lr.at(j));
 
+      // NOTE(milo): Important! Need to copy otherwise these rows will point to original data!
+      orbl.row(j).copyTo(orbl_prev.row(match_ctr));
+      orbr.row(matches_lr.at(j)).copyTo(orbr_prev.row(match_ctr));
       ++match_ctr;
     }
   }
