@@ -3,6 +3,7 @@
 #include <opencv2/highgui.hpp>
 
 #include "core/file_utils.hpp"
+#include "core/math_util.hpp"
 #include "viz/visualize_matches.hpp"
 #include "vo/optimization.hpp"
 #include "vo/point_detector.hpp"
@@ -17,12 +18,13 @@ using namespace bm::viz;
 TEST(VOTest, TestSeq01)
 {
   const double max_epipolar_dist = 5.0;
-  const double min_distance_ratio = 0.9;
-  const double matching_nn_ratio = 0.9;
+  const double stereo_min_distance_ratio = 0.9;
+  const double temporal_min_distance_ratio = 0.8;
 
   const double min_error = 1e-7;
   const double min_error_delta = 1e-9;
   const int max_iters = 20;
+  const double max_error_stdevs = 4.0;
 
   const std::string data_path = "/home/milo/datasets/Unity3D/farmsim/01";
   const std::string lpath = "image_0";
@@ -68,7 +70,7 @@ TEST(VOTest, TestSeq01)
     printf("Detected %d|%d keypoints in left|right images\n", npl, npr);
 
     std::vector<int> matches_lr;
-    const int Np_stereo = StereoMatchPoints(kpl, orbl, kpr, orbr, stereo_cam, max_epipolar_dist, min_distance_ratio, matches_lr);
+    const int Np_stereo = StereoMatchPoints(kpl, orbl, kpr, orbr, stereo_cam, max_epipolar_dist, stereo_min_distance_ratio, matches_lr);
     printf("Matched %d features from left to right\n", Np_stereo);
 
     const auto& dmatches = ConvertToDMatch(matches_lr);
@@ -88,16 +90,7 @@ TEST(VOTest, TestSeq01)
       assert(kpl_prev.size() == orbl_prev.rows && kpr_prev.size() == orbr_prev.rows);
 
       std::vector<int> matches_01;
-      // const int Np_temporal = TemporalMatchPoints(kpl_prev, orbl_prev, kpl, orbl, stereo_cam, min_distance_ratio, matches_01);
-      const int Np_temporal = MatchPointsNN(orbl_prev, orbl, matching_nn_ratio, matches_01);
-      printf("Matched %d temporal features (left)\n", Np_temporal);
-      cv::drawMatches(
-          rgbl_prev, kpl_prev, rgbl, kpl, ConvertToDMatch(matches_01), draw_temporal,
-          cv::Scalar::all(-1), cv::Scalar::all(-1), std::vector<char>(),
-          cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
-      cv::imshow("temporal_matches", draw_temporal);
-      cv::waitKey(0);
-
+      const int Np_temporal = MatchPointsNN(orbl_prev, orbl, temporal_min_distance_ratio, matches_01);
 
       assert(matches_01.size() == kpl_prev.size());
 
@@ -109,11 +102,9 @@ TEST(VOTest, TestSeq01)
         if (matches_01.at(j0) < 0) { continue; }
 
         const Vector2d pl0(kpl_prev.at(j0).pt.x, kpl_prev.at(j0).pt.y);
-        // const Vector2d pr0(kpr_prev.at(j).pt.x, kpr_prev.at(j).pt.y);
 
         const int j1 = matches_01.at(j0);
         const Vector2d pl1(kpl.at(j1).pt.x, kpl.at(j1).pt.y);
-        // const double disp = std::fabs(pl0.x() - pr0.x());
         const double disp = disp_prev.at(j0);
         const double depth = camera_model.fx() * stereo_cam.Baseline() / std::max(1e-3, disp);
         P0_list.emplace_back(camera_model.Backproject(pl0, depth));
@@ -125,15 +116,36 @@ TEST(VOTest, TestSeq01)
       Matrix6d C_01 = Matrix6d::Identity();
       double error;
 
-      const int lm_iters = OptimizePoseLevenbergMarquardt(
+      std::vector<int> inlier_indices;
+
+      // const int lm_iters = OptimizePoseLevenbergMarquardt(
+      //     P0_list, p1_list, p1_sigma_list, stereo_cam, T_01, C_01, error,
+      //     max_iters, min_error, min_error_delta);
+      const int Ni = OptimizePoseIterative(
           P0_list, p1_list, p1_sigma_list, stereo_cam, T_01, C_01, error,
-          max_iters, min_error, min_error_delta);
+          inlier_indices, max_iters, min_error, min_error_delta, max_error_stdevs);
 
       const Matrix4d tmp = T_curr_w;
       T_curr_w = T_01.inverse() * T_prev_w;
       T_prev_w = tmp;
       std::cout << "Odom:\n" << T_01 << std::endl;
       std::cout << "Current pose:\n" << T_curr_w << std::endl;
+
+      // Each item dmatches_01(i) links P0(i) and p1_obs(i) with its matching point.
+      // Therefore, if p1_obs(i) is an inlier, we should keep dmatches_01.
+      const std::vector<cv::DMatch> dmatches_01 = ConvertToDMatch(matches_01);
+      std::vector<char> matches_mask(dmatches_01.size());
+      // FillMask(dmatches_01, inlier_indices, matches_mask);
+
+      FillMask(inlier_indices, matches_mask);
+
+      printf("Temporal matches: initial=%d | refined=%zu\n", Np_temporal, inlier_indices.size());
+      cv::drawMatches(
+          rgbl_prev, kpl_prev, rgbl, kpl, dmatches_01, draw_temporal,
+          cv::Scalar::all(-1), cv::Scalar::all(-1), matches_mask,
+          cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
+      cv::imshow("temporal_matches", draw_temporal);
+      cv::waitKey(0);
     }
 
     // Store everything needed for temporal matching.

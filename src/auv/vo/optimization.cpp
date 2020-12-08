@@ -7,6 +7,42 @@ namespace bm {
 namespace vo {
 
 
+int OptimizePoseIterative(const std::vector<Vector3d>& P0_list,
+                          const std::vector<Vector2d>& p1_obs_list,
+                          const std::vector<double>& p1_sigma_list,
+                          const StereoCamera& stereo_cam,
+                          Matrix4d& T_01,
+                          Matrix6d& C_01,
+                          double& error,
+                          std::vector<int>& inlier_indices,
+                          int max_iters,
+                          double min_error,
+                          double min_error_delta,
+                          double max_error_stdevs)
+{
+  // Do the initial pose optimization.
+  const int N1 = OptimizePoseLevenbergMarquardt(
+      P0_list, p1_obs_list, p1_sigma_list, stereo_cam,  // Inputs.
+      T_01, C_01, error,                                // Outputs.
+      max_iters, min_error, min_error_delta);           // Params.
+
+  RemovePointOutliers(T_01, P0_list, p1_obs_list, p1_sigma_list,
+                      stereo_cam, max_error_stdevs, inlier_indices);
+
+  const std::vector<Vector3d>& P0_list_refined = Subset<Vector3d>(P0_list, inlier_indices);
+  const std::vector<Vector2d>& p1_obs_list_refined = Subset<Vector2d>(p1_obs_list, inlier_indices);
+  const std::vector<double>& p1_sigma_list_refined = Subset<double>(p1_sigma_list, inlier_indices);
+
+  const int N2 = OptimizePoseLevenbergMarquardt(
+      P0_list_refined, p1_obs_list_refined,
+      p1_sigma_list_refined, stereo_cam,                // Inputs.
+      T_01, C_01, error,                                // Outputs.
+      max_iters, min_error, min_error_delta);           // Params.
+
+  return N2;
+}
+
+
 int OptimizePoseGaussNewton(const std::vector<Vector3d>& P0_list,
                             const std::vector<Vector2d>& p1_obs_list,
                             const std::vector<double>& p1_sigma_list,
@@ -32,7 +68,7 @@ int OptimizePoseGaussNewton(const std::vector<Vector3d>& P0_list,
     int iters;
     for (iters = 0; iters < max_iters; ++iters) {
       // printf("iter=%d\n", iters);
-      LinearizeProjection(P0_list, p1_obs_list, p1_sigma_list, stereo_cam, T_01, H, g, err);
+      LinearizePointProjection(P0_list, p1_obs_list, p1_sigma_list, stereo_cam, T_01, H, g, err);
 
       // Stop if error increases.
       if (err > err_prev) {
@@ -107,7 +143,7 @@ int OptimizePoseLevenbergMarquardt(const std::vector<Vector3d>& P0_list,
   const double lambda_k_increase = 2.0;
   const double lambda_k_decrease = 3.0;
 
-  LinearizeProjection(P0_list, p1_obs_list, p1_sigma_list, stereo_cam, T_01, H, g, err);
+  LinearizePointProjection(P0_list, p1_obs_list, p1_sigma_list, stereo_cam, T_01, H, g, err);
 
   double H_max = 0.0;
   for (int i = 0; i < 6; ++i) {
@@ -125,7 +161,7 @@ int OptimizePoseLevenbergMarquardt(const std::vector<Vector3d>& P0_list,
 
   int iters;
   for (iters = 1; iters < max_iters; ++iters) {
-    LinearizeProjection(P0_list, p1_obs_list, p1_sigma_list, stereo_cam, T_01, H, g, err);
+    LinearizePointProjection(P0_list, p1_obs_list, p1_sigma_list, stereo_cam, T_01, H, g, err);
 
     if (err < min_error) {
       std::cout << "stopping due to min_error" << std::endl;
@@ -182,7 +218,7 @@ int OptimizePoseLevenbergMarquardt(const std::vector<Vector3d>& P0_list,
  * @param g (output) : The gradient at this linearization point.
  * @param error (output) : The (weighted) sum of squared projection error.
  */
-void LinearizeProjection(const std::vector<Vector3d>& P0_list,
+void LinearizePointProjection(const std::vector<Vector3d>& P0_list,
                          const std::vector<Vector2d>& p1_obs_list,
                          const std::vector<double>& p1_sigma_list,
                          const StereoCamera& stereo_cam,
@@ -245,6 +281,30 @@ void LinearizeProjection(const std::vector<Vector3d>& P0_list,
   }
 
   error /= static_cast<double>(P0_list.size());
+}
+
+
+int RemovePointOutliers(const Matrix4d& T_01,
+                        const std::vector<Vector3d>& P0_list,
+                        const std::vector<Vector2d>& p1_obs_list,
+                        const std::vector<double>& p1_sigma_list,
+                        const StereoCamera& stereo_cam,
+                        double max_err_stdevs,
+                        std::vector<int>& inlier_indices)
+{
+  inlier_indices.clear();
+
+  for (int i = 0; i < P0_list.size(); ++i) {
+    const Vector3d P1 = T_01.block<3, 3>(0, 0) * P0_list.at(i) + T_01.col(3).head(3);
+    const Vector2d p1 = stereo_cam.LeftIntrinsics().Project(P1);
+    const double e = (p1 - p1_obs_list.at(i)).norm();
+    const double sigma = p1_sigma_list.at(i);
+    if (e < (sigma * max_err_stdevs)) {
+      inlier_indices.emplace_back(i);
+    }
+  }
+
+  return inlier_indices.size();
 }
 
 }

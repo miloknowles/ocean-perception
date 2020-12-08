@@ -86,5 +86,23 @@ inline Matrix3d RelativeRotation(const Matrix3d& R_0_w, const Matrix3d& R_1_w)
   return R_0_w.transpose() * R_1_w;
 }
 
+// Grabs the items from v based on indices.
+template <typename T>
+inline std::vector<T> Subset(const std::vector<T>& v, const std::vector<int>& indices)
+{
+  std::vector<T> out;
+  for (int i : indices) {
+    out.emplace_back(v.at(i));
+  }
+  return out;
+}
+
+
+inline void FillMask(const std::vector<int> indices, std::vector<char>& mask)
+{
+  std::fill(mask.begin(), mask.end(), false);
+  for (int i : indices) { mask.at(i) = true; }
+}
+
 }
 }
