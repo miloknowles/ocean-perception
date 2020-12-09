@@ -8,7 +8,8 @@ SET(LIBRARY_SRC
   stereo_camera.hpp
   math_util.cpp
   random.hpp
-  file_utils.hpp)
+  file_utils.hpp
+  line_feature.hpp)
 
 add_library(${LIBRARY_NAME} SHARED ${LIBRARY_SRC})
 set_target_properties(${LIBRARY_NAME} PROPERTIES LINKER_LANGUAGE CXX)

@@ -184,45 +184,31 @@ int OptimizePoseLevenbergMarquardt(const std::vector<Vector3d>& P0_list,
   return iters;
 }
 
-/**
- * Linearize image projection error around the SE3 manifold at the current pose.
- *
- * Camera_0 refers to the previous camera pose and Camera_1 refers to the current camera pose that
- * we are trying to estimate.
- *
- * @param P0_list : The 3D location of observed points (in the Camera_0) frame.
- * @param p1_obs_list : Observed keypoint locations in the Camera_1 image.
- * @param p1_sigma_list : Estimated standard deviation of projected keypoints locations (assume a
- *                        Gaussian noise model for projection, e.g 1px standard deviation).
- * @param stereo_cam : The stereo camera model for Camera_0 and Camera_1.
- * @param T_01 : The pose of Camera_0 in Camera_1. Note that this is the inverse transform from
- *               Camera_0 to Camera_1. We will end up inverting this to estimate odometry.
- * @param H (output) : The Hessian at this linearization point.
- * @param g (output) : The gradient at this linearization point.
- * @param error (output) : The (weighted) sum of squared projection error.
- */
+
 void LinearizePointProjection(const std::vector<Vector3d>& P0_list,
-                         const std::vector<Vector2d>& p1_obs_list,
-                         const std::vector<double>& p1_sigma_list,
-                         const StereoCamera& stereo_cam,
-                         const Matrix4d& T_01,
-                         Matrix6d& H,
-                         Vector6d& g,
-                         double& error)
+                              const std::vector<Vector2d>& p1_obs_list,
+                              const std::vector<double>& p1_sigma_list,
+                              const StereoCamera& stereo_cam,
+                              const Matrix4d& T_01,
+                              Matrix6d& H,
+                              Vector6d& g,
+                              double& error)
 {
   assert(P0_list.size() == p1_obs_list.size());
   assert(p1_obs_list.size() == p1_sigma_list.size());
 
   H = Matrix6d::Zero();    // Hessian for point projection error.
   g = Vector6d::Zero();    // Gradient for point projection error.
-  error = 0.0;             // point projection error.
+  error = 0.0;             // Line projection error.
+
+  const PinholeCamera& cam = stereo_cam.LeftIntrinsics();
 
   // Add up projection errors from all associated points.
   for (int i = 0; i < P0_list.size(); ++i) {
     const Vector3d P1 = T_01.block<3, 3>(0, 0) * P0_list.at(i) + T_01.col(3).head(3);
 
     // Project P1 to a pixel location in Camera_1.
-    const Vector2d p1 = stereo_cam.LeftIntrinsics().Project(P1);
+    const Vector2d p1 = cam.Project(P1);
     const Vector2d err = (p1 - p1_obs_list.at(i));
     const double err_norm = err.norm();
 
@@ -257,6 +243,99 @@ void LinearizePointProjection(const std::vector<Vector3d>& P0_list,
   }
 
   error /= static_cast<double>(P0_list.size());
+}
+
+
+void LinearizeLineProjection(const std::vector<LineFeature3D> L0_list,
+                             const std::vector<LineFeature2D> l1_obs_list,
+                             const std::vector<double>& l1_sigma_list,
+                             const StereoCamera& stereo_cam,
+                             const Matrix4d& T_01,
+                             Matrix6d& H,
+                             Vector6d& g,
+                             double& error)
+{
+  assert(L0_list.size() == l1_obs_list.size());
+  assert(l1_obs_list.size() == l1_sigma_list.size());
+
+  H = Matrix6d::Zero();    // Hessian for line projection error.
+  g = Vector6d::Zero();    // Gradient for line projection error.
+  error = 0.0;             // Line projection error.
+
+  const PinholeCamera& cam = stereo_cam.LeftIntrinsics();
+
+  for (int i = 0; i < L0_list.size(); ++i) {
+    const LineFeature3D& L0 = L0_list.at(i);
+    const LineFeature2D& l1_obs = l1_obs_list.at(i);
+
+    const Vector3d& Ps = T_01.block<3, 3>(0, 0) * L0.P_start + T_01.col(3).head(3);
+    const Vector3d& Pe = T_01.block<3, 3>(0, 0) * L0.P_end   + T_01.col(3).head(3);
+
+    const Vector2d ps = cam.Project(Ps);
+    const Vector2d pe = cam.Project(Pe);
+
+    const Vector3d& cross = l1_obs.cross;
+
+    // NOTE(milo): I don't fully understand this part of the paper, but you can compute the distance
+    // from a point to an infinite line using a cross product.
+    // See: https://arxiv.org/pdf/1705.09479.pdf (Equation 6).
+    Vector2d err;
+    err << cross(0)*ps(0) + cross(1)*ps(1) + cross(2),
+           cross(0)*pe(0) + cross(1)*pe(1) + cross(2);
+
+    const double err_norm = err.norm();
+
+    // Compute the Jacobian w.r.t the start point.
+    double gx   = Ps(0);
+    double gy   = Ps(1);
+    double gz   = Ps(2);
+    double gz2  = gz*gz;
+    double fgz2 = cam.fx() / std::max(1e-7, gz2);
+    double ds   = err(0);
+    double de   = err(1);
+    double lx   = cross(0);
+    double ly   = cross(1);
+
+    Vector6d Js;
+    Js << + fgz2 * lx * gz,
+          + fgz2 * ly * gz,
+          - fgz2 * ( gx*lx + gy*ly ),
+          - fgz2 * ( gx*gy*lx + gy*gy*ly + gz*gz*ly ),
+          + fgz2 * ( gx*gx*lx + gz*gz*lx + gx*gy*ly ),
+          + fgz2 * ( gx*gz*ly - gy*gz*lx );
+
+    // Compute the Jacobian w.r.t the end point.
+    gx   = Pe(0);
+    gy   = Pe(1);
+    gz   = Pe(2);
+    gz2  = gz*gz;
+    fgz2 = cam.fx() / std::max(1e-7, gz2);
+    Vector6d Je;
+    Je << + fgz2 * lx * gz,
+          + fgz2 * ly * gz,
+          - fgz2 * ( gx*lx + gy*ly ),
+          - fgz2 * ( gx*gy*lx + gy*gy*ly + gz*gz*ly ),
+          + fgz2 * ( gx*gx*lx + gz*gz*lx + gx*gy*ly ),
+          + fgz2 * ( gx*gz*ly - gy*gz*lx );
+
+    // Combine Jacobians from both points.
+    const Vector6d J = (Js*ds + Je*de) / std::max(1e-7, err_norm);
+
+    const double l1_sigma = l1_sigma_list.at(i);
+    const double residual = err_norm / l1_sigma;
+    double weight = RobustWeightCauchy(residual);
+
+    // Weight the error of this line proportional to how "overlapped" the observation and
+    // projection are. If the projected and observed line segments don't overlap at all, then this
+    // error is probably not very informative (maybe outlier observation?) and is ignored.
+    const double overlap_frac = LineSegmentOverlap(l1_obs.p_start, l1_obs.p_end, ps, pe);
+    weight *= overlap_frac;
+
+    // Update Hessian, Gradient, and Error.
+    H += J * J.transpose() * weight;
+    g += J * residual * weight;
+    error += residual * residual * weight;
+  }
 }
 
 

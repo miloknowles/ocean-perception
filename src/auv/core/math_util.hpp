@@ -104,5 +104,10 @@ inline void FillMask(const std::vector<int> indices, std::vector<char>& mask)
   for (int i : indices) { mask.at(i) = true; }
 }
 
+// Computes the overlap between two line segments [0, 1].
+// '0' overlap means that neither projects any extend onto the other.
+// '1' overlap means that the lines project completely onto one another.
+double LineSegmentOverlap(Vector2d ps_obs, Vector2d pe_obs, Vector2d ps_proj, Vector2d pe_proj);
+
 }
 }
