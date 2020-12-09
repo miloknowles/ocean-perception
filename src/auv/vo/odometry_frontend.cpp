@@ -87,7 +87,7 @@ OdometryEstimate OdometryFrontend::TrackStereoFrame(const Image1b& iml,
       p1_sigma_list.emplace_back(opt_.keypoint_sigma);
     }
 
-    const int Ni = OptimizePoseIterative(
+    const int Ni = OptimizePoseIterativeP(
         P0_list, p1_list, p1_sigma_list, stereo_camera_, T_01, C_01, error, inlier_indices,
         opt_.opt_max_iters, opt_.opt_min_error,
         opt_.opt_min_error_delta, opt_.opt_max_error_stdevs);

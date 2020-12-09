@@ -25,7 +25,7 @@ inline double RobustWeightCauchy(double residual)
  *
  * @param[out] inlier_indices : The indices of inlier features in P0_list and p1_obs_list.
  */
-int OptimizePoseIterative(const std::vector<Vector3d>& P0_list,
+int OptimizePoseIterativeP(const std::vector<Vector3d>& P0_list,
                           const std::vector<Vector2d>& p1_obs_list,
                           const std::vector<double>& p1_sigma_list,
                           const StereoCamera& stereo_cam,
@@ -39,7 +39,25 @@ int OptimizePoseIterative(const std::vector<Vector3d>& P0_list,
                           double max_error_stdevs);
 
 
-int OptimizePoseGaussNewton(const std::vector<Vector3d>& P0_list,
+int OptimizePoseIterativePL(const std::vector<Vector3d>& P0_list,
+                            const std::vector<Vector2d>& p1_obs_list,
+                            const std::vector<double>& p1_sigma_list,
+                            const std::vector<LineFeature3D>& L0_list,
+                            const std::vector<LineFeature2D>& l1_obs_list,
+                            const std::vector<double>& l1_sigma_list,
+                            const StereoCamera& stereo_cam,
+                            Matrix4d& T_01,
+                            Matrix6d& C_01,
+                            double& error,
+                            std::vector<int>& point_inlier_indices,
+                            std::vector<int>& line_inlier_indices,
+                            int max_iters,
+                            double min_error,
+                            double min_error_delta,
+                            double max_error_stdevs);
+
+
+int OptimizePoseGaussNewtonP(const std::vector<Vector3d>& P0_list,
                             const std::vector<Vector2d>& p1_obs_list,
                             const std::vector<double>& p1_sigma_list,
                             const StereoCamera& stereo_cam,
@@ -51,7 +69,7 @@ int OptimizePoseGaussNewton(const std::vector<Vector3d>& P0_list,
                             double min_error_delta);
 
 
-int OptimizePoseLevenbergMarquardt(const std::vector<Vector3d>& P0_list,
+int OptimizePoseLevenbergMarquardtP(const std::vector<Vector3d>& P0_list,
                             const std::vector<Vector2d>& p1_obs_list,
                             const std::vector<double>& p1_sigma_list,
                             const StereoCamera& stereo_cam,
@@ -61,6 +79,22 @@ int OptimizePoseLevenbergMarquardt(const std::vector<Vector3d>& P0_list,
                             int max_iters,
                             double min_error,
                             double min_error_delta);
+
+
+int OptimizePoseLevenbergMarquardtPL(const std::vector<Vector3d>& P0_list,
+                                    const std::vector<Vector2d>& p1_obs_list,
+                                    const std::vector<double>& p1_sigma_list,
+                                    const std::vector<LineFeature3D>& L0_list,
+                                    const std::vector<LineFeature2D>& l1_obs_list,
+                                    const std::vector<double>& l1_sigma_list,
+                                    const StereoCamera& stereo_cam,
+                                    Matrix4d& T_01,
+                                    Matrix6d& C_01,
+                                    double& error,
+                                    int max_iters,
+                                    double min_error,
+                                    double min_error_delta);
+
 
 /**
  * Linearize image projection error around the SE3 manifold at the current pose.

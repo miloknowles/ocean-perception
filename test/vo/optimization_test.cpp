@@ -95,7 +95,7 @@ TEST(OptimizationTest, TestGN_01)
 
   Matrix6d C_01;
 
-  const int iters = OptimizePoseGaussNewton(
+  const int iters = OptimizePoseGaussNewtonP(
       P0_list, p1_list, p1_sigma_list, stereo_cam, T_01, C_01, error,
       max_iters, min_error, min_error_delta);
 
@@ -151,7 +151,7 @@ TEST(OptimizationTest, TestLM_01)
 
   Matrix6d C_01;
 
-  const int iters = OptimizePoseLevenbergMarquardt(
+  const int iters = OptimizePoseLevenbergMarquardtP(
       P0_list, p1_list, p1_sigma_list, stereo_cam, T_01, C_01, error,
       max_iters, min_error, min_error_delta);
 
@@ -204,7 +204,7 @@ TEST(OptimizationTest, TestLM_02)
 
   Matrix6d C_01;
 
-  const int iters = OptimizePoseLevenbergMarquardt(
+  const int iters = OptimizePoseLevenbergMarquardtP(
       P0_list, p1_list, p1_sigma_list, stereo_cam, T_01, C_01, error,
       max_iters, min_error, min_error_delta);
 

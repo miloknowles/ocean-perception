@@ -119,10 +119,10 @@ using namespace bm::viz;
 
 //       std::vector<int> inlier_indices;
 
-//       // const int lm_iters = OptimizePoseLevenbergMarquardt(
+//       // const int lm_iters = OptimizePoseLevenbergMarquardtP(
 //       //     P0_list, p1_list, p1_sigma_list, stereo_cam, T_01, C_01, error,
 //       //     max_iters, min_error, min_error_delta);
-//       const int Ni = OptimizePoseIterative(
+//       const int Ni = OptimizePoseIterativeP(
 //           P0_list, p1_list, p1_sigma_list, stereo_cam, T_01, C_01, error,
 //           inlier_indices, max_iters, min_error, min_error_delta, max_error_stdevs);
 
