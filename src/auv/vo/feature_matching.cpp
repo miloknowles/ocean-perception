@@ -331,6 +331,32 @@ int TemporalMatchPoints(const std::vector<cv::KeyPoint>& kp0,
 }
 
 
+int TemporalMatchLines(const std::vector<ld::KeyLine>& kll,
+                      const std::vector<ld::KeyLine>& klr,
+                      const cv::Mat& ldl,
+                      const cv::Mat& ldr,
+                      const core::StereoCamera& stereo_cam,
+                      float min_distance_ratio,
+                      float line_cosine_sim_th,
+                      std::vector<int>& matches_lr)
+{
+  const int height = stereo_cam.Height();
+  const int width = stereo_cam.Width();
+
+  // Map each keypoint location to a compressed grid cell location.
+  const std::vector<LineSegment2i> gridln_l = MapToGridCells(kll, height, width, kGridRows, kGridCols);
+  const std::vector<LineSegment2i> gridln_r = MapToGridCells(klr, height, width, kGridRows, kGridCols);
+  GridLookup<int> grid = PopulateGrid(gridln_r, kGridRows, kGridCols);
+
+  const auto& dir_l = core::NormalizedDirection(kll);
+  const auto& dir_r = core::NormalizedDirection(klr);
+
+  const Box2i search_region = TemporalSearchRegion(kGridRows, kGridCols);
+  return MatchLinesGrid(grid, gridln_l, search_region, ldl, ldr, dir_l, dir_r,
+                        min_distance_ratio, line_cosine_sim_th, matches_lr);
+}
+
+
 static Box2i StereoSearchRegion(const core::StereoCamera& stereo_cam,
                                 float min_depth, int grid_cols, int width)
 {
