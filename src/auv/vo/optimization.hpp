@@ -120,5 +120,14 @@ int RemovePointOutliers(const Matrix4d& T_01,
                         double max_err_stdevs,
                         std::vector<int>& inlier_indices);
 
+
+int RemoveLineOutliers(const Matrix4d& T_01,
+                       const std::vector<LineFeature3D>& L0_list,
+                       const std::vector<LineFeature2D>& l1_obs_list,
+                       const std::vector<double>& l1_sigma_list,
+                       const StereoCamera& stereo_cam,
+                       double max_err_stdevs,
+                       std::vector<int>& inlier_indices);
+
 }
 }

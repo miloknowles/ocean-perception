@@ -105,15 +105,15 @@ int OptimizePoseGaussNewton(const std::vector<Vector3d>& P0_list,
 }
 
 int OptimizePoseLevenbergMarquardt(const std::vector<Vector3d>& P0_list,
-                            const std::vector<Vector2d>& p1_obs_list,
-                            const std::vector<double>& p1_sigma_list,
-                            const StereoCamera& stereo_cam,
-                            Matrix4d& T_01,
-                            Matrix6d& C_01,
-                            double& error,
-                            int max_iters,
-                            double min_error,
-                            double min_error_delta)
+                                  const std::vector<Vector2d>& p1_obs_list,
+                                  const std::vector<double>& p1_sigma_list,
+                                  const StereoCamera& stereo_cam,
+                                  Matrix4d& T_01,
+                                  Matrix6d& C_01,
+                                  double& error,
+                                  int max_iters,
+                                  double min_error,
+                                  double min_error_delta)
 {
   // Set the initial guess (if not already set).
   if (T_01(3, 3) != 1.0) {
@@ -347,11 +347,15 @@ int RemovePointOutliers(const Matrix4d& T_01,
                         double max_err_stdevs,
                         std::vector<int>& inlier_indices)
 {
+  assert(P0_list.size() == p1_obs_list.size());
+  assert(p1_obs_list.size() == p1_sigma_list.size());
+
   inlier_indices.clear();
+  const PinholeCamera& cam = stereo_cam.LeftIntrinsics();
 
   for (int i = 0; i < P0_list.size(); ++i) {
     const Vector3d P1 = T_01.block<3, 3>(0, 0) * P0_list.at(i) + T_01.col(3).head(3);
-    const Vector2d p1 = stereo_cam.LeftIntrinsics().Project(P1);
+    const Vector2d p1 = cam.Project(P1);
     const double e = (p1 - p1_obs_list.at(i)).norm();
     const double sigma = p1_sigma_list.at(i);
     if (e < (sigma * max_err_stdevs)) {
@@ -361,6 +365,54 @@ int RemovePointOutliers(const Matrix4d& T_01,
 
   return inlier_indices.size();
 }
+
+
+int RemoveLineOutliers(const Matrix4d& T_01,
+                       const std::vector<LineFeature3D>& L0_list,
+                       const std::vector<LineFeature2D>& l1_obs_list,
+                       const std::vector<double>& l1_sigma_list,
+                       const StereoCamera& stereo_cam,
+                       double max_err_stdevs,
+                       std::vector<int>& inlier_indices)
+{
+  assert(L0_list.size() == l1_obs_list.size());
+  assert(l1_obs_list.size() == l1_sigma_list.size());
+
+  inlier_indices.clear();
+  const PinholeCamera& cam = stereo_cam.LeftIntrinsics();
+
+  for (int i = 0; i < L0_list.size(); ++i) {
+    const LineFeature3D& L0 = L0_list.at(i);
+    const LineFeature2D& l1_obs = l1_obs_list.at(i);
+
+    const Vector3d& Ps = T_01.block<3, 3>(0, 0) * L0.P_start + T_01.col(3).head(3);
+    const Vector3d& Pe = T_01.block<3, 3>(0, 0) * L0.P_end   + T_01.col(3).head(3);
+
+    const Vector2d ps = cam.Project(Ps);
+    const Vector2d pe = cam.Project(Pe);
+
+    const Vector3d& cross = l1_obs.cross;
+
+    // NOTE(milo): I don't fully understand this part of the paper, but you can compute the distance
+    // from a point to an infinite line using a cross product.
+    // See: https://arxiv.org/pdf/1705.09479.pdf (Equation 6).
+    Vector2d err;
+    err << cross(0)*ps(0) + cross(1)*ps(1) + cross(2),
+           cross(0)*pe(0) + cross(1)*pe(1) + cross(2);
+
+    const double e = err.norm();
+    const double sigma = l1_sigma_list.at(i);
+
+    // NOTE(milo): Using a simple endpoint error check for now. Looks like stvo-pl uses a metric
+    // that's a little more complicated, but it was hard to understand. See if this works.
+    if (e < (sigma * max_err_stdevs)) {
+      inlier_indices.emplace_back(i);
+    }
+  }
+
+  return inlier_indices.size();
+}
+
 
 }
 }
