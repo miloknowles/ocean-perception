@@ -385,7 +385,8 @@ void LinearizePointProjection(const std::vector<Vector3d>& P0_list,
     // Update Hessian, Gradient, and Error.
     H += J * J.transpose() * weight;
     g += J * residual * weight;
-    error += residual * residual * weight;
+    // error += residual * residual * weight;
+    error += std::fabs(residual);
   }
 
   error /= static_cast<double>(P0_list.size());

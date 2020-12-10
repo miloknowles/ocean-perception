@@ -65,7 +65,7 @@ void OdometryFrontendRos::Run(ros::NodeHandle& nh, float rate)
       geometry_msgs::PoseStamped pose_msg;
       pose_msg.header.seq = ctr;
       pose_msg.header.stamp = ros::Time::now();
-      pose_msg.header.frame_id = "cam";
+      pose_msg.header.frame_id = "world";
       pose_msg.pose.position.x = T_curr_world(0, 3);
       pose_msg.pose.position.x = T_curr_world(1, 3);
       pose_msg.pose.position.x = T_curr_world(2, 3);

@@ -137,18 +137,20 @@ OdometryEstimate OdometryFrontend::TrackStereoFrame(const Image1b& iml,
       l1_sigma_list.emplace_back(opt_.keyline_sigma);
     }
 
-    // const int Ni = OptimizePoseIterativeP(
-    //     P0_list, p1_list, p1_sigma_list, stereo_camera_, T_01, C_01, error, point_inlier_indices,
-    //     opt_.opt_max_iters, opt_.opt_min_error,
-    //     opt_.opt_min_error_delta, opt_.opt_max_error_stdevs);
-
-    const int Ni = OptimizePoseIterativePL(
-        P0_list, p1_obs_list, p1_sigma_list,
-        L0_list, l1_obs_list, l1_sigma_list,
-        stereo_camera_, T_01, C_01, error,
-        point_inlier_indices, line_inlier_indices,
-        opt_.opt_max_iters, opt_.opt_min_error,
-        opt_.opt_min_error_delta, opt_.opt_max_error_stdevs);
+    if (opt_.track_lines) {
+      const int Ni = OptimizePoseIterativePL(
+          P0_list, p1_obs_list, p1_sigma_list,
+          L0_list, l1_obs_list, l1_sigma_list,
+          stereo_camera_, T_01, C_01, error,
+          point_inlier_indices, line_inlier_indices,
+          opt_.opt_max_iters, opt_.opt_min_error,
+          opt_.opt_min_error_delta, opt_.opt_max_error_stdevs);
+    } else {
+      const int Ni = OptimizePoseIterativeP(
+          P0_list, p1_obs_list, p1_sigma_list, stereo_camera_, T_01, C_01, error, point_inlier_indices,
+          opt_.opt_max_iters, opt_.opt_min_error,
+          opt_.opt_min_error_delta, opt_.opt_max_error_stdevs);
+    }
 
     // Each item point_dm_01(i) links P0(i) and p1_obs(i) with its matching point.
     // Therefore, if p1_obs(i) is an inlier, we should keep point_dm_01.
@@ -236,7 +238,7 @@ OdometryEstimate OdometryFrontend::TrackStereoFrame(const Image1b& iml,
 
   //========================= RETURN ODOMETRY ESTIMATE ==========================
   OdometryEstimate out;
-  out.T_1_0 = T_01.inverse();
+  out.T_1_0 = inverse_se3(T_01);
   out.C_1_0 = C_01;
   out.error = error;
   out.tracked_keypoints = point_inlier_indices.size();
