@@ -175,9 +175,7 @@ OdometryEstimate OdometryFrontend::TrackStereoFrame(const Image1b& iml,
   //====================== HOUSEKEEPING FOR PREVIOUS FRAME =========================
   // Store everything needed for temporal matching.
   kpl_prev_.resize(Np_stereo);
-  // kpr_prev_.resize(Np_stereo);
   orbl_prev_ = cv::Mat(Np_stereo, orbl.cols, orbl.type());
-  // orbr_prev_ = cv::Mat(Np_stereo, orbr.cols, orbr.type());
   disp_prev_.resize(Np_stereo);
 
   iml_prev_ = iml;
@@ -198,20 +196,15 @@ OdometryEstimate OdometryFrontend::TrackStereoFrame(const Image1b& iml,
 
     disp_prev_.at(match_ctr) = std::fabs(kplj.pt.x - kprj.pt.x);
     kpl_prev_.at(match_ctr) = kplj;
-    // kpr_prev_.at(match_ctr) = kprj;
 
     // NOTE(milo): Important! Need to copy otherwise these rows will point to original data!
     orbl.row(j).copyTo(orbl_prev_.row(match_ctr));
-    // orbr.row(jr).copyTo(orbr_prev_.row(match_ctr));
     ++match_ctr;
   }
 
   kll_prev_.resize(Nl_stereo);
-  // klr_prev_.resize(Nl_stereo);
   left_lines_prev_.resize(Nl_stereo);
-  // right_lines_prev_.resize(Nl_stereo);
   ldl_prev_ = cv::Mat(Nl_stereo, ldl.cols, ldl.type());
-  // ldr_prev_ = cv::Mat(Nl_stereo, ldr.cols, ldr.type());
 
   // Only store the stereo-matched lines.
   match_ctr = 0;
