@@ -53,7 +53,7 @@ void OdometryFrontendRos::Run(ros::NodeHandle& nh, float rate)
         std::cout << "[VO] Unreliable, setting identify transform" << std::endl;
       }
 
-      T_curr_world = odom.T_1_0 * T_curr_world;
+      T_curr_world = T_curr_world * odom.T_1_0;
 
       printf("Tracked keypoints = %d | Tracked keylines = %d\n", odom.tracked_keypoints, odom.tracked_keylines);
       std::cout << "Odometry estimate:\n" << odom.T_1_0 << std::endl;
