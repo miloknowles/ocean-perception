@@ -22,7 +22,7 @@ class LineDetector final {
     double log_eps          = 1.0;
     double lsd_density_th   = 0.6;
     int lsd_n_bins          = 1024;
-    double lsd_min_length   = 10;   // TODO
+    double lsd_min_length   = 20;   // TODO
   };
 
   LineDetector(const Options& opt) : opt_(opt) {

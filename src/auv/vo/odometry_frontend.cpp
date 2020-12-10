@@ -236,8 +236,8 @@ OdometryEstimate OdometryFrontend::TrackStereoFrame(const Image1b& iml,
 
   //========================= RETURN ODOMETRY ESTIMATE ==========================
   OdometryEstimate out;
-  out.T_l1_l0 = T_01.inverse();
-  out.C_l1_l0 = C_01;
+  out.T_1_0 = T_01.inverse();
+  out.C_1_0 = C_01;
   out.error = error;
   out.tracked_keypoints = point_inlier_indices.size();
   out.tracked_keylines = line_inlier_indices.size();
