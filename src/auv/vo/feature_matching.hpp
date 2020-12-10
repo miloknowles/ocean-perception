@@ -9,6 +9,7 @@
 #include "core/eigen_types.hpp"
 #include "core/grid_lookup.hpp"
 #include "core/stereo_camera.hpp"
+#include "core/line_segment.hpp"
 
 namespace bm {
 namespace vo {
@@ -66,14 +67,14 @@ int TemporalMatchPoints(const std::vector<cv::KeyPoint>& kp0,
                       std::vector<int>& matches_01);
 
 
-int TemporalMatchLines(const std::vector<ld::KeyLine>& kll,
-                     const std::vector<ld::KeyLine>& klr,
-                     const cv::Mat& ldl,
-                     const cv::Mat& ldr,
+int TemporalMatchLines(const std::vector<ld::KeyLine>& kl0,
+                     const std::vector<ld::KeyLine>& kl1,
+                     const cv::Mat& ld0,
+                     const cv::Mat& ld1,
                      const core::StereoCamera& stereo_cam,
                      float min_distance_ratio,
                      float line_cosine_sim_th,
-                     std::vector<int>& matches_lr);
+                     std::vector<int>& matches_01);
 
 
 int StereoMatchPoints(const std::vector<cv::KeyPoint>& kpl,

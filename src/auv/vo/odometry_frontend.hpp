@@ -4,6 +4,8 @@
 #include "core/cv_types.hpp"
 #include "core/stereo_camera.hpp"
 #include "core/pinhole_camera.hpp"
+#include "core/line_feature.hpp"
+#include "core/line_segment.hpp"
 
 #include "vo/point_detector.hpp"
 #include "vo/line_detector.hpp"
@@ -24,7 +26,6 @@ struct OdometryEstimate {
   int tracked_keylines = 0;
 };
 
-
 class OdometryFrontend final {
  public:
   struct Options {
@@ -36,6 +37,12 @@ class OdometryFrontend final {
     double stereo_min_distance_ratio = 0.9;
     double temporal_min_distance_ratio = 0.8;
     double keypoint_sigma = 2.0;
+
+    double stereo_line_min_distance_ratio = 0.8;
+    double temporal_line_min_distance_ratio = 0.8;
+    double stereo_line_max_angle = 10.0;             // deg
+    double min_feature_disp = 2.0;
+    double keyline_sigma = 2.0;
 
     // Pose optimization.
     int opt_max_iters = 20;
@@ -64,6 +71,10 @@ class OdometryFrontend final {
   std::vector<cv::KeyPoint> kpl_prev_, kpr_prev_;
   std::vector<double> disp_prev_;
   cv::Mat orbl_prev_, orbr_prev_;
+
+  std::vector<LineFeature3D> left_lines_prev_, right_lines_prev_;
+  std::vector<ld::KeyLine> kll_prev_, klr_prev_;
+  cv::Mat ldl_prev_, ldr_prev_;
 
   Matrix4d T_01_prev_;
 };

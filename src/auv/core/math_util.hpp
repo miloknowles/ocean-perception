@@ -5,6 +5,7 @@
 #include "line_descriptor/include/line_descriptor_custom.hpp"
 
 #include "core/eigen_types.hpp"
+#include "core/line_segment.hpp"
 #include "core/pinhole_camera.hpp"
 
 namespace ld = cv::line_descriptor;
@@ -108,6 +109,40 @@ inline void FillMask(const std::vector<int> indices, std::vector<char>& mask)
 // '0' overlap means that neither projects any extend onto the other.
 // '1' overlap means that the lines project completely onto one another.
 double LineSegmentOverlap(Vector2d ps_obs, Vector2d pe_obs, Vector2d ps_proj, Vector2d pe_proj);
+
+
+/**
+ * Extrapolates line_tar to have the same min and max y coordinate as line_ref, and returns the new
+ * line_tar endpoints. For line segments that are matched across stereo images, we might want to
+ * extend the line segment in the right image to have the same endpoints as the left so that we can
+ * estimate disparity.
+ *
+ * @param line_ref : The reference line whose endpoints will be matched.
+ * @param line_tar : The line that will be extrapolated.
+ * @return The extrapolated endpoints of line_tar.
+ */
+LineSegment2d ExtrapolateLineSegment(const LineSegment2d& line_ref, const LineSegment2d& line_tar);
+LineSegment2d ExtrapolateLineSegment(const ld::KeyLine& line_ref, const ld::KeyLine& line_tar);
+
+
+/**
+ * Computes the disparity of each endpoint in l1 (i.e disp_p0 is the disparity of l1.p0).
+ * Ordering of p0 and p1 for l2 should not matter, we detect that here. However, this function will
+ * only work if l2 has been extrapolated so that its endpoints lie on the same epipolar lines as l1.
+ */
+inline bool ComputeEndpointDisparity(const LineSegment2d& l1, const LineSegment2d& l2,
+                                     double& disp_p0, double& disp_p1)
+{
+  const bool order_is_flipped = std::fabs(l1.p0.y() - l2.p1.y()) < (l1.p0.y() - l2.p0.y());
+
+  double x2_0 = order_is_flipped ? l2.p1.x() : l2.p0.x();
+  double x2_1 = order_is_flipped ? l2.p0.x() : l2.p1.x();
+
+  disp_p0 = std::fabs(l1.p0.x() - x2_0);
+  disp_p1 = std::fabs(l1.p1.x() - x2_1);
+
+  return order_is_flipped;
+}
 
 }
 }

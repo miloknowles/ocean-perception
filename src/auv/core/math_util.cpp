@@ -214,5 +214,45 @@ double LineSegmentOverlap(Vector2d ps_obs, Vector2d pe_obs, Vector2d ps_proj, Ve
   return overlap;
 }
 
+
+LineSegment2d ExtrapolateLineSegment(const LineSegment2d& line_ref, const LineSegment2d& line_tar)
+{
+  const double ymin = std::min(line_ref.p0.y(), line_ref.p1.y());
+  const double ymax = std::max(line_ref.p0.y(), line_ref.p1.y());
+
+  const double x0 = line_tar.p0.x();
+  const double y0 = line_tar.p0.y();
+  const double x1 = line_tar.p1.x();
+  const double y1 = line_tar.p1.y();
+
+  const double dy = (y1 - y0);
+  const double dx = (x1 - x0);
+
+  // CASE 1: Vertical line - just extend vertically.
+  if (std::fabs(dx) < 1e-3 || std::fabs(dy / dx) > 1e3) {
+    return LineSegment2d(Vector2d(x0, ymin), Vector2d(x0, ymax));
+
+  // CASE 2: Horizontal line - cannot extrapolate, so just return the existing target line.
+  } else if (std::fabs(dy / dx) < 1e-3) {
+    return line_tar;
+
+  // CASE 3: Non-degenerate case, use slope to extrapolate.
+  } else {
+    const double x0_ext = (ymin - y0) * dx / dy;
+    const double x1_ext = (ymin - y0) * dx / dy;
+    return LineSegment2d(Vector2d(x0_ext, ymin), Vector2d(x1_ext, ymax));
+  }
+}
+
+
+LineSegment2d ExtrapolateLineSegment(const ld::KeyLine& line_ref, const ld::KeyLine& line_tar)
+{
+  const LineSegment2d ls_ref(Vector2d(line_ref.startPointX, line_ref.startPointY),
+                             Vector2d(line_ref.endPointX, line_ref.endPointY));
+  const LineSegment2d ls_tar(Vector2d(line_tar.startPointX, line_tar.startPointY),
+                             Vector2d(line_tar.endPointX, line_tar.endPointY));
+  return ExtrapolateLineSegment(ls_ref, ls_tar);
+}
+
 }
 }

@@ -42,18 +42,5 @@ typedef Eigen::AlignedBox2f Box2f;
 typedef Eigen::AlignedBox2d Box2d;
 typedef Eigen::AlignedBox2i Box2i;
 
-template <typename PointType>
-struct LineSegment {
-  LineSegment() = default;
-  LineSegment(const PointType& _p0, const PointType& _p1) : p0(_p0), p1(_p1) {}
-
-  PointType p0;
-  PointType p1;
-};
-
-typedef LineSegment<Vector2i> LineSegment2i;
-typedef LineSegment<Vector2f> LineSegment2f;
-typedef LineSegment<Vector2d> LineSegment2d;
-
 }
 }
