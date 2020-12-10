@@ -1,3 +1,7 @@
+#include <eigen3/Eigen/Geometry>
+#include <geometry_msgs/Pose.h>
+#include <geometry_msgs/PoseStamped.h>
+
 #include "ros/odometry_frontend_ros.hpp"
 
 namespace bm {
@@ -5,13 +9,13 @@ namespace vo {
 
 OdometryFrontendRos::OdometryFrontendRos(const StereoCamera& stereo_camera,
                                          const OdometryFrontend::Options& opt,
-                                         const std::string& pose_channel)
+                                         const std::string& pose_topic)
     : opt_(opt),
       frontend_(stereo_camera, opt),
-      pose_channel_(pose_channel) {}
+      pose_topic_(pose_topic) {}
 
 
-void OdometryFrontendRos::Run(const ros::NodeHandle& nh, float rate)
+void OdometryFrontendRos::Run(ros::NodeHandle& nh, float rate)
 {
   ros::Rate loop_rate(rate);
 
@@ -27,6 +31,9 @@ void OdometryFrontendRos::Run(const ros::NodeHandle& nh, float rate)
 
   Matrix4d T_curr_world = Matrix4d::Identity();
 
+  ros::Publisher pose_pub = nh.advertise<geometry_msgs::PoseStamped>(pose_topic_, 1);
+
+  int ctr = 0;
   while (ros::ok()) {
     for (int t = 0; t < filenames_l.size(); ++t) {
       if (!ros::ok()) {
@@ -51,10 +58,27 @@ void OdometryFrontendRos::Run(const ros::NodeHandle& nh, float rate)
       printf("Tracked keypoints = %d | Tracked keylines = %d\n", odom.tracked_keypoints, odom.tracked_keylines);
       std::cout << "Odometry estimate:\n" << odom.T_1_0 << std::endl;
       std::cout << "Pose estimate:\n" << T_curr_world << std::endl;
-      cv::waitKey(0);
+      cv::waitKey(1);
+
+      const Eigen::Quaterniond q(T_curr_world.block<3, 3>(0, 0));
+
+      geometry_msgs::PoseStamped pose_msg;
+      pose_msg.header.seq = ctr;
+      pose_msg.header.stamp = ros::Time::now();
+      pose_msg.header.frame_id = "cam";
+      pose_msg.pose.position.x = T_curr_world(0, 3);
+      pose_msg.pose.position.x = T_curr_world(1, 3);
+      pose_msg.pose.position.x = T_curr_world(2, 3);
+      pose_msg.pose.orientation.x = q.x();
+      pose_msg.pose.orientation.y = q.y();
+      pose_msg.pose.orientation.z = q.z();
+      pose_msg.pose.orientation.w = q.w();
+      pose_pub.publish(pose_msg);
 
       ros::spinOnce();
       loop_rate.sleep();
+
+      ++ctr;
     }
   }
 }

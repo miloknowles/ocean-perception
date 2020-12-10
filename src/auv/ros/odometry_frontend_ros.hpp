@@ -21,14 +21,14 @@ class OdometryFrontendRos final {
  public:
   OdometryFrontendRos(const StereoCamera& stereo_camera,
                       const OdometryFrontend::Options& opt,
-                      const std::string& pose_channel);
+                      const std::string& pose_topic);
 
-  void Run(const ros::NodeHandle& nh, float rate);
+  void Run(ros::NodeHandle& nh, float rate);
 
  private:
   OdometryFrontend::Options opt_;
   OdometryFrontend frontend_;
-  std::string pose_channel_;
+  std::string pose_topic_;
 };
 
 
