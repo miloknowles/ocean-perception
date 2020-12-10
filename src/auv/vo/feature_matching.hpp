@@ -9,6 +9,7 @@
 #include "core/eigen_types.hpp"
 #include "core/grid_lookup.hpp"
 #include "core/stereo_camera.hpp"
+#include "core/line_segment.hpp"
 
 namespace bm {
 namespace vo {
@@ -41,16 +42,39 @@ int MatchPointsGrid(const Grid& grid,
                     std::vector<int>& matches_12);
 
 
+int MatchPointsNN(const cv::Mat& desc1, const cv::Mat& desc2,
+                  float nn_ratio, std::vector<int>& matches_12);
+
+
 int MatchLinesGrid(const Grid& grid,
                    const std::vector<LineSegment2i> grid_lines,
                    const core::Box2i& search_region,
                    const cv::Mat& desc1,
                    const cv::Mat& desc2,
-                   const std::vector<Vector2f>& directions1,
-                   const std::vector<Vector2f>& directions2,
+                   const std::vector<Vector2d>& directions1,
+                   const std::vector<Vector2d>& directions2,
                    float min_distance_ratio,
                    float line_cosine_sim_th,
                    std::vector<int>& matches_12);
+
+
+int TemporalMatchPoints(const std::vector<cv::KeyPoint>& kp0,
+                      const cv::Mat& desc0,
+                      const std::vector<cv::KeyPoint>& kp1,
+                      const cv::Mat& desc1,
+                      const StereoCamera& stereo_cam,
+                      float min_distance_ratio,
+                      std::vector<int>& matches_01);
+
+
+int TemporalMatchLines(const std::vector<ld::KeyLine>& kl0,
+                     const std::vector<ld::KeyLine>& kl1,
+                     const cv::Mat& ld0,
+                     const cv::Mat& ld1,
+                     const core::StereoCamera& stereo_cam,
+                     float min_distance_ratio,
+                     float line_cosine_sim_th,
+                     std::vector<int>& matches_01);
 
 
 int StereoMatchPoints(const std::vector<cv::KeyPoint>& kpl,
@@ -60,6 +84,7 @@ int StereoMatchPoints(const std::vector<cv::KeyPoint>& kpl,
                       const StereoCamera& stereo_cam,
                       float max_epipolar_dist,
                       float min_distance_ratio,
+                      float min_disp,
                       std::vector<int>& matches_lr);
 
 
@@ -70,6 +95,7 @@ int StereoMatchLines(const std::vector<ld::KeyLine>& kll,
                      const core::StereoCamera& stereo_cam,
                      float min_distance_ratio,
                      float line_cosine_sim_th,
+                     float min_disp,
                      std::vector<int>& matches_lr);
 }
 }

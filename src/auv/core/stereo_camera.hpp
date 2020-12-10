@@ -1,7 +1,7 @@
 #pragma once
 
-#include "eigen_types.hpp"
-#include "pinhole_model.hpp"
+#include "core/eigen_types.hpp"
+#include "core/pinhole_camera.hpp"
 
 namespace bm {
 namespace core {
@@ -9,42 +9,45 @@ namespace core {
 
 class StereoCamera final {
  public:
-  StereoCamera(const PinholeModel& left_model,
-               const PinholeModel& right_model,
-               const Transform3f& T_right_left)
-      : left_model_(left_model),
-        right_model_(right_model),
+  StereoCamera(const PinholeCamera& cam_left,
+               const PinholeCamera& cam_right,
+               const Transform3d& T_right_left)
+      : cam_left_(cam_left),
+        cam_right_(cam_right),
         T_right_left_(T_right_left)
   {
     baseline_ = T_right_left_.translation().norm();
-    assert(left_model_.height == right_model_.height &&
-           left_model_.width == right_model_.width);
+    assert(cam_left_.Height() == cam_right_.Height() &&
+           cam_left_.Width() == cam_right_.Width());
   }
 
-  StereoCamera(const PinholeModel& left_model,
-               const PinholeModel& right_model,
-               float baseline)
-      : left_model_(left_model),
-        right_model_(right_model),
+  StereoCamera(const PinholeCamera& cam_left,
+               const PinholeCamera& cam_right,
+               double baseline)
+      : cam_left_(cam_left),
+        cam_right_(cam_right),
         baseline_(baseline)
   {
-    T_right_left_ = Transform3f::Identity();
-    T_right_left_.translation() = Vector3f(baseline_, 0, 0);
-    assert(left_model_.height == right_model_.height &&
-           left_model_.width == right_model_.width);
+    T_right_left_ = Transform3d::Identity();
+    T_right_left_.translation() = Vector3d(baseline_, 0, 0);
+    assert(cam_left_.Height() == cam_right_.Height() &&
+           cam_left_.Width() == cam_right_.Width());
   }
 
-  const PinholeModel& LeftIntrinsics() const { return left_model_; }
-  const PinholeModel& RightIntrinsics() const { return right_model_; }
-  int Height() const { return left_model_.height; }
-  int Width() const { return left_model_.width; }
-  float Baseline() const { return baseline_; }
+  const PinholeCamera& LeftIntrinsics() const { return cam_left_; }
+  const PinholeCamera& RightIntrinsics() const { return cam_right_; }
+  int Height() const { return cam_left_.Height(); }
+  int Width() const { return cam_left_.Width(); }
+  double Baseline() const { return baseline_; }
+  double fx() const { return cam_left_.fx(); }
+  double fy() const { return cam_right_.fy(); }
+  Transform3d Extrinsics() const { return T_right_left_; }
 
  private:
-  PinholeModel left_model_;
-  PinholeModel right_model_;
-  float baseline_;              // Baseline in meters.
-  Transform3f T_right_left_;    // Transform of the right camera in the left frame.
+  PinholeCamera cam_left_;
+  PinholeCamera cam_right_;
+  double baseline_;              // Baseline in meters.
+  Transform3d T_right_left_;    // Transform of the right camera in the left frame.
 };
 
 }

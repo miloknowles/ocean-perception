@@ -1,3 +1,5 @@
+#include <unordered_set>
+
 #include "visualize_matches.hpp"
 
 namespace bm {
@@ -16,6 +18,19 @@ std::vector<cv::DMatch> ConvertToDMatch(const std::vector<int>& matches12)
   }
 
   return out;
+}
+
+void FillMask(const std::vector<cv::DMatch>& matches_12, const std::vector<int>& inlier_indices1, std::vector<char>& mask)
+{
+  std::fill(mask.begin(), mask.end(), false);
+  std::unordered_set<int> inlier_set1(inlier_indices1.begin(), inlier_indices1.end());
+
+  for (int i = 0; i < matches_12.size(); ++i) {
+    const cv::DMatch& dm = matches_12.at(i);
+    if (inlier_set1.count(dm.queryIdx) > 0) {
+      mask.at(i) = true;
+    }
+  }
 }
 
 

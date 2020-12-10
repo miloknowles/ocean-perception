@@ -3,7 +3,7 @@
 
 #include <opencv2/imgproc/imgproc.hpp>
 
-#include "feature_matching.hpp"
+#include "vo/feature_matching.hpp"
 #include "core/math_util.hpp"
 
 namespace bm {
@@ -179,14 +179,40 @@ int MatchPointsGrid(const Grid& grid,
 
   // Require a mutual best match between descriptors in 1 and 2.
   for (int i1 = 0; i1 < matches_12.size(); ++i1) {
-    int &i2 = matches_12.at(i1);
+    const int i2 = matches_12.at(i1);
     if (i2 >= 0 && matches_21.at(i2) != i1) {
-      i2 = -1;
+      matches_12.at(i1) = -1;
       --num_matches;
     }
   }
 
   return num_matches;
+}
+
+
+int MatchPointsNN(const cv::Mat& desc1, const cv::Mat& desc2, float nn_ratio, std::vector<int>& matches_12)
+{
+  int Nm = 0;
+  matches_12.resize(desc1.rows, -1);
+
+  std::vector<std::vector<cv::DMatch>> dmatches;
+
+  // Don't do cross check (false).
+  cv::Ptr<cv::BFMatcher> bfm = cv::BFMatcher::create(cv::NORM_HAMMING, false);
+  bfm->knnMatch(desc1, desc2, dmatches, 2);
+
+  assert(desc1.rows == dmatches.size());
+
+  for (int i = 0; i < desc1.rows; ++i) {
+    const float d1 = dmatches.at(i).at(0).distance;
+    const float d2 = dmatches.at(i).at(1).distance;
+    if (d1 < (nn_ratio * d2)) {
+      matches_12.at(i) = dmatches.at(i).at(0).trainIdx;
+      ++Nm;
+    }
+  }
+
+  return Nm;
 }
 
 
@@ -196,8 +222,8 @@ int MatchLinesGrid(const Grid& grid,
                    const core::Box2i& search_region,
                    const cv::Mat& desc1,
                    const cv::Mat& desc2,
-                   const std::vector<Vector2f>& directions1,
-                   const std::vector<Vector2f>& directions2,
+                   const std::vector<Vector2d>& directions1,
+                   const std::vector<Vector2d>& directions2,
                    float min_distance_ratio,
                    float line_cosine_sim_th,
                    std::vector<int>& matches_12)
@@ -276,11 +302,66 @@ int MatchLinesGrid(const Grid& grid,
 }
 
 
+// Only search +/- 1/4 of the image dimensions for matches.
+static Box2i TemporalSearchRegion(int grid_rows, int grid_cols)
+{
+  return Box2i(Vector2i(-grid_cols / 4, -grid_rows / 4), Vector2i(grid_cols / 4, grid_rows / 4));
+}
+
+int TemporalMatchPoints(const std::vector<cv::KeyPoint>& kp0,
+                        const cv::Mat& desc0,
+                        const std::vector<cv::KeyPoint>& kp1,
+                        const cv::Mat& desc1,
+                        const StereoCamera& stereo_cam,
+                        float min_distance_ratio,
+                        std::vector<int>& matches_01)
+{
+  const int height = stereo_cam.Height();
+  const int width = stereo_cam.Width();
+
+  // Map each keypoint location to a compressed grid cell location.
+  const std::vector<Vector2i> gridpt0 = MapToGridCells(kp0, height, width, kGridRows, kGridCols);
+  const std::vector<Vector2i> gridpt1 = MapToGridCells(kp1, height, width, kGridRows, kGridCols);
+  GridLookup<int> grid = PopulateGrid(gridpt1, kGridRows, kGridCols);
+  const Box2i search_region = TemporalSearchRegion(kGridCols, kGridRows);
+
+  int Nm = MatchPointsGrid(grid, gridpt0, search_region, desc0, desc1, min_distance_ratio, matches_01);
+
+  return Nm;
+}
+
+
+int TemporalMatchLines(const std::vector<ld::KeyLine>& kl0,
+                      const std::vector<ld::KeyLine>& kl1,
+                      const cv::Mat& ld0,
+                      const cv::Mat& ld1,
+                      const core::StereoCamera& stereo_cam,
+                      float min_distance_ratio,
+                      float line_cosine_sim_th,
+                      std::vector<int>& matches_01)
+{
+  const int height = stereo_cam.Height();
+  const int width = stereo_cam.Width();
+
+  // Map each keypoint location to a compressed grid cell location.
+  const std::vector<LineSegment2i> gridln0 = MapToGridCells(kl0, height, width, kGridRows, kGridCols);
+  const std::vector<LineSegment2i> gridln1 = MapToGridCells(kl1, height, width, kGridRows, kGridCols);
+  GridLookup<int> grid = PopulateGrid(gridln1, kGridRows, kGridCols);
+
+  const auto& dir0 = core::NormalizedDirection(kl0);
+  const auto& dir1 = core::NormalizedDirection(kl1);
+
+  const Box2i search_region = TemporalSearchRegion(kGridRows, kGridCols);
+  return MatchLinesGrid(grid, gridln0, search_region, ld0, ld1, dir0, dir1,
+                        min_distance_ratio, line_cosine_sim_th, matches_01);
+}
+
+
 static Box2i StereoSearchRegion(const core::StereoCamera& stereo_cam,
                                 float min_depth, int grid_cols, int width)
 {
   // Depth = f * b / Disp
-  float max_disp = stereo_cam.LeftIntrinsics().fx * stereo_cam.Baseline() / min_depth;
+  float max_disp = stereo_cam.LeftIntrinsics().fx() * stereo_cam.Baseline() / min_depth;
   const int max_boxes = std::ceil(static_cast<float>(grid_cols) * max_disp / static_cast<float>(width));
   return Box2i(Vector2i(-max_boxes, 0), Vector2i(0, 0));
 }
@@ -293,6 +374,7 @@ int StereoMatchPoints(const std::vector<cv::KeyPoint>& kpl,
                       const StereoCamera& stereo_cam,
                       float max_epipolar_dist,
                       float min_distance_ratio,
+                      float min_disp,
                       std::vector<int>& matches_lr)
 {
   const int height = stereo_cam.Height();
@@ -306,12 +388,24 @@ int StereoMatchPoints(const std::vector<cv::KeyPoint>& kpl,
 
   int Nm = MatchPointsGrid(grid, gridpt_l, search_region, desc_l, desc_r, min_distance_ratio, matches_lr);
 
-  for (int il = 0; il < matches_lr.size(); ++il) {
-    if (matches_lr.at(il) < 0) { continue; }
-    const float yl = kpl.at(il).pt.y;
-    const float yr = kpr.at(matches_lr.at(il)).pt.y;
+  int ctr = 0;
+  for (const int ir : matches_lr) {
+    if (ir >= 0) { ++ctr; }
+  }
 
-    if (std::abs(yl - yr) > max_epipolar_dist) {
+  for (int il = 0; il < matches_lr.size(); ++il) {
+    const int ir = matches_lr.at(il);
+
+    if (ir < 0) { continue; }
+
+    const float yl = kpl.at(il).pt.y;
+    const float yr = kpr.at(ir).pt.y;
+
+    const float xl = kpl.at(il).pt.x;
+    const float xr = kpr.at(ir).pt.x;
+
+    // NOTE(milo): All criteria need to go here! Avoid double -- bug!
+    if (std::fabs(yl - yr) > max_epipolar_dist || std::fabs(xl - xr) < min_disp) {
       matches_lr.at(il) = -1;
       --Nm;
     }
@@ -328,6 +422,7 @@ int StereoMatchLines(const std::vector<ld::KeyLine>& kll,
                      const core::StereoCamera& stereo_cam,
                      float min_distance_ratio,
                      float line_cosine_sim_th,
+                     float min_disp,
                      std::vector<int>& matches_lr)
 {
   const int height = stereo_cam.Height();
@@ -342,8 +437,28 @@ int StereoMatchLines(const std::vector<ld::KeyLine>& kll,
   const auto& dir_r = core::NormalizedDirection(klr);
 
   const Box2i search_region = StereoSearchRegion(stereo_cam, kMinDepth, kGridCols, width);
-  return MatchLinesGrid(grid, gridln_l, search_region, ldl, ldr, dir_l, dir_r,
-                        min_distance_ratio, line_cosine_sim_th, matches_lr);
+  int Nm = MatchLinesGrid(grid, gridln_l, search_region, ldl, ldr, dir_l, dir_r,
+                          min_distance_ratio, line_cosine_sim_th, matches_lr);
+
+  // Filter out lines with large depth (small disparity).
+  for (int il = 0; il < kll.size(); ++il) {
+    const int ir = matches_lr.at(il);
+    if (ir < 0) { continue; }
+
+    const ld::KeyLine& klli = kll.at(il);
+    const ld::KeyLine& klri = klr.at(ir);
+
+    const LineSegment2d line_right_ext = ExtrapolateLineSegment(klli, klri);
+    double disp_s, disp_e;
+    ComputeEndpointDisparity(LineSegment2d(klli), line_right_ext, disp_s, disp_e);
+
+    if (disp_s < min_disp || disp_e < min_disp) {
+      matches_lr.at(il) = -1;
+      --Nm;
+    }
+  }
+
+  return Nm;
 }
 
 }

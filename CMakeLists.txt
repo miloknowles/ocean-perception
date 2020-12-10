@@ -21,7 +21,7 @@ find_package(catkin REQUIRED COMPONENTS
 
 # Find non-catkin pacakges.
 find_package(OpenCV 3.4.0 REQUIRED)
-find_package(Boost        REQUIRED COMPONENTS regex thread system filesystem)
+find_package(Boost        REQUIRED COMPONENTS filesystem)
 find_package(g2o          REQUIRED)
 find_package(Eigen3       REQUIRED)
 find_package(yaml-cpp     REQUIRED CONFIG PATHS ${YAML_PATHS}) # YAML library

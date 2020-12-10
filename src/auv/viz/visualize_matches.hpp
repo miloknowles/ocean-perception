@@ -16,7 +16,10 @@ namespace viz {
 namespace ld = cv::line_descriptor;
 
 
-std::vector<cv::DMatch> ConvertToDMatch(const std::vector<int>& matches12);
+std::vector<cv::DMatch> ConvertToDMatch(const std::vector<int>& matches_12);
+
+
+void FillMask(const std::vector<cv::DMatch>& matches_12, const std::vector<int>& inlier_indices1, std::vector<char>& mask);
 
 
 void DrawLineMatches(const cv::Mat& img1,
