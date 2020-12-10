@@ -7,7 +7,7 @@ namespace vo {
 // From: https://github.com/rubengooj/stvo-pl
 struct sort_lines_by_response {
   inline bool operator()(const ld::KeyLine& a, const ld::KeyLine& b) {
-    return ( a.response > b.response );
+    return (a.response > b.response);
   }
 };
 
@@ -20,12 +20,13 @@ static void FilterLines(const std::vector<ld::KeyLine>& kls,
   kls_out.clear();
 
   for (int i = 0; i < kls.size(); ++i) {
-    const ld::KeyLine& kl = kls.at(i);
+    const ld::KeyLine kl = kls.at(i);
 
     const double slope = std::fabs((kl.endPointY - kl.startPointY) / (kl.endPointX - kl.startPointX));
     if (slope < min_slope) {
       continue;
     }
+
     kls_out.emplace_back(kl);
   }
 }
@@ -47,13 +48,13 @@ int LineDetector::Detect(const core::Image1b& img,
 
   // If more lines than desired, filter out some of them.
   if (lines_out.size() > opt_.lsd_num_features && opt_.lsd_num_features > 0) {
-      std::sort(lines_out.begin(), lines_out.end(), sort_lines_by_response());
-      lines_out.resize(opt_.lsd_num_features);
+    std::sort(lines_out.begin(), lines_out.end(), sort_lines_by_response());
+    lines_out.resize(opt_.lsd_num_features);
+  }
 
-      // Re-assign line indices after sorting.
-      for (int i = 0; i < lines_out.size(); ++i) {
-        lines_out.at(i).class_id = i;
-      }
+  // Re-assign line indices after sorting and filtering.
+  for (int i = 0; i < lines_out.size(); ++i) {
+    lines_out.at(i).class_id = i;
   }
 
   // Compute a visual descriptor for each line.

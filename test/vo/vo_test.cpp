@@ -201,7 +201,7 @@ TEST(VOTest, TestSeq01)
 
   Matrix4d T_curr_world = Matrix4d::Identity();
 
-  for (int t = 0; t < filenames_l.size(); ++t) {
+  for (int t = 22; t < filenames_l.size(); ++t) {
     printf("-----------------------------------FRAME #%d-------------------------------------\n", t);
     const Image1b iml = cv::imread(filenames_l.at(t), cv::IMREAD_GRAYSCALE);
     const Image1b imr = cv::imread(filenames_r.at(t), cv::IMREAD_GRAYSCALE);
@@ -214,6 +214,6 @@ TEST(VOTest, TestSeq01)
     printf("Tracked keypoints = %d | Tracked keylines = %d\n", odom.tracked_keypoints, odom.tracked_keylines);
     std::cout << "Odometry estimate:\n" << odom.T_l1_l0 << std::endl;
     std::cout << "Pose estimate:\n" << T_curr_world << std::endl;
-    cv::waitKey(0);
+    cv::waitKey(10);
   }
 }
