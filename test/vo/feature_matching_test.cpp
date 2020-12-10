@@ -139,7 +139,7 @@ TEST(FeatureMatchingTest, TestStereoMatchPoints)
   std::vector<int> matches_lr;
   const core::PinholeCamera cam(415.876509, 415.876509, 376.0, 240.0, 480, 752);
   const core::StereoCamera stereo_cam(cam, cam, 0.2);
-  const int Nm = vo::StereoMatchPoints(kpl, descl, kpr, descr, stereo_cam, 5.0, 0.9, matches_lr);
+  const int Nm = vo::StereoMatchPoints(kpl, descl, kpr, descr, stereo_cam, 5.0, 0.9, 0.5, matches_lr);
   printf("Matched %d features from left to right\n", Nm);
 
   const auto& dmatches = viz::ConvertToDMatch(matches_lr);

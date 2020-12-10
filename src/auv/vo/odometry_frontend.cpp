@@ -41,6 +41,7 @@ OdometryEstimate OdometryFrontend::TrackStereoFrame(const Image1b& iml,
       kpl, orbl, kpr, orbr, stereo_camera_,
       opt_.stereo_max_epipolar_dist,
       opt_.stereo_min_distance_ratio,
+      opt_.min_feature_disp,
       pmatches_lr);
   printf("[VO] Matched %d POINTS from left to right\n", Np_stereo);
 
@@ -56,7 +57,6 @@ OdometryEstimate OdometryFrontend::TrackStereoFrame(const Image1b& iml,
   cv::Mat ldl, ldr;
   const int nl = ldetector_.Detect(iml, kll, ldl);
   const int nr = ldetector_.Detect(imr, klr, ldr);
-
   printf("[VO] Detected %d|%d LINES in left|right images\n", nl, nr);
 
   std::vector<int> lmatches_lr;
@@ -64,26 +64,28 @@ OdometryEstimate OdometryFrontend::TrackStereoFrame(const Image1b& iml,
       kll, klr, ldl, ldr, stereo_camera_,
       opt_.stereo_line_min_distance_ratio,
       std::cos(DegToRad(opt_.stereo_line_max_angle)),
-      pmatches_lr);
+      opt_.min_feature_disp,
+      lmatches_lr);
 
-  printf("Matched %d POINTS from left to right\n", Nl_stereo);
+  printf("Matched %d LINES from left to right\n", Nl_stereo);
 
   cv::Mat draw_stereo_lines, draw_temporal_lines;
-  std::vector<cv::DMatch> lines_dmatches = viz::ConvertToDMatch(pmatches_lr);
+  std::vector<cv::DMatch> lines_dmatches = viz::ConvertToDMatch(lmatches_lr);
   viz::DrawLineMatches(iml, kll, imr, klr, lines_dmatches, draw_stereo_lines,
                        std::vector<char>(), true);
   cv::imshow("stereo_lines", draw_stereo_lines);
 
   //======================= TEMPORAL MATCHING ==============================
-  const bool HAS_PREV_FRAME = kpl_prev_.size() > 0;
+  const bool has_prev_frame = kpl_prev_.size() > 0;
 
   Matrix4d T_01 = Matrix4d::Identity();
   Matrix6d C_01 = Matrix6d::Identity();
   double error;
   std::vector<int> point_inlier_indices, line_inlier_indices;
 
-  if (HAS_PREV_FRAME) {
+  if (has_prev_frame) {
     assert(kpl_prev_.size() == orbl_prev_.rows);
+    assert(kll_prev_.size() == ldl_prev_.rows);
 
     std::vector<int> pmatches_01, lmatches_01;
     const int Np_temporal = MatchPointsNN(
@@ -96,8 +98,9 @@ OdometryEstimate OdometryFrontend::TrackStereoFrame(const Image1b& iml,
         lmatches_01);
 
     assert(pmatches_01.size() == kpl_prev_.size());
+    assert(lmatches_01.size() == kll_prev_.size());
 
-    // 3D landmark points in the Camera_0 frame.
+    //========================== 3D POINT LANDMARKS ============================
     std::vector<Vector3d> P0_list;
     std::vector<Vector2d> p1_obs_list;
     std::vector<double> p1_sigma_list;
@@ -120,7 +123,7 @@ OdometryEstimate OdometryFrontend::TrackStereoFrame(const Image1b& iml,
       p1_sigma_list.emplace_back(opt_.keypoint_sigma);
     }
 
-    // 3D landmark lines in the Camera_0 frame.
+    //======================== 3D LINE LANDMARKS ===============================
     std::vector<LineFeature3D> L0_list;
     std::vector<LineFeature2D> l1_obs_list;
     std::vector<double> l1_sigma_list;
@@ -163,7 +166,8 @@ OdometryEstimate OdometryFrontend::TrackStereoFrame(const Image1b& iml,
         cv::Scalar::all(-1), cv::Scalar::all(-1), point_mask_01,
         cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
     viz::DrawLineMatches(
-        iml, kll_prev_, imr, kll, line_dm_01, draw_temporal_lines, line_mask_01, true);
+        iml_prev_, kll_prev_, iml, kll, line_dm_01, draw_temporal_lines,
+        line_mask_01, true);
     cv::imshow("temporal_points", draw_temporal_points);
     cv::imshow("temporal_lines", draw_temporal_lines);
   }
@@ -171,19 +175,17 @@ OdometryEstimate OdometryFrontend::TrackStereoFrame(const Image1b& iml,
   //====================== HOUSEKEEPING FOR PREVIOUS FRAME =========================
   // Store everything needed for temporal matching.
   kpl_prev_.resize(Np_stereo);
-  kpr_prev_.resize(Np_stereo);
+  // kpr_prev_.resize(Np_stereo);
   orbl_prev_ = cv::Mat(Np_stereo, orbl.cols, orbl.type());
-  orbr_prev_ = cv::Mat(Np_stereo, orbr.cols, orbr.type());
+  // orbr_prev_ = cv::Mat(Np_stereo, orbr.cols, orbr.type());
   disp_prev_.resize(Np_stereo);
+
   iml_prev_ = iml;
 
-  kpl_prev_.resize(Nl_stereo);
-  kpr_prev_.resize(Nl_stereo);
-  left_lines_prev_.resize(Nl_stereo);
-  right_lines_prev_.resize(Nl_stereo);
-  ldl_prev_ = cv::Mat(Nl_stereo, ldl.cols, ldl.type());
-  ldr_prev_ = cv::Mat(Nl_stereo, ldr.cols, ldr.type());
-
+  int tmpctr = 0;
+  for (const int jr : pmatches_lr) {
+    if (jr >= 0) { ++tmpctr; }
+  }
   // Only store the triangulated points.
   int match_ctr = 0;
   for (int j = 0; j < pmatches_lr.size(); ++j) {
@@ -196,13 +198,20 @@ OdometryEstimate OdometryFrontend::TrackStereoFrame(const Image1b& iml,
 
     disp_prev_.at(match_ctr) = std::fabs(kplj.pt.x - kprj.pt.x);
     kpl_prev_.at(match_ctr) = kplj;
-    kpr_prev_.at(match_ctr) = kprj;
+    // kpr_prev_.at(match_ctr) = kprj;
 
     // NOTE(milo): Important! Need to copy otherwise these rows will point to original data!
     orbl.row(j).copyTo(orbl_prev_.row(match_ctr));
-    orbr.row(jr).copyTo(orbr_prev_.row(match_ctr));
+    // orbr.row(jr).copyTo(orbr_prev_.row(match_ctr));
     ++match_ctr;
   }
+
+  kll_prev_.resize(Nl_stereo);
+  // klr_prev_.resize(Nl_stereo);
+  left_lines_prev_.resize(Nl_stereo);
+  // right_lines_prev_.resize(Nl_stereo);
+  ldl_prev_ = cv::Mat(Nl_stereo, ldl.cols, ldl.type());
+  // ldr_prev_ = cv::Mat(Nl_stereo, ldr.cols, ldr.type());
 
   // Only store the stereo-matched lines.
   match_ctr = 0;
@@ -218,24 +227,16 @@ OdometryEstimate OdometryFrontend::TrackStereoFrame(const Image1b& iml,
     double disp_s, disp_e;
     ComputeEndpointDisparity(LineSegment2d(kllj), line_right_ext, disp_s, disp_e);
 
-    // Make sure that line endpoints don't backproject to infinity.
-    if (disp_s < opt_.min_feature_disp || disp_e < opt_.min_feature_disp) {
-      continue;
-    }
-
     const double depth_s = camera_left_.fx() * stereo_camera_.Baseline() / disp_s;
     const double depth_e = camera_left_.fx() * stereo_camera_.Baseline() / disp_e;
     const Vector3d& Ls = camera_left_.Backproject(Vector2d(kllj.startPointX, kllj.startPointY), depth_s);
     const Vector3d& Le = camera_left_.Backproject(Vector2d(kllj.endPointX, kllj.endPointY), depth_e);
 
-    kpl_prev_.at(match_ctr) = kpl.at(j);
-    kpr_prev_.at(match_ctr) = kpr.at(jr);
+    kll_prev_.at(match_ctr) = kll.at(j);
     left_lines_prev_.at(match_ctr) = LineFeature3D(Ls, Le);
-    // right_lines_prev_.at(match_ctr) = LineFeature3D(Rs, Re);
 
     // NOTE(milo): Important! Need to copy otherwise these rows will point to original data!
     ldl.row(j).copyTo(ldl_prev_.row(match_ctr));
-    ldr.row(jr).copyTo(ldr_prev_.row(match_ctr));
 
     ++match_ctr;
   }
@@ -246,7 +247,7 @@ OdometryEstimate OdometryFrontend::TrackStereoFrame(const Image1b& iml,
   out.C_l1_l0 = C_01;
   out.error = error;
   out.tracked_keypoints = point_inlier_indices.size();
-  out.tracked_keylines = 0;
+  out.tracked_keylines = line_inlier_indices.size();
 
   return out;
 }
