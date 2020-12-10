@@ -22,7 +22,7 @@ TEST(VOTest, TestSeq01)
   const StereoCamera stereo_camera(camera_model, camera_model, 0.2);
 
   OdometryFrontend::Options opt;
-  opt.track_lines = false;
+  // opt.track_lines = false;
   OdometryFrontend frontend(stereo_camera, opt);
 
   const std::string data_path = "/home/milo/datasets/Unity3D/farmsim/01";
