@@ -42,7 +42,7 @@
 #include "precomp_custom.hpp"
 
 namespace cv {
-namespace line_descriptor {
+namespace ld2 {
 
 void drawLineMatches( const Mat& img1, const std::vector<KeyLine>& keylines1, const Mat& img2, const std::vector<KeyLine>& keylines2,
                       const std::vector<DMatch>& matches1to2, Mat& outImg, const Scalar& matchColor, const Scalar& singleLineColor,

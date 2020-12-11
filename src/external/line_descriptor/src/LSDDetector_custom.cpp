@@ -44,7 +44,7 @@
 //using namespace cv;
 namespace cv
 {
-namespace line_descriptor
+namespace ld2
 {
 
 Ptr<LSDDetectorC> LSDDetectorC::createLSDDetectorC()

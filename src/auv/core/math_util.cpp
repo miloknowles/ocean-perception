@@ -246,7 +246,7 @@ LineSegment2d ExtrapolateLineSegment(const LineSegment2d& line_ref, const LineSe
 }
 
 
-LineSegment2d ExtrapolateLineSegment(const ld::KeyLine& line_ref, const ld::KeyLine& line_tar)
+LineSegment2d ExtrapolateLineSegment(const ld2::KeyLine& line_ref, const ld2::KeyLine& line_tar)
 {
   const LineSegment2d ls_ref(Vector2d(line_ref.startPointX, line_ref.startPointY),
                              Vector2d(line_ref.endPointX, line_ref.endPointY));

@@ -74,7 +74,7 @@ typedef uint8_t  UINT8;
 
 namespace cv
 {
-namespace line_descriptor
+namespace ld2
 {
 
 //! @addtogroup line_descriptor

@@ -17,6 +17,7 @@ target_include_directories(${PROJECT_NAME}_test PRIVATE ${PROJECT_SOURCE_DIR}/sr
 target_include_directories(${PROJECT_NAME}_test PRIVATE ${PROJECT_SOURCE_DIR}/test)
 target_link_libraries(${PROJECT_NAME}_test
   gtest
+  external_linedesc
   ${PROJECT_NAME}_core
   ${PROJECT_NAME}_viz
   ${PROJECT_NAME}_vo)

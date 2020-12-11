@@ -67,7 +67,7 @@
 //using namespace cv;
 namespace cv
 {
-namespace line_descriptor
+namespace ld2
 {
 
 /* combinations of internal indeces for binary descriptor extractor */

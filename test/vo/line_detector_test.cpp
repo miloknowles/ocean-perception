@@ -6,8 +6,9 @@
 #include "core/cv_types.hpp"
 #include "vo/line_detector.hpp"
 
+namespace ld2 = cv::ld2;
+
 using namespace bm;
-namespace ld = cv::line_descriptor;
 
 
 TEST(LineDetectorTest, TestDetect)
@@ -23,14 +24,14 @@ TEST(LineDetectorTest, TestDetect)
     opt.lsd_sigma_scale = lsd_sigma_scale;
     vo::LineDetector detector(opt);
 
-    std::vector<ld::KeyLine> lines_out_left, lines_out_right;
+    std::vector<ld2::KeyLine> lines_out_left, lines_out_right;
     cv::Mat desc_out_left, desc_out_right;
     const int nl = detector.Detect(imleft, lines_out_left, desc_out_left);
     const int nr = detector.Detect(imright, lines_out_right, desc_out_right);
     printf("lsd_sigma_scale=%f | Detected %d|%d keypoints in left|right images\n", lsd_sigma_scale, nl, nr);
 
-    ld::drawKeylines(imleft, lines_out_left, rgb_left);
-    ld::drawKeylines(imleft, lines_out_right, rgb_right);
+    ld2::drawKeylines(imleft, lines_out_left, rgb_left);
+    ld2::drawKeylines(imleft, lines_out_right, rgb_right);
     cv::imshow("lines_left", rgb_left);
     cv::imshow("lines_right", rgb_right);
     cv::waitKey(0);

@@ -4,10 +4,10 @@
 #include "core/cv_types.hpp"
 #include "line_descriptor/include/line_descriptor_custom.hpp"
 
+namespace ld2 = cv::ld2;
+
 namespace bm {
 namespace vo {
-
-namespace ld = cv::line_descriptor;
 
 
 class LineDetector final {
@@ -36,14 +36,14 @@ class LineDetector final {
     lsd_opt_.min_length = opt.lsd_min_length;
   }
 
-  int Detect(const core::Image1b& img, std::vector<ld::KeyLine>& lines_out, cv::Mat& desc_out);
+  int Detect(const core::Image1b& img, std::vector<ld2::KeyLine>& lines_out, cv::Mat& desc_out);
 
  private:
   Options opt_;
-  ld::LSDDetectorC::LSDOptions lsd_opt_;
+  ld2::LSDDetectorC::LSDOptions lsd_opt_;
 
-  cv::Ptr<ld::LSDDetectorC> lsd_ = ld::LSDDetectorC::createLSDDetectorC();
-  cv::Ptr<ld::BinaryDescriptor> lbd_ = ld::BinaryDescriptor::createBinaryDescriptor();
+  cv::Ptr<ld2::LSDDetectorC> lsd_ = ld2::LSDDetectorC::createLSDDetectorC();
+  cv::Ptr<ld2::BinaryDescriptor> lbd_ = ld2::BinaryDescriptor::createBinaryDescriptor();
 };
 
 }

@@ -48,7 +48,7 @@ double ARRAY_RESIZE_ADD_FACTOR = 4;  // minimum is 1
 //using namespace cv;
 namespace cv
 {
-namespace line_descriptor
+namespace ld2
 {
 
 /* constructor */
@@ -715,7 +715,7 @@ void BinaryDescriptorMatcher::Mihasher::query( UINT32* results, UINT32* numres, 
               if( !counter->get( index ) )
               { /* if it is not a duplicate */
                 counter->set( index );
-                hammd = cv::line_descriptor::match( codes.ptr() + (UINT64) index * ( B_over_8 ), Query, B_over_8 );
+                hammd = cv::ld2::match( codes.ptr() + (UINT64) index * ( B_over_8 ), Query, B_over_8 );
 
                 nc++;
                 if( hammd <= D && numres[hammd] < maxres )

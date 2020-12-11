@@ -6,21 +6,21 @@ namespace vo {
 
 // From: https://github.com/rubengooj/stvo-pl
 struct sort_lines_by_response {
-  inline bool operator()(const ld::KeyLine& a, const ld::KeyLine& b) {
+  inline bool operator()(const ld2::KeyLine& a, const ld2::KeyLine& b) {
     return (a.response > b.response);
   }
 };
 
 
 // Filters out horizontal lines that will cause stereo matching problems.
-static void FilterLines(const std::vector<ld::KeyLine>& kls,
+static void FilterLines(const std::vector<ld2::KeyLine>& kls,
                         double min_slope,
-                        std::vector<ld::KeyLine>& kls_out)
+                        std::vector<ld2::KeyLine>& kls_out)
 {
   kls_out.clear();
 
   for (int i = 0; i < kls.size(); ++i) {
-    const ld::KeyLine kl = kls.at(i);
+    const ld2::KeyLine kl = kls.at(i);
 
     const double slope = std::fabs((kl.endPointY - kl.startPointY) / (kl.endPointX - kl.startPointX));
     if (slope < min_slope) {
@@ -33,12 +33,12 @@ static void FilterLines(const std::vector<ld::KeyLine>& kls,
 
 
 int LineDetector::Detect(const core::Image1b& img,
-                         std::vector<ld::KeyLine>& lines_out,
+                         std::vector<ld2::KeyLine>& lines_out,
                          cv::Mat& desc_out)
 {
   lines_out.clear();
 
-  std::vector<ld::KeyLine> lines_initial;
+  std::vector<ld2::KeyLine> lines_initial;
 
   // NOTE(milo): Not sure why members of opt are repeated here? Could it be a different param?
   lsd_->detect(img, lines_initial, lsd_opt_.scale, 1, lsd_opt_);

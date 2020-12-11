@@ -77,7 +77,7 @@ class OdometryFrontend final {
   cv::Mat orbl_prev_, orbr_prev_;
 
   std::vector<LineFeature3D> left_lines_prev_, right_lines_prev_;
-  std::vector<ld::KeyLine> kll_prev_, klr_prev_;
+  std::vector<ld2::KeyLine> kll_prev_, klr_prev_;
   cv::Mat ldl_prev_, ldr_prev_;
 
   Matrix4d T_01_prev_;

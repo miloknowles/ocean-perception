@@ -3,10 +3,11 @@
 #include "line_descriptor/include/line_descriptor_custom.hpp"
 #include "core/eigen_types.hpp"
 
+namespace ld2 = cv::ld2;
+
 namespace bm {
 namespace core {
 
-namespace ld = cv::line_descriptor;
 
 struct LineFeature2D {
   // Need a default constructor for allocating empty vectors.
@@ -18,7 +19,7 @@ struct LineFeature2D {
     ComputeCrossProduct();
   }
 
-  LineFeature2D(const ld::KeyLine& kl)
+  LineFeature2D(const ld2::KeyLine& kl)
       : p_start(kl.startPointX, kl.startPointY),
       p_end(kl.endPointX, kl.endPointY)
   {

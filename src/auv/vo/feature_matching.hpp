@@ -16,7 +16,7 @@ namespace vo {
 
 using namespace core;
 using Grid = core::GridLookup<int>;
-namespace ld = cv::line_descriptor;
+namespace ld2 = cv::ld2;
 
 
 Grid PopulateGrid(const std::vector<Vector2i>& grid_cells, int grid_rows, int grid_cols);
@@ -28,7 +28,7 @@ std::vector<Vector2i> MapToGridCells(const std::vector<cv::KeyPoint>& keypoints,
                                      int grid_rows, int grid_cols);
 
 
-std::vector<LineSegment2i> MapToGridCells(const std::vector<ld::KeyLine>& keylines,
+std::vector<LineSegment2i> MapToGridCells(const std::vector<ld2::KeyLine>& keylines,
                                           int image_rows, int image_cols,
                                           int grid_rows, int grid_cols);
 
@@ -44,6 +44,15 @@ int MatchPointsGrid(const Grid& grid,
 
 int MatchPointsNN(const cv::Mat& desc1, const cv::Mat& desc2,
                   float nn_ratio, std::vector<int>& matches_12);
+
+
+int MatchLinesNN(const cv::Mat& desc1,
+                 const cv::Mat& desc2,
+                 const std::vector<Vector2d>& directions1,
+                 const std::vector<Vector2d>& directions2,
+                 float min_distance_ratio,
+                 float line_cosine_sim_th,
+                 std::vector<int> matches_12);
 
 
 int MatchLinesGrid(const Grid& grid,
@@ -67,8 +76,8 @@ int TemporalMatchPoints(const std::vector<cv::KeyPoint>& kp0,
                       std::vector<int>& matches_01);
 
 
-int TemporalMatchLines(const std::vector<ld::KeyLine>& kl0,
-                     const std::vector<ld::KeyLine>& kl1,
+int TemporalMatchLines(const std::vector<ld2::KeyLine>& kl0,
+                     const std::vector<ld2::KeyLine>& kl1,
                      const cv::Mat& ld0,
                      const cv::Mat& ld1,
                      const core::StereoCamera& stereo_cam,
@@ -88,8 +97,8 @@ int StereoMatchPoints(const std::vector<cv::KeyPoint>& kpl,
                       std::vector<int>& matches_lr);
 
 
-int StereoMatchLines(const std::vector<ld::KeyLine>& kll,
-                     const std::vector<ld::KeyLine>& klr,
+int StereoMatchLines(const std::vector<ld2::KeyLine>& kll,
+                     const std::vector<ld2::KeyLine>& klr,
                      const cv::Mat& ldl,
                      const cv::Mat& ldr,
                      const core::StereoCamera& stereo_cam,

@@ -9,10 +9,10 @@
 
 #include "viz/visualize_matches.hpp"
 
+namespace ld2 = cv::ld2;
+
 namespace bm {
 namespace vo {
-
-namespace ld = cv::line_descriptor;
 
 
 OdometryFrontend::OdometryFrontend(const StereoCamera& stereo_camera,
@@ -56,7 +56,7 @@ OdometryEstimate OdometryFrontend::TrackStereoFrame(const Image1b& iml,
   cv::imshow("stereo_points", draw_stereo_points);
 
   //========================= STEREO LINE MATCHING =============================
-  std::vector<ld::KeyLine> kll, klr;
+  std::vector<ld2::KeyLine> kll, klr;
   cv::Mat ldl, ldr;
   const int nl = ldetector_.Detect(iml, kll, ldl);
   const int nr = ldetector_.Detect(imr, klr, ldr);
@@ -90,6 +90,7 @@ OdometryEstimate OdometryFrontend::TrackStereoFrame(const Image1b& iml,
     assert(kpl_prev_.size() == orbl_prev_.rows);
     assert(kll_prev_.size() == ldl_prev_.rows);
 
+    // NOTE(milo): MatchPointsNN is way faster than TemporalMatchPoints, but has more false matches.
     std::vector<int> pmatches_01, lmatches_01;
     const int Np_temporal = MatchPointsNN(
         orbl_prev_, orbl, opt_.temporal_min_distance_ratio, pmatches_01);
@@ -219,8 +220,8 @@ OdometryEstimate OdometryFrontend::TrackStereoFrame(const Image1b& iml,
 
     if (jr < 0) { continue; }
 
-    const ld::KeyLine& kllj = kll.at(j);
-    const ld::KeyLine& klrj = klr.at(jr);
+    const ld2::KeyLine& kllj = kll.at(j);
+    const ld2::KeyLine& klrj = klr.at(jr);
 
     LineSegment2d line_right_ext = ExtrapolateLineSegment(kllj, klrj);
     double disp_s, disp_e;

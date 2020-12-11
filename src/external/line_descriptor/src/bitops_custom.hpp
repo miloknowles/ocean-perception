@@ -77,7 +77,7 @@ const int lookup[] =
 
 namespace cv
 {
-namespace line_descriptor
+namespace ld2
 {
 /*matching function */
 inline int match( UINT8*P, UINT8*Q, int codelb )
