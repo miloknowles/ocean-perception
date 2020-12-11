@@ -5,6 +5,7 @@
 
 #include "vo/feature_matching.hpp"
 #include "core/math_util.hpp"
+#include "core/timer.hpp"
 
 namespace bm {
 namespace vo {
@@ -14,7 +15,11 @@ using namespace core;
 static const int kConnectivity8 = 8;
 static const int kGridRows = 16;
 static const int kGridCols = 16;
-static const float kMinDepth = 0.2;
+
+static const int kStereoGridRows = 48;
+static const int kStereoGridCols = 16;
+
+static const float kMinDepth = 0.5;
 
 
 Grid PopulateGrid(const std::vector<Vector2i>& grid_cells, int grid_rows, int grid_cols)
@@ -381,10 +386,13 @@ int StereoMatchPoints(const std::vector<cv::KeyPoint>& kpl,
   const int width = stereo_cam.Width();
 
   // Map each keypoint location to a compressed grid cell location.
-  const std::vector<Vector2i> gridpt_l = MapToGridCells(kpl, height, width, kGridRows, kGridCols);
-  const std::vector<Vector2i> gridpt_r = MapToGridCells(kpr, height, width, kGridRows, kGridCols);
-  GridLookup<int> grid = PopulateGrid(gridpt_r, kGridRows, kGridCols);
-  const Box2i search_region = StereoSearchRegion(stereo_cam, kMinDepth, kGridCols, width);
+  Timer timer(true);
+  const int stereo_grid_rows = 48;
+  const std::vector<Vector2i> gridpt_l = MapToGridCells(kpl, height, width, kStereoGridRows, kStereoGridCols);
+  const std::vector<Vector2i> gridpt_r = MapToGridCells(kpr, height, width, kStereoGridRows, kStereoGridCols);
+  GridLookup<int> grid = PopulateGrid(gridpt_r, kStereoGridRows, kStereoGridCols);
+  const Box2i search_region = StereoSearchRegion(stereo_cam, kMinDepth, kStereoGridCols, width);
+  // printf("grid time = %lf\n", timer.Elapsed().milliseconds());
 
   int Nm = MatchPointsGrid(grid, gridpt_l, search_region, desc_l, desc_r, min_distance_ratio, matches_lr);
 

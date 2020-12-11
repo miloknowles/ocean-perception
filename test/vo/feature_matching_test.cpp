@@ -6,6 +6,7 @@
 
 #include "core/grid_lookup.hpp"
 #include "core/math_util.hpp"
+#include "core/timer.hpp"
 #include "viz/visualize_matches.hpp"
 #include "vo/point_detector.hpp"
 #include "vo/line_detector.hpp"
@@ -117,7 +118,6 @@ TEST(FeatureMatchingTest, TestMatchPointsLR)
 //   cv::waitKey(0);
 // }
 
-
 TEST(FeatureMatchingTest, TestStereoMatchPoints)
 {
   vo::PointDetector::Options opt;
@@ -139,8 +139,16 @@ TEST(FeatureMatchingTest, TestStereoMatchPoints)
   std::vector<int> matches_lr;
   const core::PinholeCamera cam(415.876509, 415.876509, 376.0, 240.0, 480, 752);
   const core::StereoCamera stereo_cam(cam, cam, 0.2);
-  const int Nm = vo::StereoMatchPoints(kpl, descl, kpr, descr, stereo_cam, 5.0, 0.9, 0.5, matches_lr);
+
+  int Nm = 0;
+  std::vector<double> ms;
+  for (int iter = 0; iter < 100; ++iter) {
+    Timer timer(true);
+    Nm = vo::StereoMatchPoints(kpl, descl, kpr, descr, stereo_cam, 5.0, 0.9, 1.0, matches_lr);
+    ms.emplace_back(timer.Elapsed().milliseconds());
+  }
   printf("Matched %d features from left to right\n", Nm);
+  printf("Averaged %lf ms\n", Average(ms));
 
   const auto& dmatches = viz::ConvertToDMatch(matches_lr);
   cv::Mat draw;

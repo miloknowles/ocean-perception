@@ -25,7 +25,8 @@ TEST(VOTest, TestSeq01)
   opt.opt_max_error_stdevs = 3.0;
   OdometryFrontend frontend(stereo_camera, opt);
 
-  const std::string data_path = "/home/milo/datasets/Unity3D/farmsim/06_seafloor_easy";
+  // const std::string data_path = "/home/milo/datasets/Unity3D/farmsim/06_seafloor_easy";
+  const std::string data_path = "/home/milo/datasets/Unity3D/farmsim/05_forward_side";
   const std::string lpath = "image_0";
   const std::string rpath = "image_1";
 
@@ -52,7 +53,6 @@ TEST(VOTest, TestSeq01)
       std::cout << "[VO] Unreliable, setting identify transform" << std::endl;
     }
 
-    // T_curr_world  = T_prev_world * T_curr_prev;
     T_curr_world = T_curr_world * odom.T_1_0;
 
     printf("Tracked keypoints = %d | Tracked keylines = %d\n", odom.tracked_keypoints, odom.tracked_keylines);
@@ -60,6 +60,6 @@ TEST(VOTest, TestSeq01)
     std::cout << "Avg. reproj error:\n" << odom.error << std::endl;
     std::cout << "Pose estimate:\n" << T_curr_world << std::endl;
     std::cout << "Cov. estimate:\n" << odom.C_1_0 << std::endl;
-    cv::waitKey(0);
+    cv::waitKey(1);
   }
 }
