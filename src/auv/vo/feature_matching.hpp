@@ -52,7 +52,7 @@ int MatchLinesNN(const cv::Mat& desc1,
                  const std::vector<Vector2d>& directions2,
                  float min_distance_ratio,
                  float line_cosine_sim_th,
-                 std::vector<int> matches_12);
+                 std::vector<int>& matches_12);
 
 
 int MatchLinesGrid(const Grid& grid,

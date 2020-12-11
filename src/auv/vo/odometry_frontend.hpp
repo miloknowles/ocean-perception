@@ -39,9 +39,10 @@ class OdometryFrontend final {
     double temporal_min_distance_ratio = 0.8;
     double keypoint_sigma = 2.0;
 
-    double stereo_line_min_distance_ratio = 0.9;
+    double stereo_line_min_distance_ratio = 0.8;
     double temporal_line_min_distance_ratio = 0.8;
     double stereo_line_max_angle = 10.0;             // deg
+    double temporal_line_max_angle = 20.0f;
     double min_feature_disp = 1.0;                   // max_depth = fx * B / min_feature_disp
     double keyline_sigma = 2.0;
 

@@ -231,7 +231,7 @@ int MatchLinesNN(const cv::Mat& desc1,
                  const std::vector<Vector2d>& directions2,
                  float min_distance_ratio,
                  float line_cosine_sim_th,
-                 std::vector<int> matches_12)
+                 std::vector<int>& matches_12)
 {
   assert(directions1.size() == desc1.rows);
   assert(directions2.size() == desc2.rows);
@@ -482,18 +482,21 @@ int StereoMatchLines(const std::vector<ld2::KeyLine>& kll,
                      float min_disp,
                      std::vector<int>& matches_lr)
 {
+  assert(min_distance_ratio > 0 && min_distance_ratio < 1.0);
+  assert(line_cosine_sim_th > 0 && line_cosine_sim_th < 1.0);
+
   const int height = stereo_cam.Height();
   const int width = stereo_cam.Width();
 
   // Map each keypoint location to a compressed grid cell location.
-  const std::vector<LineSegment2i> gridln_l = MapToGridCells(kll, height, width, kStereoLineGridRows, kStereoGridCols);
-  const std::vector<LineSegment2i> gridln_r = MapToGridCells(klr, height, width, kStereoLineGridRows, kStereoGridCols);
-  GridLookup<int> grid = PopulateGrid(gridln_r, kStereoLineGridRows, kStereoGridCols);
+  const std::vector<LineSegment2i> gridln_l = MapToGridCells(kll, height, width, kStereoLineGridRows, kStereoLineGridCols);
+  const std::vector<LineSegment2i> gridln_r = MapToGridCells(klr, height, width, kStereoLineGridRows, kStereoLineGridCols);
+  GridLookup<int> grid = PopulateGrid(gridln_r, kStereoLineGridRows, kStereoLineGridCols);
 
   const auto& dir_l = core::NormalizedDirection(kll);
   const auto& dir_r = core::NormalizedDirection(klr);
 
-  const Box2i search_region = StereoSearchRegion(stereo_cam, kMinDepth, kStereoGridCols, width);
+  const Box2i search_region = StereoSearchRegion(stereo_cam, kMinDepth, kStereoLineGridCols, width);
   int Nm = MatchLinesGrid(grid, gridln_l, search_region, ldl, ldr, dir_l, dir_r,
                           min_distance_ratio, line_cosine_sim_th, matches_lr);
 

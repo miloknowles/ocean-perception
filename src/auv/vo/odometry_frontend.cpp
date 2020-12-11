@@ -95,8 +95,8 @@ OdometryEstimate OdometryFrontend::TrackStereoFrame(const Image1b& iml,
     const int Np_temporal = MatchPointsNN(
         orbl_prev_, orbl, opt_.temporal_min_distance_ratio, pmatches_01);
 
-    const int Nl_temporal = TemporalMatchLines(
-        kll_prev_, kll, ldl_prev_, ldl, stereo_camera_,
+    const int Nl_temporal = MatchLinesNN(
+        ldl_prev_, ldl, NormalizedDirection(kll_prev_), NormalizedDirection(kll),
         opt_.temporal_line_min_distance_ratio,
         std::cos(DegToRad(opt_.stereo_line_max_angle)),
         lmatches_01);

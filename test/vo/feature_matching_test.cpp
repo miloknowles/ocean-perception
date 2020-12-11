@@ -293,7 +293,7 @@ TEST(FeatureMatchingTest, TestTemporalMatchLines)
     Timer timer(true);
     const std::vector<Vector2d> dir1 = NormalizedDirection(kll);
     const std::vector<Vector2d> dir2 = NormalizedDirection(klr);
-    Nm = vo::MatchLinesNN(ldl, ldr, dir1, dir2, 0.7, std::cos(DegToRad(10)), matches_lr);
+    Nm = vo::MatchLinesNN(ldl, ldr, dir1, dir2, 0.3, std::cos(DegToRad(10)), matches_lr);
     ms.emplace_back(timer.Elapsed().milliseconds());
   }
   std::cout << "Grid Matching:" << std::endl;

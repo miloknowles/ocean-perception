@@ -4,6 +4,7 @@
 
 #include "core/file_utils.hpp"
 #include "core/math_util.hpp"
+#include "core/timer.hpp"
 #include "viz/visualize_matches.hpp"
 #include "vo/optimization.hpp"
 #include "vo/point_detector.hpp"
@@ -25,8 +26,9 @@ TEST(VOTest, TestSeq01)
   opt.opt_max_error_stdevs = 3.0;
   OdometryFrontend frontend(stereo_camera, opt);
 
+  const std::string data_path = "/home/milo/datasets/Unity3D/farmsim/03_forward_only";
   // const std::string data_path = "/home/milo/datasets/Unity3D/farmsim/06_seafloor_easy";
-  const std::string data_path = "/home/milo/datasets/Unity3D/farmsim/05_forward_side";
+  // const std::string data_path = "/home/milo/datasets/Unity3D/farmsim/05_forward_side";
   const std::string lpath = "image_0";
   const std::string rpath = "image_1";
 
@@ -46,7 +48,10 @@ TEST(VOTest, TestSeq01)
     Image3b rgbl = cv::imread(filenames_l.at(t), cv::IMREAD_COLOR);
     Image3b rgbr = cv::imread(filenames_r.at(t), cv::IMREAD_COLOR);
 
+    Timer timer(true);
     OdometryEstimate odom = frontend.TrackStereoFrame(iml, imr);
+    const double ms = timer.Elapsed().milliseconds();
+    printf("Took %lf ms (%lf hz) to process frame\n", ms, 1000.0 / ms);
 
     if (odom.tracked_keylines < 3 && odom.tracked_keypoints < 3) {
       odom.T_1_0 = Matrix4d::Identity();
@@ -60,6 +65,6 @@ TEST(VOTest, TestSeq01)
     std::cout << "Avg. reproj error:\n" << odom.error << std::endl;
     std::cout << "Pose estimate:\n" << T_curr_world << std::endl;
     std::cout << "Cov. estimate:\n" << odom.C_1_0 << std::endl;
-    cv::waitKey(1);
+    cv::waitKey(0);
   }
 }
