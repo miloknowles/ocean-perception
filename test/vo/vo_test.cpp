@@ -22,7 +22,7 @@ TEST(VOTest, TestSeq01)
   const StereoCamera stereo_camera(camera_model, camera_model, 0.2);
 
   OdometryFrontend::Options opt;
-  opt.track_lines = false;
+  // opt.track_lines = false;
   opt.opt_max_error_stdevs = 3.0;
   OdometryFrontend frontend(stereo_camera, opt);
 

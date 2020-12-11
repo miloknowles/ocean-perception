@@ -24,6 +24,7 @@ OdometryFrontend::OdometryFrontend(const StereoCamera& stereo_camera,
       pdetector_(opt.point_detector),
       ldetector_(opt.line_detector)
 {
+  std::cout << "[VO] Initialized OdometryFrontend" << std::endl;
 }
 
 
