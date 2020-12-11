@@ -67,3 +67,23 @@ TEST(MathUtilTest, TestExtrapolateLineSlopeRev)
   ASSERT_VECTOR_NEAR(Vector2d(0, 0), tar_ext.p0);
   ASSERT_VECTOR_NEAR(Vector2d(200, 100), tar_ext.p1);
 }
+
+TEST(MathUtilTest, TestComputeEndpointDisparity)
+{
+  const LineSegment2d ll1(Vector2d(0, 0), Vector2d(100, 100));
+  const LineSegment2d lr1(Vector2d(0, 0), Vector2d(200, 100));
+
+  double disp0, disp1;
+  ComputeEndpointDisparity(ll1, lr1, disp0, disp1);
+
+  EXPECT_EQ(0, disp0);
+  EXPECT_EQ(100, disp1);
+
+  // Should still work if endpoint ordering is flipped.
+  const LineSegment2d ll2(Vector2d(0, 0), Vector2d(100, 100));
+  const LineSegment2d lr2(Vector2d(99, 100), Vector2d(1, 0));
+
+  ComputeEndpointDisparity(ll2, lr2, disp0, disp1);
+  EXPECT_EQ(1, disp0);
+  EXPECT_EQ(1, disp1);
+}

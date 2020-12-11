@@ -255,5 +255,20 @@ LineSegment2d ExtrapolateLineSegment(const ld::KeyLine& line_ref, const ld::KeyL
   return ExtrapolateLineSegment(ls_ref, ls_tar);
 }
 
+
+bool ComputeEndpointDisparity(const LineSegment2d& l1, const LineSegment2d& l2,
+                              double& disp_p0, double& disp_p1)
+{
+  const bool order_is_flipped = std::fabs(l1.p0.y() - l2.p1.y()) < std::fabs(l1.p0.y() - l2.p0.y());
+
+  double x2_0 = order_is_flipped ? l2.p1.x() : l2.p0.x();
+  double x2_1 = order_is_flipped ? l2.p0.x() : l2.p1.x();
+
+  disp_p0 = std::fabs(l1.p0.x() - x2_0);
+  disp_p1 = std::fabs(l1.p1.x() - x2_1);
+
+  return order_is_flipped;
+}
+
 }
 }

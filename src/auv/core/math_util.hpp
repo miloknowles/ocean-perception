@@ -127,22 +127,11 @@ LineSegment2d ExtrapolateLineSegment(const ld::KeyLine& line_ref, const ld::KeyL
 
 /**
  * Computes the disparity of each endpoint in l1 (i.e disp_p0 is the disparity of l1.p0).
- * Ordering of p0 and p1 for l2 should not matter, we detect that here. However, this function will
- * only work if l2 has been extrapolated so that its endpoints lie on the same epipolar lines as l1.
+ * Ordering of p0 and p1 for l2 should not matter, we detect that here.
+ *
+ * NOTE: Only works if l2 has been extrapolated so that its endpoints lie on the same epipolar lines as l1.
  */
-inline bool ComputeEndpointDisparity(const LineSegment2d& l1, const LineSegment2d& l2,
-                                     double& disp_p0, double& disp_p1)
-{
-  const bool order_is_flipped = std::fabs(l1.p0.y() - l2.p1.y()) < (l1.p0.y() - l2.p0.y());
-
-  double x2_0 = order_is_flipped ? l2.p1.x() : l2.p0.x();
-  double x2_1 = order_is_flipped ? l2.p0.x() : l2.p1.x();
-
-  disp_p0 = std::fabs(l1.p0.x() - x2_0);
-  disp_p1 = std::fabs(l1.p1.x() - x2_1);
-
-  return order_is_flipped;
-}
-
+bool ComputeEndpointDisparity(const LineSegment2d& l1, const LineSegment2d& l2,
+                              double& disp_p0, double& disp_p1);
 }
 }
