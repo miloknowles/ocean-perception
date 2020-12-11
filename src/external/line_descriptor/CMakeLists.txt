@@ -1,7 +1,7 @@
 project(line-descriptor)
 
 cmake_minimum_required(VERSION 2.7)
-find_package( OpenCV 3 REQUIRED)
+find_package( OpenCV 3.2.0 REQUIRED)
 
 if(COMMAND cmake_policy)
   	cmake_policy(SET CMP0003 NEW)
@@ -19,8 +19,6 @@ set(LIBRARY_OUTPUT_PATH    ${PROJECT_SOURCE_DIR}/lib)
 include_directories( include ${OpenCV_INCLUDE_DIRS} )
 list(APPEND LINK_LIBS ${OpenCV_LIBS} )
 file(GLOB_RECURSE all_include_files RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" *.h *.hpp)
-
-
 
 link_directories(${CMAKE_SOURCE_DIR}/src/)
 message(${CMAKE_SOURCE_DIR})

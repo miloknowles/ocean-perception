@@ -14,14 +14,17 @@ namespace vo {
 
 namespace ld = cv::line_descriptor;
 
+
 OdometryFrontend::OdometryFrontend(const StereoCamera& stereo_camera,
                                    const Options& opt)
     : stereo_camera_(stereo_camera),
       camera_left_(stereo_camera.LeftIntrinsics()),
       camera_right_(stereo_camera.RightIntrinsics()),
+      opt_(opt),
       pdetector_(opt.point_detector),
       ldetector_(opt.line_detector)
 {
+  std::cout << "[VO] Initialized OdometryFrontend" << std::endl;
 }
 
 
@@ -137,18 +140,20 @@ OdometryEstimate OdometryFrontend::TrackStereoFrame(const Image1b& iml,
       l1_sigma_list.emplace_back(opt_.keyline_sigma);
     }
 
-    // const int Ni = OptimizePoseIterativeP(
-    //     P0_list, p1_list, p1_sigma_list, stereo_camera_, T_01, C_01, error, point_inlier_indices,
-    //     opt_.opt_max_iters, opt_.opt_min_error,
-    //     opt_.opt_min_error_delta, opt_.opt_max_error_stdevs);
-
-    const int Ni = OptimizePoseIterativePL(
-        P0_list, p1_obs_list, p1_sigma_list,
-        L0_list, l1_obs_list, l1_sigma_list,
-        stereo_camera_, T_01, C_01, error,
-        point_inlier_indices, line_inlier_indices,
-        opt_.opt_max_iters, opt_.opt_min_error,
-        opt_.opt_min_error_delta, opt_.opt_max_error_stdevs);
+    if (opt_.track_lines) {
+      const int Ni = OptimizePoseIterativePL(
+          P0_list, p1_obs_list, p1_sigma_list,
+          L0_list, l1_obs_list, l1_sigma_list,
+          stereo_camera_, T_01, C_01, error,
+          point_inlier_indices, line_inlier_indices,
+          opt_.opt_max_iters, opt_.opt_min_error,
+          opt_.opt_min_error_delta, opt_.opt_max_error_stdevs);
+    } else {
+      const int Ni = OptimizePoseIterativeP(
+          P0_list, p1_obs_list, p1_sigma_list, stereo_camera_, T_01, C_01, error, point_inlier_indices,
+          opt_.opt_max_iters, opt_.opt_min_error,
+          opt_.opt_min_error_delta, opt_.opt_max_error_stdevs);
+    }
 
     // Each item point_dm_01(i) links P0(i) and p1_obs(i) with its matching point.
     // Therefore, if p1_obs(i) is an inlier, we should keep point_dm_01.
@@ -161,6 +166,7 @@ OdometryEstimate OdometryFrontend::TrackStereoFrame(const Image1b& iml,
 
     printf("[VO] Temporal POINT matches: initial=%d | refined=%zu\n", Np_temporal, point_inlier_indices.size());
     printf("[VO] Temporal LINE matches:  initial=%d | refined=%zu\n", Nl_temporal, line_inlier_indices.size());
+    point_mask_01 = std::vector<char>(); // TODO
     cv::drawMatches(
         iml_prev_, kpl_prev_, iml, kpl, point_dm_01, draw_temporal_points,
         cv::Scalar::all(-1), cv::Scalar::all(-1), point_mask_01,
@@ -236,8 +242,8 @@ OdometryEstimate OdometryFrontend::TrackStereoFrame(const Image1b& iml,
 
   //========================= RETURN ODOMETRY ESTIMATE ==========================
   OdometryEstimate out;
-  out.T_l1_l0 = T_01.inverse();
-  out.C_l1_l0 = C_01;
+  out.T_1_0 = inverse_se3(T_01);
+  out.C_1_0 = C_01;
   out.error = error;
   out.tracked_keypoints = point_inlier_indices.size();
   out.tracked_keylines = line_inlier_indices.size();

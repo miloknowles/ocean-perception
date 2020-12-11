@@ -20,7 +20,7 @@ find_package(catkin REQUIRED COMPONENTS
 )
 
 # Find non-catkin pacakges.
-find_package(OpenCV 3.4.0 REQUIRED)
+find_package(OpenCV 3.2.0 EXACT REQUIRED)
 find_package(Boost        REQUIRED COMPONENTS filesystem)
 find_package(g2o          REQUIRED)
 find_package(Eigen3       REQUIRED)

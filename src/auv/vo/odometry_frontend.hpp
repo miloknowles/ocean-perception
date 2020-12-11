@@ -18,13 +18,14 @@ using namespace core;
 
 
 struct OdometryEstimate {
-  Matrix4d T_l1_l0 = Matrix4d::Identity();
-  Matrix6d C_l1_l0 = Matrix6d::Identity();
+  Matrix4d T_1_0 = Matrix4d::Identity();
+  Matrix6d C_1_0 = Matrix6d::Identity();
   double error = -1;
 
   int tracked_keypoints = 0;
   int tracked_keylines = 0;
 };
+
 
 class OdometryFrontend final {
  public:
@@ -38,10 +39,10 @@ class OdometryFrontend final {
     double temporal_min_distance_ratio = 0.8;
     double keypoint_sigma = 2.0;
 
-    double stereo_line_min_distance_ratio = 0.8;
+    double stereo_line_min_distance_ratio = 0.9;
     double temporal_line_min_distance_ratio = 0.8;
     double stereo_line_max_angle = 10.0;             // deg
-    double min_feature_disp = 2.0;
+    double min_feature_disp = 1.0;                   // max_depth = fx * B / min_feature_disp
     double keyline_sigma = 2.0;
 
     // Pose optimization.
@@ -49,6 +50,9 @@ class OdometryFrontend final {
     double opt_min_error = 1e-7;
     double opt_min_error_delta = 1e-9;
     double opt_max_error_stdevs = 2.0; // TODO
+
+    bool track_points = true;
+    bool track_lines = true;
   };
 
   OdometryFrontend(const StereoCamera& stereo_camera, const Options& opt);

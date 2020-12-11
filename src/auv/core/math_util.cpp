@@ -217,8 +217,8 @@ double LineSegmentOverlap(Vector2d ps_obs, Vector2d pe_obs, Vector2d ps_proj, Ve
 
 LineSegment2d ExtrapolateLineSegment(const LineSegment2d& line_ref, const LineSegment2d& line_tar)
 {
-  const double ymin = std::min(line_ref.p0.y(), line_ref.p1.y());
-  const double ymax = std::max(line_ref.p0.y(), line_ref.p1.y());
+  const double y0r = line_ref.p0.y();
+  const double y1r = line_ref.p1.y();
 
   const double x0 = line_tar.p0.x();
   const double y0 = line_tar.p0.y();
@@ -230,7 +230,7 @@ LineSegment2d ExtrapolateLineSegment(const LineSegment2d& line_ref, const LineSe
 
   // CASE 1: Vertical line - just extend vertically.
   if (std::fabs(dx) < 1e-3 || std::fabs(dy / dx) > 1e3) {
-    return LineSegment2d(Vector2d(x0, ymin), Vector2d(x0, ymax));
+    return LineSegment2d(Vector2d(x0, y0r), Vector2d(x0, y1r));
 
   // CASE 2: Horizontal line - cannot extrapolate, so just return the existing target line.
   } else if (std::fabs(dy / dx) < 1e-3) {
@@ -238,9 +238,10 @@ LineSegment2d ExtrapolateLineSegment(const LineSegment2d& line_ref, const LineSe
 
   // CASE 3: Non-degenerate case, use slope to extrapolate.
   } else {
-    const double x0_ext = (ymin - y0) * dx / dy;
-    const double x1_ext = (ymin - y0) * dx / dy;
-    return LineSegment2d(Vector2d(x0_ext, ymin), Vector2d(x1_ext, ymax));
+    const double m = (dy / dx);
+    const double x0_ext = x0 + (y0r - y0) / m;
+    const double x1_ext = x0 + (y1r - y0) / m;
+    return LineSegment2d(Vector2d(x0_ext, y0r), Vector2d(x1_ext, y1r));
   }
 }
 
@@ -252,6 +253,21 @@ LineSegment2d ExtrapolateLineSegment(const ld::KeyLine& line_ref, const ld::KeyL
   const LineSegment2d ls_tar(Vector2d(line_tar.startPointX, line_tar.startPointY),
                              Vector2d(line_tar.endPointX, line_tar.endPointY));
   return ExtrapolateLineSegment(ls_ref, ls_tar);
+}
+
+
+bool ComputeEndpointDisparity(const LineSegment2d& l1, const LineSegment2d& l2,
+                              double& disp_p0, double& disp_p1)
+{
+  const bool order_is_flipped = std::fabs(l1.p0.y() - l2.p1.y()) < std::fabs(l1.p0.y() - l2.p0.y());
+
+  double x2_0 = order_is_flipped ? l2.p1.x() : l2.p0.x();
+  double x2_1 = order_is_flipped ? l2.p0.x() : l2.p1.x();
+
+  disp_p0 = std::fabs(l1.p0.x() - x2_0);
+  disp_p1 = std::fabs(l1.p1.x() - x2_1);
+
+  return order_is_flipped;
 }
 
 }
