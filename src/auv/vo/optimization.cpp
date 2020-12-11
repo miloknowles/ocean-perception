@@ -26,6 +26,8 @@ int OptimizePoseIterativeP(const std::vector<Vector3d>& P0_list,
       T_01, C_01, error,                                // Outputs.
       max_iters, min_error, min_error_delta);           // Params.
 
+  std::cout << "Initial odometry estimate:\n" << inverse_se3(T_01) << std::endl;
+
   RemovePointOutliers(T_01, P0_list, p1_obs_list, p1_sigma_list,
                       stereo_cam, max_error_stdevs, inlier_indices);
 
@@ -507,6 +509,7 @@ int RemovePointOutliers(const Matrix4d& T_01,
     const Vector2d p1 = cam.Project(P1);
     const double e = (p1 - p1_obs_list.at(i)).norm();
     const double sigma = p1_sigma_list.at(i);
+    printf("e=%lf sigma=%lf sigma*stdevs=%lf\n", e, sigma, sigma*max_err_stdevs);
     if (e < (sigma * max_err_stdevs)) {
       inlier_indices.emplace_back(i);
     }

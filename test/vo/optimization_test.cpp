@@ -175,30 +175,40 @@ TEST(OptimizationTest, TestLM_02)
 
   // Groundtruth poses of the 0th and 1th cameras.
   Matrix4d T_0_w = Matrix4d::Identity();
-  T_0_w.col(3).head(3) = Vector3d(1, 2, -1);
+  // T_0_w.col(3).head(3) = Vector3d(1, 2, -1);
   Matrix4d T_1_w = Matrix4d::Identity();
+  T_1_w(2, 3) = 5.0;
 
   // Groundtruth location of 3D landmarks in the world.
-  const std::vector<Vector3d> P_w = {
-    Vector3d(-1, 0.1, 3),
-    Vector3d(0, 0.2, 2),
-    Vector3d(1, 0.3, 6),
-  };
+  // std::vector<Vector3d> P_w = {
+  //   Vector3d(-3, 0.1, 7),
+  //   Vector3d(0, 0.2, 9),
+  //   Vector3d(3, 0.3, 8),
+  // };
+
+  std::vector<Vector3d> P_w;
+  for (double x = -5; x <= 5; ++x) {
+    for (double y = -5; y <= 5; ++y) {
+      P_w.emplace_back(Vector3d(x, y, 10));
+    }
+  }
 
   // Standard deviation of 1px on observed points.
-  const std::vector<double> p1_sigma_list = { 1.0, 1.0, 1.0 };
+  std::vector<double> p1_sigma_list(P_w.size());
+  std::fill(p1_sigma_list.begin(), p1_sigma_list.end(), 1.0);
+
   std::vector<Vector2d> p1_list;
   std::vector<Vector3d> P0_list;
   SimulatePoints(T_0_w, T_1_w, P_w, stereo_cam, p1_sigma_list, P0_list, p1_list);
 
-  const int max_iters = 20;
+  const int max_iters = 10;
   const double min_error = 1e-7;
   const double min_error_delta = 1e-9;
 
   // Outputs from the optimization.
   double error;
   Matrix4d T_01 = Matrix4d::Identity();
-  T_01.col(3).head(3) = Vector3d(0.5, 1.73, -1.05);
+  T_01.col(3).head(3) = Vector3d(0, 0, 0);
 
   std::cout << "Starting pose T_01:\n" << T_01 << std::endl;
 

@@ -14,11 +14,13 @@ namespace vo {
 
 namespace ld = cv::line_descriptor;
 
+
 OdometryFrontend::OdometryFrontend(const StereoCamera& stereo_camera,
                                    const Options& opt)
     : stereo_camera_(stereo_camera),
       camera_left_(stereo_camera.LeftIntrinsics()),
       camera_right_(stereo_camera.RightIntrinsics()),
+      opt_(opt),
       pdetector_(opt.point_detector),
       ldetector_(opt.line_detector)
 {
@@ -163,6 +165,7 @@ OdometryEstimate OdometryFrontend::TrackStereoFrame(const Image1b& iml,
 
     printf("[VO] Temporal POINT matches: initial=%d | refined=%zu\n", Np_temporal, point_inlier_indices.size());
     printf("[VO] Temporal LINE matches:  initial=%d | refined=%zu\n", Nl_temporal, line_inlier_indices.size());
+    point_mask_01 = std::vector<char>(); // TODO
     cv::drawMatches(
         iml_prev_, kpl_prev_, iml, kpl, point_dm_01, draw_temporal_points,
         cv::Scalar::all(-1), cv::Scalar::all(-1), point_mask_01,

@@ -18,14 +18,15 @@ using namespace bm::viz;
 
 TEST(VOTest, TestSeq01)
 {
-  const PinholeCamera camera_model(415.876509, 415.876509, 376.0, 240.0, 480, 752);
+  const PinholeCamera camera_model(415.876509, 415.876509, 375.5, 239.5, 480, 752);
   const StereoCamera stereo_camera(camera_model, camera_model, 0.2);
 
   OdometryFrontend::Options opt;
-  // opt.track_lines = false;
+  opt.track_lines = false;
+  opt.opt_max_error_stdevs = 3.0;
   OdometryFrontend frontend(stereo_camera, opt);
 
-  const std::string data_path = "/home/milo/datasets/Unity3D/farmsim/01";
+  const std::string data_path = "/home/milo/datasets/Unity3D/farmsim/06_seafloor_easy";
   const std::string lpath = "image_0";
   const std::string rpath = "image_1";
 
