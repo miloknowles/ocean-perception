@@ -36,7 +36,7 @@ TEST(LineDetectorTest, TestDetect)
   printf("Averaged %lf ms\n", timer.Elapsed().milliseconds() / 100.0);
 
   ld::drawKeylines(imleft, lines_out_left, rgb_left);
-  ld::drawKeylines(imleft, lines_out_right, rgb_right);
+  ld::drawKeylines(imright, lines_out_right, rgb_right);
   cv::imshow("lines_left", rgb_left);
   cv::imshow("lines_right", rgb_right);
   cv::waitKey(0);

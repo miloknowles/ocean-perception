@@ -3,6 +3,8 @@
 namespace bm {
 namespace vo {
 
+static const float kDetectLineScale = 2.0;
+
 
 // From: https://github.com/rubengooj/stvo-pl
 struct sort_lines_by_response {
@@ -38,9 +40,12 @@ int LineDetector::Detect(const core::Image1b& img,
 {
   lines_out.clear();
 
+  core::Image1b img_small;
+  cv::resize(img, img_small, cv::Size(img.cols / kDetectLineScale, img.rows / kDetectLineScale));
+
   std::vector<ld::KeyLine> lines_initial;
 
-  lsd_->detect(img, lines_initial, opt_.lsd_scale, opt_.lsd_num_octaves);
+  lsd_->detect(img_small, lines_initial, opt_.lsd_scale, opt_.lsd_num_octaves);
 
   // Remove horizontal lines.
   FilterLines(lines_initial, 1e-2, lines_out);
@@ -57,7 +62,22 @@ int LineDetector::Detect(const core::Image1b& img,
   }
 
   // Compute a visual descriptor for each line.
-  lbd_->compute(img, lines_out, desc_out);
+  lbd_->compute(img_small, lines_out, desc_out);
+
+  for (int i = 0; i < lines_out.size(); ++i) {
+    lines_out.at(i).startPointX *= kDetectLineScale;
+    lines_out.at(i).startPointY *= kDetectLineScale;
+    lines_out.at(i).endPointX *= kDetectLineScale;
+    lines_out.at(i).endPointY *= kDetectLineScale;
+    lines_out.at(i).sPointInOctaveX *= kDetectLineScale;
+    lines_out.at(i).sPointInOctaveY *= kDetectLineScale;
+    lines_out.at(i).ePointInOctaveX *= kDetectLineScale;
+    lines_out.at(i).ePointInOctaveY *= kDetectLineScale;
+    lines_out.at(i).pt *= kDetectLineScale;
+    lines_out.at(i).lineLength *= kDetectLineScale;
+    lines_out.at(i).numOfPixels *= kDetectLineScale;
+    lines_out.at(i).size *= kDetectLineScale*kDetectLineScale;
+  }
 
   return lines_out.size();
 }

@@ -14,7 +14,7 @@ namespace vo {
 class LineDetector final {
  public:
   struct Options {
-    int lsd_num_features    = 50;  // Set this to -1 if you want ALL of the features.
+    int lsd_num_features    = 300;   // Set this to -1 if you want ALL of the features.
     int lsd_scale           = 0;    // TODO(milo): Figure out what this is...
     int lsd_num_octaves     = 1;    // This only seems to work when set to 1.
   };
