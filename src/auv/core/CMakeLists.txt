@@ -14,9 +14,10 @@ SET(LIBRARY_SRC
   timedelta.hpp
   timer.hpp)
 
-message("===================================================")
-get_property(inc_dirs DIRECTORY PROPERTY INCLUDE_DIRECTORIES)
-message("INCLUDE = ${inc_dirs}")
+# NOTE(milo): This is how to debug the INCLUDE_DIRECTORIES if needed.
+# message("===================================================")
+# get_property(inc_dirs DIRECTORY PROPERTY INCLUDE_DIRECTORIES)
+# message("INCLUDE = ${inc_dirs}")
 
 add_library(${LIBRARY_NAME} SHARED ${LIBRARY_SRC})
 set_target_properties(${LIBRARY_NAME} PROPERTIES LINKER_LANGUAGE CXX)

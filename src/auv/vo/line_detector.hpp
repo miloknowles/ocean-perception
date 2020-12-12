@@ -15,16 +15,8 @@ class LineDetector final {
  public:
   struct Options {
     int lsd_num_features    = 300;  // Set this to -1 if you want ALL of the features.
-    int lsd_refine          = 0;
-    int lsd_scale           = 2;
-    int lsd_num_octaves     = 1;
-    double lsd_sigma_scale  = 0.6;
-    double lsd_quant        = 2.0;
-    double lsd_ang_th       = 22.5;
-    double log_eps          = 1.0;
-    double lsd_density_th   = 0.6;
-    int lsd_n_bins          = 1024;
-    double lsd_min_length   = 20;   // TODO
+    int lsd_scale           = 0;    // TODO(milo): Figure out what this is...
+    int lsd_num_octaves     = 1;    // This only seems to work when set to 1.
   };
 
   LineDetector(const Options& opt) : opt_(opt) {}

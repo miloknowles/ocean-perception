@@ -40,8 +40,6 @@ int LineDetector::Detect(const core::Image1b& img,
 
   std::vector<ld::KeyLine> lines_initial;
 
-  // NOTE(milo): Not sure why members of opt are repeated here? Could it be a different param?
-  // lsd_->detect(img, lines_initial, lsd_opt_.scale, 1, lsd_opt_);
   lsd_->detect(img, lines_initial, opt_.lsd_scale, opt_.lsd_num_octaves);
 
   // Remove horizontal lines.
