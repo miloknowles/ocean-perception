@@ -56,7 +56,7 @@ class OdometryFrontend final {
     double opt_max_error_stdevs = 2.0; // TODO
 
     bool track_points = true;
-    bool track_lines = true;
+    bool track_lines = false;
   };
 
   OdometryFrontend(const StereoCamera& stereo_camera, const Options& opt);
