@@ -44,7 +44,7 @@ class OdometryFrontend final {
 
     double stereo_line_min_distance_ratio = 0.8;
     double temporal_line_min_distance_ratio = 0.8;
-    double stereo_line_max_angle = 10.0;             // deg
+    double stereo_line_max_angle = 20.0;             // deg
     double temporal_line_max_angle = 20.0f;
     double min_feature_disp = 1.0;                   // max_depth = fx * B / min_feature_disp
     double keyline_sigma = 2.0;
@@ -76,13 +76,13 @@ class OdometryFrontend final {
 
   // Store keypoints and descriptors from the previous frame for tracking.
   cv::Mat iml_prev_;
-  std::vector<cv::KeyPoint> kpl_prev_, kpr_prev_;
+  std::vector<cv::KeyPoint> kpl_prev_;
   std::vector<double> disp_prev_;
-  cv::Mat orbl_prev_, orbr_prev_;
+  cv::Mat orbl_prev_;
 
-  std::vector<LineFeature3D> left_lines_prev_, right_lines_prev_;
-  std::vector<ld::KeyLine> kll_prev_, klr_prev_;
-  cv::Mat ldl_prev_, ldr_prev_;
+  std::vector<LineFeature3D> left_lines_prev_;
+  std::vector<ld::KeyLine> kll_prev_;
+  cv::Mat ldl_prev_;
 
   Matrix4d T_01_prev_;
 };
