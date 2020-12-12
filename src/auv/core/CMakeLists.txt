@@ -14,8 +14,16 @@ SET(LIBRARY_SRC
   timedelta.hpp
   timer.hpp)
 
+message("===================================================")
+get_property(inc_dirs DIRECTORY PROPERTY INCLUDE_DIRECTORIES)
+message("INCLUDE = ${inc_dirs}")
+
 add_library(${LIBRARY_NAME} SHARED ${LIBRARY_SRC})
 set_target_properties(${LIBRARY_NAME} PROPERTIES LINKER_LANGUAGE CXX)
 target_compile_options(${LIBRARY_NAME} PUBLIC "-std=c++11")
-target_include_directories(${LIBRARY_NAME} PRIVATE ${PROJECT_SOURCE_DIR}/src)
-target_link_libraries(${LIBRARY_NAME} ${Boost_LIBRARIES} external_linedesc)
+target_include_directories(${LIBRARY_NAME} PRIVATE
+  ${PROJECT_SOURCE_DIR}/src)
+target_link_libraries(${LIBRARY_NAME}
+  ${Boost_LIBRARIES}
+  ${OpenCV_LIBRARIES}
+  ${OpenCV_LIBS})

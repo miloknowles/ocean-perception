@@ -1,5 +1,3 @@
-#include "line_descriptor/include/line_descriptor_custom.hpp"
-
 #include "vo/odometry_frontend.hpp"
 #include "vo/feature_matching.hpp"
 #include "vo/optimization.hpp"
@@ -8,8 +6,6 @@
 #include "core/line_segment.hpp"
 
 #include "viz/visualize_matches.hpp"
-
-namespace ld2 = cv::ld2;
 
 namespace bm {
 namespace vo {
@@ -56,7 +52,7 @@ OdometryEstimate OdometryFrontend::TrackStereoFrame(const Image1b& iml,
   cv::imshow("stereo_points", draw_stereo_points);
 
   //========================= STEREO LINE MATCHING =============================
-  std::vector<ld2::KeyLine> kll, klr;
+  std::vector<ld::KeyLine> kll, klr;
   cv::Mat ldl, ldr;
   const int nl = ldetector_.Detect(iml, kll, ldl);
   const int nr = ldetector_.Detect(imr, klr, ldr);
@@ -220,8 +216,8 @@ OdometryEstimate OdometryFrontend::TrackStereoFrame(const Image1b& iml,
 
     if (jr < 0) { continue; }
 
-    const ld2::KeyLine& kllj = kll.at(j);
-    const ld2::KeyLine& klrj = klr.at(jr);
+    const ld::KeyLine& kllj = kll.at(j);
+    const ld::KeyLine& klrj = klr.at(jr);
 
     LineSegment2d line_right_ext = ExtrapolateLineSegment(kllj, klrj);
     double disp_s, disp_e;

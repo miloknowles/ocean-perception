@@ -1,9 +1,10 @@
 #pragma once
 
-#include "line_descriptor/include/line_descriptor_custom.hpp"
+#include <opencv2/line_descriptor/descriptor.hpp>
+
 #include "core/eigen_types.hpp"
 
-namespace ld2 = cv::ld2;
+namespace ld = cv::line_descriptor;
 
 namespace bm {
 namespace core {
@@ -19,7 +20,7 @@ struct LineFeature2D {
     ComputeCrossProduct();
   }
 
-  LineFeature2D(const ld2::KeyLine& kl)
+  LineFeature2D(const ld::KeyLine& kl)
       : p_start(kl.startPointX, kl.startPointY),
       p_end(kl.endPointX, kl.endPointY)
   {

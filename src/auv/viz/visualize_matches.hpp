@@ -5,12 +5,12 @@
 #include <opencv2/highgui.hpp>
 #include <opencv2/features2d.hpp>
 
-#include "line_descriptor/include/line_descriptor_custom.hpp"
+#include <opencv2/line_descriptor/descriptor.hpp>
 
 #include "viz/colormap.hpp"
 #include "core/random.hpp"
 
-namespace ld2 = cv::ld2;
+namespace ld = cv::line_descriptor;
 
 namespace bm {
 namespace viz {
@@ -23,9 +23,9 @@ void FillMask(const std::vector<cv::DMatch>& matches_12, const std::vector<int>&
 
 
 void DrawLineMatches(const cv::Mat& img1,
-                     const std::vector<ld2::KeyLine>& keylines1,
+                     const std::vector<ld::KeyLine>& keylines1,
                      const cv::Mat& img2,
-                     const std::vector<ld2::KeyLine>& keylines2,
+                     const std::vector<ld::KeyLine>& keylines2,
                      const std::vector<cv::DMatch>& matches1to2,
                      cv::Mat& draw_img,
                      const std::vector<char>& matches_mask,

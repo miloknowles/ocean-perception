@@ -1,5 +1,7 @@
 #pragma once
 
+#include <opencv2/line_descriptor/descriptor.hpp>
+
 #include "core/eigen_types.hpp"
 #include "core/cv_types.hpp"
 #include "core/stereo_camera.hpp"
@@ -10,6 +12,7 @@
 #include "vo/point_detector.hpp"
 #include "vo/line_detector.hpp"
 
+namespace ld = cv::line_descriptor;
 
 namespace bm {
 namespace vo {
@@ -78,7 +81,7 @@ class OdometryFrontend final {
   cv::Mat orbl_prev_, orbr_prev_;
 
   std::vector<LineFeature3D> left_lines_prev_, right_lines_prev_;
-  std::vector<ld2::KeyLine> kll_prev_, klr_prev_;
+  std::vector<ld::KeyLine> kll_prev_, klr_prev_;
   cv::Mat ldl_prev_, ldr_prev_;
 
   Matrix4d T_01_prev_;

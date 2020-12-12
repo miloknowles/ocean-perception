@@ -10,5 +10,5 @@ target_compile_options(${LIBRARY_NAME} PUBLIC "-std=c++11")
 target_include_directories(${LIBRARY_NAME} PRIVATE ${PROJECT_SOURCE_DIR}/src)
 
 target_link_libraries(${LIBRARY_NAME}
-  ${OpenCV_LIBRARIES}
-  external_linedesc)
+  ${PROJECT_NAME}_core
+  ${OpenCV_LIBRARIES})

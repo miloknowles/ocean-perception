@@ -2,9 +2,10 @@
 
 #include "core/eigen_types.hpp"
 #include "core/cv_types.hpp"
-#include "line_descriptor/include/line_descriptor_custom.hpp"
 
-namespace ld2 = cv::ld2;
+#include <opencv2/line_descriptor/descriptor.hpp>
+
+namespace ld = cv::line_descriptor;
 
 namespace bm {
 namespace vo {
@@ -15,7 +16,8 @@ class LineDetector final {
   struct Options {
     int lsd_num_features    = 300;  // Set this to -1 if you want ALL of the features.
     int lsd_refine          = 0;
-    double lsd_scale        = 1.2;
+    int lsd_scale           = 2;
+    int lsd_num_octaves     = 1;
     double lsd_sigma_scale  = 0.6;
     double lsd_quant        = 2.0;
     double lsd_ang_th       = 22.5;
@@ -25,25 +27,14 @@ class LineDetector final {
     double lsd_min_length   = 20;   // TODO
   };
 
-  LineDetector(const Options& opt) : opt_(opt) {
-    lsd_opt_.refine = opt.lsd_refine;
-    lsd_opt_.scale = opt.lsd_scale;
-    lsd_opt_.sigma_scale = opt.lsd_sigma_scale;
-    lsd_opt_.quant = opt.lsd_quant;
-    lsd_opt_.ang_th = opt.lsd_ang_th;
-    lsd_opt_.density_th = opt.lsd_density_th;
-    lsd_opt_.n_bins = opt.lsd_n_bins;
-    lsd_opt_.min_length = opt.lsd_min_length;
-  }
+  LineDetector(const Options& opt) : opt_(opt) {}
 
-  int Detect(const core::Image1b& img, std::vector<ld2::KeyLine>& lines_out, cv::Mat& desc_out);
+  int Detect(const core::Image1b& img, std::vector<ld::KeyLine>& lines_out, cv::Mat& desc_out);
 
  private:
   Options opt_;
-  ld2::LSDDetectorC::LSDOptions lsd_opt_;
-
-  cv::Ptr<ld2::LSDDetectorC> lsd_ = ld2::LSDDetectorC::createLSDDetectorC();
-  cv::Ptr<ld2::BinaryDescriptor> lbd_ = ld2::BinaryDescriptor::createBinaryDescriptor();
+  cv::Ptr<ld::LSDDetector> lsd_ = ld::LSDDetector::createLSDDetector();
+  cv::Ptr<ld::BinaryDescriptor> lbd_ = ld::BinaryDescriptor::createBinaryDescriptor();
 };
 
 }

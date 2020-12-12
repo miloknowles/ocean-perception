@@ -3,13 +3,13 @@
 #include <cmath>
 #include <numeric>
 
-#include "line_descriptor/include/line_descriptor_custom.hpp"
+#include <opencv2/line_descriptor/descriptor.hpp>
 
 #include "core/eigen_types.hpp"
 #include "core/line_segment.hpp"
 #include "core/pinhole_camera.hpp"
 
-namespace ld2 = cv::ld2;
+namespace ld = cv::line_descriptor;
 
 namespace bm {
 namespace core {
@@ -19,7 +19,7 @@ static const double RAD_TO_DEG_D = 180.0 / M_PI;
 
 
 // Return the unit direction vector.
-inline Vector2d NormalizedDirection(const ld2::KeyLine& kl)
+inline Vector2d NormalizedDirection(const ld::KeyLine& kl)
 {
   const cv::Point2d diff = kl.getEndPoint() - kl.getStartPoint();
   const Vector2d v(diff.x, diff.y);
@@ -28,7 +28,7 @@ inline Vector2d NormalizedDirection(const ld2::KeyLine& kl)
 
 
 // Returns the unit direction vectors for a list of line segments.
-inline std::vector<Vector2d> NormalizedDirection(const std::vector<ld2::KeyLine>& kls)
+inline std::vector<Vector2d> NormalizedDirection(const std::vector<ld::KeyLine>& kls)
 {
   std::vector<Vector2d> out(kls.size());
   for (int i = 0; i < kls.size(); ++i) {
@@ -123,7 +123,7 @@ double LineSegmentOverlap(Vector2d ps_obs, Vector2d pe_obs, Vector2d ps_proj, Ve
  * @return The extrapolated endpoints of line_tar.
  */
 LineSegment2d ExtrapolateLineSegment(const LineSegment2d& line_ref, const LineSegment2d& line_tar);
-LineSegment2d ExtrapolateLineSegment(const ld2::KeyLine& line_ref, const ld2::KeyLine& line_tar);
+LineSegment2d ExtrapolateLineSegment(const ld::KeyLine& line_ref, const ld::KeyLine& line_tar);
 
 
 /**

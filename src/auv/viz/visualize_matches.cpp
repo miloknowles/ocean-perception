@@ -35,9 +35,9 @@ void FillMask(const std::vector<cv::DMatch>& matches_12, const std::vector<int>&
 
 
 void DrawLineMatches(const cv::Mat& img1,
-                     const std::vector<ld2::KeyLine>& keylines1,
+                     const std::vector<ld::KeyLine>& keylines1,
                      const cv::Mat& img2,
-                     const std::vector<ld2::KeyLine>& keylines2,
+                     const std::vector<ld::KeyLine>& keylines2,
                      const std::vector<cv::DMatch>& matches1to2,
                      cv::Mat& draw_img,
                      const std::vector<char>& matches_mask,
@@ -58,8 +58,8 @@ void DrawLineMatches(const cv::Mat& img1,
   for (size_t counter = 0; counter < matches1to2.size(); counter++) {
     if (matches_mask.size() == 0 || matches_mask.at(counter) != 0) {
       const cv::DMatch& dm = matches1to2.at(counter);
-      const ld2::KeyLine& left = keylines1.at(dm.queryIdx);
-      const ld2::KeyLine& right = keylines2.at(dm.trainIdx);
+      const ld::KeyLine& left = keylines1.at(dm.queryIdx);
+      const ld::KeyLine& right = keylines2.at(dm.trainIdx);
 
       // Generates a random color of uniform brightness.
       const cv::Vec3b& random_color = viz::ToCvColor(core::RandomUnit3f());

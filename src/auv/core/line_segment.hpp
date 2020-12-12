@@ -1,9 +1,10 @@
 #pragma once
 
-#include "line_descriptor/include/line_descriptor_custom.hpp"
+#include <opencv2/line_descriptor/descriptor.hpp>
+
 #include "core/eigen_types.hpp"
 
-namespace ld2 = cv::ld2;
+namespace ld = cv::line_descriptor;
 
 namespace bm {
 namespace core {
@@ -12,7 +13,7 @@ template <typename PointType>
 struct LineSegment {
   LineSegment() = default;
   LineSegment(const PointType& _p0, const PointType& _p1) : p0(_p0), p1(_p1) {}
-  LineSegment(const ld2::KeyLine& kl) :
+  LineSegment(const ld::KeyLine& kl) :
       p0(kl.startPointX, kl.startPointY),
       p1(kl.endPointX, kl.endPointY) {}
 

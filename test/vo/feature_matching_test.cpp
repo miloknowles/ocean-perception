@@ -3,6 +3,7 @@
 #include "gtest/gtest.h"
 
 #include <opencv2/highgui.hpp>
+#include <opencv2/line_descriptor/descriptor.hpp>
 
 #include "core/grid_lookup.hpp"
 #include "core/math_util.hpp"
@@ -12,9 +13,7 @@
 #include "vo/line_detector.hpp"
 #include "vo/feature_matching.hpp"
 
-#include "line_descriptor/include/line_descriptor_custom.hpp"
-
-namespace ld2 = cv::ld2;
+namespace ld = cv::line_descriptor;
 
 using namespace bm;
 using namespace core;
@@ -78,14 +77,14 @@ using namespace core;
 //   core::Image3b rgb_left = cv::imread("./resources/farmsim_01_left.png", cv::IMREAD_COLOR);
 //   core::Image3b rgb_right = cv::imread("./resources/farmsim_01_right.png", cv::IMREAD_COLOR);
 
-//   std::vector<ld2::KeyLine> lines_out_left, lines_out_right;
+//   std::vector<ld::KeyLine> lines_out_left, lines_out_right;
 //   cv::Mat desc_out_left, desc_out_right;
 //   const int nl = detector.Detect(iml, lines_out_left, desc_out_left);
 //   const int nr = detector.Detect(imr, lines_out_right, desc_out_right);
 //   printf("Detected %d|%d keypoints in left|right images\n", nl, nr);
 
-//   // ld2::drawKeylines(iml, lines_out_left, rgb_left);
-//   // ld2::drawKeylines(iml, lines_out_right, rgb_right);
+//   // ld::drawKeylines(iml, lines_out_left, rgb_left);
+//   // ld::drawKeylines(iml, lines_out_right, rgb_right);
 //   // cv::imshow("lines_left", rgb_left);
 //   // cv::imshow("lines_right", rgb_right);
 //   // cv::waitKey(0);
@@ -163,8 +162,8 @@ TEST(FeatureMatchingTest, TestStereoMatchPoints)
 
 TEST(FeatureMatchingTest, TestStereoMatchLines)
 {
-  std::vector<ld2::KeyLine> kll;
-  std::vector<ld2::KeyLine> klr;
+  std::vector<ld::KeyLine> kll;
+  std::vector<ld::KeyLine> klr;
 
   vo::LineDetector::Options opt;
   vo::LineDetector detector(opt);
@@ -257,8 +256,8 @@ TEST(FeatureMatchingTest, TestTemporalMatchPoints)
 
 TEST(FeatureMatchingTest, TestTemporalMatchLines)
 {
-  std::vector<ld2::KeyLine> kll;
-  std::vector<ld2::KeyLine> klr;
+  std::vector<ld::KeyLine> kll;
+  std::vector<ld::KeyLine> klr;
 
   vo::LineDetector::Options opt;
   vo::LineDetector detector(opt);

@@ -87,7 +87,7 @@ std::vector<Vector2i> MapToGridCells(const std::vector<cv::KeyPoint>& keypoints,
 }
 
 
-std::vector<LineSegment2i> MapToGridCells(const std::vector<ld2::KeyLine>& keylines,
+std::vector<LineSegment2i> MapToGridCells(const std::vector<ld::KeyLine>& keylines,
                                           int image_rows, int image_cols,
                                           int grid_rows, int grid_cols)
 {
@@ -385,8 +385,8 @@ int TemporalMatchPoints(const std::vector<cv::KeyPoint>& kp0,
 }
 
 
-int TemporalMatchLines(const std::vector<ld2::KeyLine>& kl0,
-                      const std::vector<ld2::KeyLine>& kl1,
+int TemporalMatchLines(const std::vector<ld::KeyLine>& kl0,
+                      const std::vector<ld::KeyLine>& kl1,
                       const cv::Mat& ld0,
                       const cv::Mat& ld1,
                       const core::StereoCamera& stereo_cam,
@@ -472,8 +472,8 @@ int StereoMatchPoints(const std::vector<cv::KeyPoint>& kpl,
 }
 
 
-int StereoMatchLines(const std::vector<ld2::KeyLine>& kll,
-                     const std::vector<ld2::KeyLine>& klr,
+int StereoMatchLines(const std::vector<ld::KeyLine>& kll,
+                     const std::vector<ld::KeyLine>& klr,
                      const cv::Mat& ldl,
                      const cv::Mat& ldr,
                      const core::StereoCamera& stereo_cam,
@@ -505,8 +505,8 @@ int StereoMatchLines(const std::vector<ld2::KeyLine>& kll,
     const int ir = matches_lr.at(il);
     if (ir < 0) { continue; }
 
-    const ld2::KeyLine& klli = kll.at(il);
-    const ld2::KeyLine& klri = klr.at(ir);
+    const ld::KeyLine& klli = kll.at(il);
+    const ld::KeyLine& klri = klr.at(ir);
 
     const LineSegment2d line_right_ext = ExtrapolateLineSegment(klli, klri);
     double disp_s, disp_e;

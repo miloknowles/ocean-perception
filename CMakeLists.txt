@@ -27,11 +27,15 @@ find_package(Eigen3       REQUIRED)
 find_package(yaml-cpp     REQUIRED CONFIG PATHS ${YAML_PATHS}) # YAML library
 
 include_directories(
+  /usr/include/
+  /usr/include/opencv2/
   ${Eigen3_INCLUDE_DIRS}
   ${OpenCV_INCLUDE_DIRS}
   ${Boost_INCLUDE_DIRS}
   ${YAML_CPP_INCLUDE_DIR}
   src/external/
+  ./src/auv/
+  ${catkin_INCLUDE_DIRS}
 )
 
 # Set link libraries
@@ -147,10 +151,9 @@ catkin_package(
 
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
-include_directories(
-./src/auv/
-${catkin_INCLUDE_DIRS}
-)
+# include_directories(
+  # ./src/auv/
+  # ${catkin_INCLUDE_DIRS})
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
