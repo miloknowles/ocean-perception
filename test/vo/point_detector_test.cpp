@@ -4,9 +4,11 @@
 
 #include "core/eigen_types.hpp"
 #include "core/cv_types.hpp"
+#include "core/timer.hpp"
 #include "vo/point_detector.hpp"
 
 using namespace bm;
+using namespace core;
 
 
 TEST(PointDetectorTest, TestDetect)
@@ -19,12 +21,16 @@ TEST(PointDetectorTest, TestDetect)
 
   cv::imshow("imleft", imleft);
   cv::imshow("imright", imright);
-  cv::waitKey(0);
 
   std::vector<cv::KeyPoint> kpl, kpr;
   cv::Mat descl, descr;
 
-  const int nleft = detector.Detect(imleft, kpl, descl);
-  const int nright = detector.Detect(imright, kpr, descr);
+  int nleft, nright;
+  Timer timer(true);
+  for (int iter = 0; iter < 100; ++iter) {
+    nleft = detector.Detect(imleft, kpl, descl);
+    nright = detector.Detect(imright, kpr, descr);
+  }
+  printf("Averaged %lf ms for both images\n", timer.Elapsed().milliseconds() / 100.0);
   printf("Detected %d|%d keypoints in left|right images\n", nleft, nright);
 }

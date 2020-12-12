@@ -77,20 +77,23 @@ TEST(FeatureMatchingTest, TestStereoMatchLines)
   const int nr = detector.Detect(imr, klr, ldr);
   printf("Detected %d|%d keypoints in left|right images\n", nl, nr);
 
+  ld::drawKeylines(iml, kll, rgb_left);
+  ld::drawKeylines(imr, klr, rgb_right);
+  cv::imshow("lines_left", rgb_left);
+  cv::imshow("lines_right", rgb_right);
+  cv::waitKey(0);
+
   std::vector<int> matches_lr;
   const core::PinholeCamera cam(415.876509, 415.876509, 376.0, 240.0, 480, 752);
   const core::StereoCamera stereo_cam(cam, cam, 0.2);
 
   int Nm = 0;
-  std::vector<double> ms;
+  Timer timer(true);
   for (int iter = 0; iter < 100; ++iter) {
-    Timer timer(true);
-    Nm = vo::StereoMatchLines(kll, klr, ldl, ldr, stereo_cam, 0.8, std::cos(DegToRad(10)), 1.0, matches_lr);
-    ms.emplace_back(timer.Elapsed().milliseconds());
+    Nm = vo::StereoMatchLines(kll, klr, ldl, ldr, stereo_cam, 0.9, std::cos(DegToRad(30)), 1.0, matches_lr);
   }
-
   printf("Matched %d features from left to right\n", Nm);
-  printf("Averaged %lf ms\n", Average(ms));
+  printf("Averaged %lf ms\n", timer.Elapsed().milliseconds() / 100.0);
 
   cv::Mat draw_img;
   std::vector<cv::DMatch> dmatches = viz::ConvertToDMatch(matches_lr);

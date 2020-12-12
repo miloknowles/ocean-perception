@@ -17,7 +17,7 @@ static const int kConnectivity8 = 8;
 static const int kGridRows = 16;
 static const int kGridCols = 16;
 
-static const int kStereoGridRows = 48;
+static const int kStereoGridRows = 16;
 static const int kStereoGridCols = 16;
 
 static const int kStereoLineGridRows = 32;
@@ -436,12 +436,10 @@ int StereoMatchPoints(const std::vector<cv::KeyPoint>& kpl,
 
   // Map each keypoint location to a compressed grid cell location.
   Timer timer(true);
-  const int stereo_grid_rows = 48;
   const std::vector<Vector2i> gridpt_l = MapToGridCells(kpl, height, width, kStereoGridRows, kStereoGridCols);
   const std::vector<Vector2i> gridpt_r = MapToGridCells(kpr, height, width, kStereoGridRows, kStereoGridCols);
   GridLookup<int> grid = PopulateGrid(gridpt_r, kStereoGridRows, kStereoGridCols);
   const Box2i search_region = StereoSearchRegion(stereo_cam, kMinDepth, kStereoGridCols, width);
-  // printf("grid time = %lf\n", timer.Elapsed().milliseconds());
 
   int Nm = MatchPointsGrid(grid, gridpt_l, search_region, desc_l, desc_r, min_distance_ratio, matches_lr);
 
@@ -503,6 +501,7 @@ int StereoMatchLines(const std::vector<ld::KeyLine>& kll,
   // Filter out lines with large depth (small disparity).
   for (int il = 0; il < kll.size(); ++il) {
     const int ir = matches_lr.at(il);
+    // std::cout << kll.at(il).pt << std::endl;
     if (ir < 0) { continue; }
 
     const ld::KeyLine& klli = kll.at(il);

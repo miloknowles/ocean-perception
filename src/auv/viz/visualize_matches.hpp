@@ -26,7 +26,7 @@ void DrawLineMatches(const cv::Mat& img1,
                      const std::vector<ld::KeyLine>& keylines1,
                      const cv::Mat& img2,
                      const std::vector<ld::KeyLine>& keylines2,
-                     const std::vector<cv::DMatch>& matches1to2,
+                     const std::vector<cv::DMatch>& matches_12,
                      cv::Mat& draw_img,
                      const std::vector<char>& matches_mask,
                      bool draw_connectors = false);

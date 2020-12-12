@@ -1,11 +1,11 @@
 # Sets up the development environment for Blue Meadow.
 alias source_ros='source /opt/ros/melodic/setup.bash'
-alias source_bm='source ~/blue-meadow/catkin_ws/devel/setup.bash'
+alias source_bm='source ~/bluemeadow/catkin_ws/devel/setup.bash'
 
 # Terminal navigation.
-alias bm='cd ~/blue-meadow/'
-alias cdsim='cd ~/blue-meadow/farmsim'
-alias cdauv='cd ~/blue-meadow/catkin_ws/src/auv'
+alias bm='cd ~/bluemeadow'
+alias ws='cd ~/bluemeadow/catkin_ws/src/auv/'
+alias sim='cd ~/bluemeadow/farmsim/'
 
 # Starts up the Unity launcher.
 alias unity='/usr/local/bin/UnityHub.AppImage'

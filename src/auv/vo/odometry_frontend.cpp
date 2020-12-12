@@ -54,25 +54,29 @@ OdometryEstimate OdometryFrontend::TrackStereoFrame(const Image1b& iml,
   //========================= STEREO LINE MATCHING =============================
   std::vector<ld::KeyLine> kll, klr;
   cv::Mat ldl, ldr;
-  const int nl = ldetector_.Detect(iml, kll, ldl);
-  const int nr = ldetector_.Detect(imr, klr, ldr);
-  printf("[VO] Detected %d|%d LINES in left|right images\n", nl, nr);
-
+  int Nl_stereo = 0;
   std::vector<int> lmatches_lr;
-  const int Nl_stereo = StereoMatchLines(
-      kll, klr, ldl, ldr, stereo_camera_,
-      opt_.stereo_line_min_distance_ratio,
-      std::cos(DegToRad(opt_.stereo_line_max_angle)),
-      opt_.min_feature_disp,
-      lmatches_lr);
 
-  printf("Matched %d LINES from left to right\n", Nl_stereo);
+  if (opt_.track_lines) {
+    const int nl = ldetector_.Detect(iml, kll, ldl);
+    const int nr = ldetector_.Detect(imr, klr, ldr);
+    printf("[VO] Detected %d|%d LINES in left|right images\n", nl, nr);
 
-  cv::Mat draw_stereo_lines, draw_temporal_lines;
-  std::vector<cv::DMatch> lines_dmatches = viz::ConvertToDMatch(lmatches_lr);
-  viz::DrawLineMatches(iml, kll, imr, klr, lines_dmatches, draw_stereo_lines,
-                       std::vector<char>(), true);
-  cv::imshow("stereo_lines", draw_stereo_lines);
+    Nl_stereo = StereoMatchLines(
+        kll, klr, ldl, ldr, stereo_camera_,
+        opt_.stereo_line_min_distance_ratio,
+        std::cos(DegToRad(opt_.stereo_line_max_angle)),
+        opt_.min_feature_disp,
+        lmatches_lr);
+
+    printf("Matched %d LINES from left to right\n", Nl_stereo);
+
+    cv::Mat draw_stereo_lines;
+    std::vector<cv::DMatch> lines_dmatches = viz::ConvertToDMatch(lmatches_lr);
+    viz::DrawLineMatches(iml, kll, imr, klr, lines_dmatches, draw_stereo_lines,
+                        std::vector<char>(), true);
+    cv::imshow("stereo_lines", draw_stereo_lines);
+  }
 
   //======================= TEMPORAL MATCHING ==============================
   const bool has_prev_frame = kpl_prev_.size() > 0;
@@ -91,11 +95,14 @@ OdometryEstimate OdometryFrontend::TrackStereoFrame(const Image1b& iml,
     const int Np_temporal = MatchPointsNN(
         orbl_prev_, orbl, opt_.temporal_min_distance_ratio, pmatches_01);
 
-    const int Nl_temporal = MatchLinesNN(
-        ldl_prev_, ldl, NormalizedDirection(kll_prev_), NormalizedDirection(kll),
-        opt_.temporal_line_min_distance_ratio,
-        std::cos(DegToRad(opt_.stereo_line_max_angle)),
-        lmatches_01);
+    int Nl_temporal = 0;
+    if (opt_.track_lines) {
+      Nl_temporal = MatchLinesNN(
+          ldl_prev_, ldl, NormalizedDirection(kll_prev_), NormalizedDirection(kll),
+          opt_.temporal_line_min_distance_ratio,
+          std::cos(DegToRad(opt_.stereo_line_max_angle)),
+          lmatches_01);
+    }
 
     assert(pmatches_01.size() == kpl_prev_.size());
     assert(lmatches_01.size() == kll_prev_.size());
@@ -163,16 +170,19 @@ OdometryEstimate OdometryFrontend::TrackStereoFrame(const Image1b& iml,
 
     printf("[VO] Temporal POINT matches: initial=%d | refined=%zu\n", Np_temporal, point_inlier_indices.size());
     printf("[VO] Temporal LINE matches:  initial=%d | refined=%zu\n", Nl_temporal, line_inlier_indices.size());
-    point_mask_01 = std::vector<char>(); // TODO
     cv::drawMatches(
         iml_prev_, kpl_prev_, iml, kpl, point_dm_01, draw_temporal_points,
         cv::Scalar::all(-1), cv::Scalar::all(-1), point_mask_01,
         cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
-    viz::DrawLineMatches(
-        iml_prev_, kll_prev_, iml, kll, line_dm_01, draw_temporal_lines,
-        line_mask_01, true);
     cv::imshow("temporal_points", draw_temporal_points);
-    cv::imshow("temporal_lines", draw_temporal_lines);
+
+    if (opt_.track_lines) {
+      cv::Mat draw_temporal_lines;
+      viz::DrawLineMatches(
+          iml_prev_, kll_prev_, iml, kll, line_dm_01, draw_temporal_lines,
+          line_mask_01, true);
+      cv::imshow("temporal_lines", draw_temporal_lines);
+    }
   }
 
   //====================== HOUSEKEEPING FOR PREVIOUS FRAME =========================

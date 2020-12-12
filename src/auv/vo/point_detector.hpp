@@ -12,9 +12,9 @@ namespace vo {
 class PointDetector final {
  public:
   struct Options final {
-    int orb_num_features = 800;
+    int orb_num_features = 300;     // NOTE(milo): Reduce to improve performance.
     float orb_scale_factor = 1.2;
-    int orb_num_lvl = 4;
+    int orb_num_lvl = 2;            // NOTE(milo): Reducing this from 4 to 2 sped things up.
     int orb_edge_thresh = 19;
     int orb_wta_k = 2;
     int orb_score = 1;
