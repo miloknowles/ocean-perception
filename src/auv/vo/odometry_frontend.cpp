@@ -1,5 +1,3 @@
-#include "line_descriptor/include/line_descriptor_custom.hpp"
-
 #include "vo/odometry_frontend.hpp"
 #include "vo/feature_matching.hpp"
 #include "vo/optimization.hpp"
@@ -11,8 +9,6 @@
 
 namespace bm {
 namespace vo {
-
-namespace ld = cv::line_descriptor;
 
 
 OdometryFrontend::OdometryFrontend(const StereoCamera& stereo_camera,
@@ -90,12 +86,13 @@ OdometryEstimate OdometryFrontend::TrackStereoFrame(const Image1b& iml,
     assert(kpl_prev_.size() == orbl_prev_.rows);
     assert(kll_prev_.size() == ldl_prev_.rows);
 
+    // NOTE(milo): MatchPointsNN is way faster than TemporalMatchPoints, but has more false matches.
     std::vector<int> pmatches_01, lmatches_01;
     const int Np_temporal = MatchPointsNN(
         orbl_prev_, orbl, opt_.temporal_min_distance_ratio, pmatches_01);
 
-    const int Nl_temporal = TemporalMatchLines(
-        kll_prev_, kll, ldl_prev_, ldl, stereo_camera_,
+    const int Nl_temporal = MatchLinesNN(
+        ldl_prev_, ldl, NormalizedDirection(kll_prev_), NormalizedDirection(kll),
         opt_.temporal_line_min_distance_ratio,
         std::cos(DegToRad(opt_.stereo_line_max_angle)),
         lmatches_01);

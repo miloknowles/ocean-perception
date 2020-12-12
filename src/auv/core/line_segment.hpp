@@ -1,12 +1,13 @@
 #pragma once
 
-#include "line_descriptor/include/line_descriptor_custom.hpp"
+#include <opencv2/line_descriptor/descriptor.hpp>
+
 #include "core/eigen_types.hpp"
+
+namespace ld = cv::line_descriptor;
 
 namespace bm {
 namespace core {
-
-namespace ld = cv::line_descriptor;
 
 template <typename PointType>
 struct LineSegment {

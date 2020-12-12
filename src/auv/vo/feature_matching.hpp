@@ -3,7 +3,7 @@
 #include <vector>
 #include <algorithm>
 
-#include "line_descriptor/include/line_descriptor_custom.hpp"
+#include <opencv2/line_descriptor/descriptor.hpp>
 
 #include "core/cv_types.hpp"
 #include "core/eigen_types.hpp"
@@ -11,12 +11,13 @@
 #include "core/stereo_camera.hpp"
 #include "core/line_segment.hpp"
 
+namespace ld = cv::line_descriptor;
+
 namespace bm {
 namespace vo {
 
 using namespace core;
 using Grid = core::GridLookup<int>;
-namespace ld = cv::line_descriptor;
 
 
 Grid PopulateGrid(const std::vector<Vector2i>& grid_cells, int grid_rows, int grid_cols);
@@ -44,6 +45,15 @@ int MatchPointsGrid(const Grid& grid,
 
 int MatchPointsNN(const cv::Mat& desc1, const cv::Mat& desc2,
                   float nn_ratio, std::vector<int>& matches_12);
+
+
+int MatchLinesNN(const cv::Mat& desc1,
+                 const cv::Mat& desc2,
+                 const std::vector<Vector2d>& directions1,
+                 const std::vector<Vector2d>& directions2,
+                 float min_distance_ratio,
+                 float line_cosine_sim_th,
+                 std::vector<int>& matches_12);
 
 
 int MatchLinesGrid(const Grid& grid,

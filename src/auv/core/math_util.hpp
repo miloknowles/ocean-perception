@@ -1,8 +1,9 @@
 #pragma once
 
 #include <cmath>
+#include <numeric>
 
-#include "line_descriptor/include/line_descriptor_custom.hpp"
+#include <opencv2/line_descriptor/descriptor.hpp>
 
 #include "core/eigen_types.hpp"
 #include "core/line_segment.hpp"
@@ -133,5 +134,14 @@ LineSegment2d ExtrapolateLineSegment(const ld::KeyLine& line_ref, const ld::KeyL
  */
 bool ComputeEndpointDisparity(const LineSegment2d& l1, const LineSegment2d& l2,
                               double& disp_p0, double& disp_p1);
+
+
+// Compute the average value in a vector.
+inline double Average(const std::vector<double>& v)
+{
+  if (v.size() == 0) { return 0.0; }
+  return std::accumulate(v.begin(), v.end(), 0.0) / static_cast<double>(v.size());
+}
+
 }
 }

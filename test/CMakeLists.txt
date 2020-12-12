@@ -19,7 +19,9 @@ target_link_libraries(${PROJECT_NAME}_test
   gtest
   ${PROJECT_NAME}_core
   ${PROJECT_NAME}_viz
-  ${PROJECT_NAME}_vo)
+  ${PROJECT_NAME}_vo
+  ${OpenCV_LIBRARIES}
+  ${OpenCV_LIBS})
 
 add_test(NAME ${PROJECT_NAME}_test COMMAND ${PROJECT_NAME}_test --gtest_color=yes)
 

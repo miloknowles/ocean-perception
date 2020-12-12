@@ -10,10 +10,21 @@ SET(LIBRARY_SRC
   random.hpp
   file_utils.hpp
   line_feature.hpp
-  line_segment.hpp)
+  line_segment.hpp
+  timedelta.hpp
+  timer.hpp)
+
+# NOTE(milo): This is how to debug the INCLUDE_DIRECTORIES if needed.
+# message("===================================================")
+# get_property(inc_dirs DIRECTORY PROPERTY INCLUDE_DIRECTORIES)
+# message("INCLUDE = ${inc_dirs}")
 
 add_library(${LIBRARY_NAME} SHARED ${LIBRARY_SRC})
 set_target_properties(${LIBRARY_NAME} PROPERTIES LINKER_LANGUAGE CXX)
 target_compile_options(${LIBRARY_NAME} PUBLIC "-std=c++11")
-target_include_directories(${LIBRARY_NAME} PRIVATE ${PROJECT_SOURCE_DIR}/src)
-target_link_libraries(${LIBRARY_NAME} ${Boost_LIBRARIES})
+target_include_directories(${LIBRARY_NAME} PRIVATE
+  ${PROJECT_SOURCE_DIR}/src)
+target_link_libraries(${LIBRARY_NAME}
+  ${Boost_LIBRARIES}
+  ${OpenCV_LIBRARIES}
+  ${OpenCV_LIBS})

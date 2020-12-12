@@ -5,15 +5,15 @@
 #include <opencv2/highgui.hpp>
 #include <opencv2/features2d.hpp>
 
-#include "line_descriptor/include/line_descriptor_custom.hpp"
+#include <opencv2/line_descriptor/descriptor.hpp>
 
 #include "viz/colormap.hpp"
 #include "core/random.hpp"
 
+namespace ld = cv::line_descriptor;
+
 namespace bm {
 namespace viz {
-
-namespace ld = cv::line_descriptor;
 
 
 std::vector<cv::DMatch> ConvertToDMatch(const std::vector<int>& matches_12);
