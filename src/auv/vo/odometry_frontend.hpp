@@ -50,7 +50,7 @@ class OdometryFrontend final {
     double keyline_sigma = 2.0;
 
     // Pose optimization.
-    int opt_max_iters = 20;
+    int opt_max_iters = 10;
     double opt_min_error = 1e-7;
     double opt_min_error_delta = 1e-9;
     double opt_max_error_stdevs = 2.0; // TODO
