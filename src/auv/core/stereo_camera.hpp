@@ -14,9 +14,9 @@ class StereoCamera final {
                const Transform3d& T_right_left)
       : cam_left_(cam_left),
         cam_right_(cam_right),
-        T_right_left_(T_right_left)
+        T_left_right_(T_right_left)
   {
-    baseline_ = T_right_left_.translation().norm();
+    baseline_ = T_left_right_.translation().norm();
     assert(cam_left_.Height() == cam_right_.Height() &&
            cam_left_.Width() == cam_right_.Width());
   }
@@ -28,8 +28,8 @@ class StereoCamera final {
         cam_right_(cam_right),
         baseline_(baseline)
   {
-    T_right_left_ = Transform3d::Identity();
-    T_right_left_.translation() = Vector3d(baseline_, 0, 0);
+    T_left_right_ = Transform3d::Identity();
+    T_left_right_.translation() = Vector3d(baseline_, 0, 0);
     assert(cam_left_.Height() == cam_right_.Height() &&
            cam_left_.Width() == cam_right_.Width());
   }
@@ -41,13 +41,13 @@ class StereoCamera final {
   double Baseline() const { return baseline_; }
   double fx() const { return cam_left_.fx(); }
   double fy() const { return cam_right_.fy(); }
-  Transform3d Extrinsics() const { return T_right_left_; }
+  Transform3d Extrinsics() const { return T_left_right_; }
 
  private:
   PinholeCamera cam_left_;
   PinholeCamera cam_right_;
   double baseline_;              // Baseline in meters.
-  Transform3d T_right_left_;    // Transform of the right camera in the left frame.
+  Transform3d T_left_right_;    // Transform of the right camera in the left frame.
 };
 
 }

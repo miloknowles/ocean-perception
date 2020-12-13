@@ -81,8 +81,8 @@ OdometryEstimate OdometryFrontend::TrackStereoFrame(const Image1b& iml,
   //======================= TEMPORAL MATCHING ==============================
   const bool has_prev_frame = kpl_prev_.size() > 0;
 
-  Matrix4d T_01 = Matrix4d::Identity();
-  Matrix6d C_01 = Matrix6d::Identity();
+  Matrix4d T_10 = Matrix4d::Identity();
+  Matrix6d C_10 = Matrix6d::Identity();
   double error;
   std::vector<int> point_inlier_indices, line_inlier_indices;
 
@@ -148,13 +148,13 @@ OdometryEstimate OdometryFrontend::TrackStereoFrame(const Image1b& iml,
       const int Ni = OptimizePoseIterativePL(
           P0_list, p1_obs_list, p1_sigma_list,
           L0_list, l1_obs_list, l1_sigma_list,
-          stereo_camera_, T_01, C_01, error,
+          stereo_camera_, T_10, C_10, error,
           point_inlier_indices, line_inlier_indices,
           opt_.opt_max_iters, opt_.opt_min_error,
           opt_.opt_min_error_delta, opt_.opt_max_error_stdevs);
     } else {
       const int Ni = OptimizePoseIterativeP(
-          P0_list, p1_obs_list, p1_sigma_list, stereo_camera_, T_01, C_01, error, point_inlier_indices,
+          P0_list, p1_obs_list, p1_sigma_list, stereo_camera_, T_10, C_10, error, point_inlier_indices,
           opt_.opt_max_iters, opt_.opt_min_error,
           opt_.opt_min_error_delta, opt_.opt_max_error_stdevs);
     }
@@ -249,8 +249,8 @@ OdometryEstimate OdometryFrontend::TrackStereoFrame(const Image1b& iml,
 
   //========================= RETURN ODOMETRY ESTIMATE ==========================
   OdometryEstimate out;
-  out.T_1_0 = inverse_se3(T_01);
-  out.C_1_0 = C_01;
+  out.T_0_1 = inverse_se3(T_10);
+  out.C_0_1 = C_10;
   out.error = error;
   out.tracked_keypoints = point_inlier_indices.size();
   out.tracked_keylines = line_inlier_indices.size();

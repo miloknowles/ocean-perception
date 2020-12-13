@@ -29,8 +29,8 @@ int OptimizePoseIterativeP(const std::vector<Vector3d>& P0_list,
                           const std::vector<Vector2d>& p1_obs_list,
                           const std::vector<double>& p1_sigma_list,
                           const StereoCamera& stereo_cam,
-                          Matrix4d& T_01,
-                          Matrix6d& C_01,
+                          Matrix4d& T_10,
+                          Matrix6d& C_10,
                           double& error,
                           std::vector<int>& inlier_indices,
                           int max_iters,
@@ -46,8 +46,8 @@ int OptimizePoseIterativePL(const std::vector<Vector3d>& P0_list,
                             const std::vector<LineFeature2D>& l1_obs_list,
                             const std::vector<double>& l1_sigma_list,
                             const StereoCamera& stereo_cam,
-                            Matrix4d& T_01,
-                            Matrix6d& C_01,
+                            Matrix4d& T_10,
+                            Matrix6d& C_10,
                             double& error,
                             std::vector<int>& point_inlier_indices,
                             std::vector<int>& line_inlier_indices,
@@ -61,8 +61,8 @@ int OptimizePoseGaussNewtonP(const std::vector<Vector3d>& P0_list,
                             const std::vector<Vector2d>& p1_obs_list,
                             const std::vector<double>& p1_sigma_list,
                             const StereoCamera& stereo_cam,
-                            Matrix4d& T_01,
-                            Matrix6d& C_01,
+                            Matrix4d& T_10,
+                            Matrix6d& C_10,
                             double& error,
                             int max_iters,
                             double min_error,
@@ -73,8 +73,8 @@ int OptimizePoseLevenbergMarquardtP(const std::vector<Vector3d>& P0_list,
                             const std::vector<Vector2d>& p1_obs_list,
                             const std::vector<double>& p1_sigma_list,
                             const StereoCamera& stereo_cam,
-                            Matrix4d& T_01,
-                            Matrix6d& C_01,
+                            Matrix4d& T_10,
+                            Matrix6d& C_10,
                             double& error,
                             int max_iters,
                             double min_error,
@@ -88,8 +88,8 @@ int OptimizePoseLevenbergMarquardtPL(const std::vector<Vector3d>& P0_list,
                                     const std::vector<LineFeature2D>& l1_obs_list,
                                     const std::vector<double>& l1_sigma_list,
                                     const StereoCamera& stereo_cam,
-                                    Matrix4d& T_01,
-                                    Matrix6d& C_01,
+                                    Matrix4d& T_10,
+                                    Matrix6d& C_10,
                                     double& error,
                                     int max_iters,
                                     double min_error,
@@ -107,7 +107,7 @@ int OptimizePoseLevenbergMarquardtPL(const std::vector<Vector3d>& P0_list,
  * @param p1_sigma_list : Estimated standard deviation of projected keypoints locations (assume a
  *                        Gaussian noise model for projection, e.g 1px standard deviation).
  * @param stereo_cam : The stereo camera model for Camera_0 and Camera_1.
- * @param T_01 : The pose of Camera_0 in Camera_1. Note that this is the inverse transform from
+ * @param T_10 : The pose of Camera_0 in Camera_1. Note that this is the inverse transform from
  *               Camera_0 to Camera_1. We will end up inverting this to estimate odometry.
  * @param H (output) : The Hessian at this linearization point.
  * @param g (output) : The gradient at this linearization point.
@@ -117,7 +117,7 @@ void LinearizePointProjection(const std::vector<Vector3d>& P0_list,
                               const std::vector<Vector2d>& p1_obs_list,
                               const std::vector<double>& p1_sigma_list,
                               const StereoCamera& stereo_cam,
-                              const Matrix4d& T_01,
+                              const Matrix4d& T_10,
                               Matrix6d& H,
                               Vector6d& g,
                               double& error);
@@ -130,7 +130,7 @@ void LinearizePointProjection(const std::vector<Vector3d>& P0_list,
  * @param l1_obs_list : The 2D observed endpoint locations in the Camera_1 frame.
  * @param l1_sigma_list : The estimated standard deviation for projected endpoint locations.
  * @param stereo_cam : The stereo camera model.
- * @param T_01 : The pose of Camera_0 in Camera_1. Note that this is the inverse transform from
+ * @param T_10 : The pose of Camera_0 in Camera_1. Note that this is the inverse transform from
  *               Camera_0 to Camera_1. We will end up inverting this to estimate odometry.
  * @param H (output) : The Hessian at this linearization point.
  * @param g (output) : The gradient at this linearization point.
@@ -140,13 +140,13 @@ void LinearizeLineProjection(const std::vector<LineFeature3D> L0_list,
                              const std::vector<LineFeature2D> l1_obs_list,
                              const std::vector<double>& l1_sigma_list,
                              const StereoCamera& stereo_cam,
-                             const Matrix4d& T_01,
+                             const Matrix4d& T_10,
                              Matrix6d& H,
                              Vector6d& g,
                              double& error);
 
 
-int RemovePointOutliers(const Matrix4d& T_01,
+int RemovePointOutliers(const Matrix4d& T_10,
                         const std::vector<Vector3d>& P0_list,
                         const std::vector<Vector2d>& p1_obs_list,
                         const std::vector<double>& p1_sigma_list,
@@ -155,7 +155,7 @@ int RemovePointOutliers(const Matrix4d& T_01,
                         std::vector<int>& inlier_indices);
 
 
-int RemoveLineOutliers(const Matrix4d& T_01,
+int RemoveLineOutliers(const Matrix4d& T_10,
                        const std::vector<LineFeature3D>& L0_list,
                        const std::vector<LineFeature2D>& l1_obs_list,
                        const std::vector<double>& l1_sigma_list,

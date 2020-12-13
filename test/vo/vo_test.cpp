@@ -38,7 +38,7 @@ TEST(VOTest, TestSeq01)
 
   assert(filenames_l.size() == filenames_r.size());
 
-  Matrix4d T_curr_world = Matrix4d::Identity();
+  Matrix4d T_world_curr = Matrix4d::Identity();
 
   for (int t = 0; t < filenames_l.size(); ++t) {
     printf("-----------------------------------FRAME #%d-------------------------------------\n", t);
@@ -54,17 +54,17 @@ TEST(VOTest, TestSeq01)
     printf("Took %lf ms (%lf hz) to process frame\n", ms, 1000.0 / ms);
 
     if (odom.tracked_keylines < 3 && odom.tracked_keypoints < 3) {
-      odom.T_1_0 = Matrix4d::Identity();
+      odom.T_0_1 = Matrix4d::Identity();
       std::cout << "[VO] Unreliable, setting identify transform" << std::endl;
     }
 
-    T_curr_world = T_curr_world * odom.T_1_0;
+    T_world_curr = T_world_curr * odom.T_0_1;
 
     printf("Tracked keypoints = %d | Tracked keylines = %d\n", odom.tracked_keypoints, odom.tracked_keylines);
-    std::cout << "Odometry estimate:\n" << odom.T_1_0 << std::endl;
+    std::cout << "Odometry estimate:\n" << odom.T_0_1 << std::endl;
     std::cout << "Avg. reproj error:\n" << odom.error << std::endl;
-    std::cout << "Pose estimate:\n" << T_curr_world << std::endl;
-    std::cout << "Cov. estimate:\n" << odom.C_1_0 << std::endl;
+    std::cout << "Pose estimate:\n" << T_world_curr << std::endl;
+    std::cout << "Cov. estimate:\n" << odom.C_0_1 << std::endl;
     cv::waitKey(0);
   }
 }

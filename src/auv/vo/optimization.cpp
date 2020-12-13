@@ -11,8 +11,8 @@ int OptimizePoseIterativeP(const std::vector<Vector3d>& P0_list,
                           const std::vector<Vector2d>& p1_obs_list,
                           const std::vector<double>& p1_sigma_list,
                           const StereoCamera& stereo_cam,
-                          Matrix4d& T_01,
-                          Matrix6d& C_01,
+                          Matrix4d& T_10,
+                          Matrix6d& C_10,
                           double& error,
                           std::vector<int>& inlier_indices,
                           int max_iters,
@@ -23,10 +23,10 @@ int OptimizePoseIterativeP(const std::vector<Vector3d>& P0_list,
   // Do the initial pose optimization.
   const int N1 = OptimizePoseLevenbergMarquardtP(
       P0_list, p1_obs_list, p1_sigma_list, stereo_cam,  // Inputs.
-      T_01, C_01, error,                                // Outputs.
+      T_10, C_10, error,                                // Outputs.
       max_iters, min_error, min_error_delta);           // Params.
 
-  RemovePointOutliers(T_01, P0_list, p1_obs_list, p1_sigma_list,
+  RemovePointOutliers(T_10, P0_list, p1_obs_list, p1_sigma_list,
                       stereo_cam, max_error_stdevs, inlier_indices);
 
   const std::vector<Vector3d>& P0_list_refined = Subset<Vector3d>(P0_list, inlier_indices);
@@ -36,7 +36,7 @@ int OptimizePoseIterativeP(const std::vector<Vector3d>& P0_list,
   const int N2 = OptimizePoseLevenbergMarquardtP(
       P0_list_refined, p1_obs_list_refined,
       p1_sigma_list_refined, stereo_cam,                // Inputs.
-      T_01, C_01, error,                                // Outputs.
+      T_10, C_10, error,                                // Outputs.
       max_iters, min_error, min_error_delta);           // Params.
 
   return N2;
@@ -50,8 +50,8 @@ int OptimizePoseIterativePL(const std::vector<Vector3d>& P0_list,
                             const std::vector<LineFeature2D>& l1_obs_list,
                             const std::vector<double>& l1_sigma_list,
                             const StereoCamera& stereo_cam,
-                            Matrix4d& T_01,
-                            Matrix6d& C_01,
+                            Matrix4d& T_10,
+                            Matrix6d& C_10,
                             double& error,
                             std::vector<int>& point_inlier_indices,
                             std::vector<int>& line_inlier_indices,
@@ -64,13 +64,13 @@ int OptimizePoseIterativePL(const std::vector<Vector3d>& P0_list,
   const int N1 = OptimizePoseLevenbergMarquardtPL(
       P0_list, p1_obs_list, p1_sigma_list,              // Point inputs.
       L0_list, l1_obs_list, l1_sigma_list, stereo_cam,  // Line inputs.
-      T_01, C_01, error,                                // Outputs.
+      T_10, C_10, error,                                // Outputs.
       max_iters, min_error, min_error_delta);           // Params.
 
-  RemovePointOutliers(T_01, P0_list, p1_obs_list, p1_sigma_list,
+  RemovePointOutliers(T_10, P0_list, p1_obs_list, p1_sigma_list,
                       stereo_cam, max_error_stdevs, point_inlier_indices);
 
-  RemoveLineOutliers(T_01, L0_list, l1_obs_list, l1_sigma_list,
+  RemoveLineOutliers(T_10, L0_list, l1_obs_list, l1_sigma_list,
                      stereo_cam, max_error_stdevs, line_inlier_indices);
 
   const std::vector<Vector3d>& P0_list_refined = Subset<Vector3d>(P0_list, point_inlier_indices);
@@ -85,7 +85,7 @@ int OptimizePoseIterativePL(const std::vector<Vector3d>& P0_list,
   const int N2 = OptimizePoseLevenbergMarquardtPL(
       P0_list_refined, p1_obs_list_refined, p1_sigma_list_refined,
       L0_list_refined, l1_obs_list_refined, l1_sigma_list_refined,
-      stereo_cam, T_01, C_01, error,
+      stereo_cam, T_10, C_10, error,
       max_iters, min_error, min_error_delta);
 
   return N2;
@@ -96,27 +96,27 @@ int OptimizePoseGaussNewtonP(const std::vector<Vector3d>& P0_list,
                             const std::vector<Vector2d>& p1_obs_list,
                             const std::vector<double>& p1_sigma_list,
                             const StereoCamera& stereo_cam,
-                            Matrix4d& T_01,
-                            Matrix6d& C_01,
+                            Matrix4d& T_10,
+                            Matrix6d& C_10,
                             double& error,
                             int max_iters,
                             double min_error,
                             double min_error_delta)
 {
     // Set the initial guess (if not already set).
-    if (T_01(3, 3) != 1.0) {
-      T_01 = Matrix4d::Identity();
+    if (T_10(3, 3) != 1.0) {
+      T_10 = Matrix4d::Identity();
     }
 
     Matrix6d H;       // Current estimated Hessian of error w.r.t T_eps.
     Vector6d g;       // Current estimated gradient of error w.r.t T_eps.
-    Vector6d T_eps;   // An incremental update to T_01.
+    Vector6d T_eps;   // An incremental update to T_10.
     double err_prev = std::numeric_limits<double>::max();
     double err = err_prev - 1;
 
     int iters;
     for (iters = 0; iters < max_iters; ++iters) {
-      LinearizePointProjection(P0_list, p1_obs_list, p1_sigma_list, stereo_cam, T_01, H, g, err);
+      LinearizePointProjection(P0_list, p1_obs_list, p1_sigma_list, stereo_cam, T_10, H, g, err);
 
       // Stop if error increases.
       if (err > err_prev) {
@@ -135,7 +135,7 @@ int OptimizePoseGaussNewtonP(const std::vector<Vector3d>& P0_list,
 
       // NOTE(milo): They seem to follow the '2nd' option on page 47.
       // See: https://jinyongjeong.github.io/Download/SE3/jlblanco2010geometry3d_techrep.pdf
-      T_01 << T_01 * inverse_se3(expmap_se3(T_eps));
+      T_10 << T_10 * inverse_se3(expmap_se3(T_eps));
 
       // Stop if the pose solution hasn't changed much.
       if (T_eps.head(3).norm() < min_error_delta && T_eps.tail(3).norm() < min_error_delta) {
@@ -145,7 +145,7 @@ int OptimizePoseGaussNewtonP(const std::vector<Vector3d>& P0_list,
       err_prev = err;
     }
 
-    C_01 = H.inverse();
+    C_10 = H.inverse();
 
     // Error of -1 indicates failure.
     error = iters > 0 ? err : -1;
@@ -170,28 +170,28 @@ int OptimizePoseLevenbergMarquardtP(const std::vector<Vector3d>& P0_list,
                                   const std::vector<Vector2d>& p1_obs_list,
                                   const std::vector<double>& p1_sigma_list,
                                   const StereoCamera& stereo_cam,
-                                  Matrix4d& T_01,
-                                  Matrix6d& C_01,
+                                  Matrix4d& T_10,
+                                  Matrix6d& C_10,
                                   double& error,
                                   int max_iters,
                                   double min_error,
                                   double min_error_delta)
 {
   // Set the initial guess (if not already set).
-  if (T_01(3, 3) != 1.0) {
-    T_01 = Matrix4d::Identity();
+  if (T_10(3, 3) != 1.0) {
+    T_10 = Matrix4d::Identity();
   }
 
   Matrix6d H;       // Current estimated Hessian of error w.r.t T_eps.
   Vector6d g;       // Current estimated gradient of error w.r.t T_eps.
-  Vector6d T_eps;   // An incremental update to T_01.
+  Vector6d T_eps;   // An incremental update to T_10.
   double err_prev = std::numeric_limits<double>::max();
   double err = err_prev - 1;
 
   const double lambda_k_increase = 2.0;
   const double lambda_k_decrease = 3.0;
 
-  LinearizePointProjection(P0_list, p1_obs_list, p1_sigma_list, stereo_cam, T_01, H, g, err);
+  LinearizePointProjection(P0_list, p1_obs_list, p1_sigma_list, stereo_cam, T_10, H, g, err);
 
   const double H_max = MaxDiagonal(H);
   double lambda  = 1e-5 * H_max;
@@ -199,12 +199,12 @@ int OptimizePoseLevenbergMarquardtP(const std::vector<Vector3d>& P0_list,
   H.diagonal() += Vector6d::Constant(lambda);
   Eigen::ColPivHouseholderQR<Matrix6d> solver(H);
   T_eps = solver.solve(g);
-  T_01 << T_01 * inverse_se3(expmap_se3(T_eps));
+  T_10 << T_10 * inverse_se3(expmap_se3(T_eps));
   err_prev = err;
 
   int iters;
   for (iters = 1; iters < max_iters; ++iters) {
-    LinearizePointProjection(P0_list, p1_obs_list, p1_sigma_list, stereo_cam, T_01, H, g, err);
+    LinearizePointProjection(P0_list, p1_obs_list, p1_sigma_list, stereo_cam, T_10, H, g, err);
 
     if (err < min_error) {
       break;
@@ -224,7 +224,7 @@ int OptimizePoseLevenbergMarquardtP(const std::vector<Vector3d>& P0_list,
     // See: https://en.wikipedia.org/wiki/Levenberg%E2%80%93Marquardt_algorithm
     } else {
       lambda /= lambda_k_decrease;
-      T_01 << T_01 * inverse_se3(expmap_se3(T_eps));
+      T_10 << T_10 * inverse_se3(expmap_se3(T_eps));
     }
 
     // Stop if the pose solution hasn't changed much.
@@ -236,7 +236,7 @@ int OptimizePoseLevenbergMarquardtP(const std::vector<Vector3d>& P0_list,
   }
 
   error = err;
-  C_01 = H.inverse();
+  C_10 = H.inverse();
 
   return iters;
 }
@@ -249,29 +249,29 @@ int OptimizePoseLevenbergMarquardtPL(const std::vector<Vector3d>& P0_list,
                                     const std::vector<LineFeature2D>& l1_obs_list,
                                     const std::vector<double>& l1_sigma_list,
                                     const StereoCamera& stereo_cam,
-                                    Matrix4d& T_01,
-                                    Matrix6d& C_01,
+                                    Matrix4d& T_10,
+                                    Matrix6d& C_10,
                                     double& error,
                                     int max_iters,
                                     double min_error,
                                     double min_error_delta)
 {
   // Set the initial guess (if not already set).
-  if (T_01(3, 3) != 1.0) {
-    T_01 = Matrix4d::Identity();
+  if (T_10(3, 3) != 1.0) {
+    T_10 = Matrix4d::Identity();
   }
 
   Matrix6d H_p, H_l;       // Current estimated Hessian of error w.r.t T_eps.
   Vector6d g_p, g_l;       // Current estimated gradient of error w.r.t T_eps.
-  Vector6d T_eps;          // An incremental update to T_01.
+  Vector6d T_eps;          // An incremental update to T_10.
   double err_prev = std::numeric_limits<double>::max();
   double err_p, err_l;
 
   const double lambda_k_increase = 2.0;
   const double lambda_k_decrease = 3.0;
 
-  LinearizePointProjection(P0_list, p1_obs_list, p1_sigma_list, stereo_cam, T_01, H_p, g_p, err_p);
-  LinearizeLineProjection(L0_list, l1_obs_list, l1_sigma_list, stereo_cam, T_01, H_l, g_l, err_l);
+  LinearizePointProjection(P0_list, p1_obs_list, p1_sigma_list, stereo_cam, T_10, H_p, g_p, err_p);
+  LinearizeLineProjection(L0_list, l1_obs_list, l1_sigma_list, stereo_cam, T_10, H_l, g_l, err_l);
 
   Matrix6d H = H_p + H_l;
   Vector6d g = g_p + g_l;
@@ -283,13 +283,13 @@ int OptimizePoseLevenbergMarquardtPL(const std::vector<Vector3d>& P0_list,
   H.diagonal() += Vector6d::Constant(lambda);
   Eigen::ColPivHouseholderQR<Matrix6d> solver(H);
   T_eps = solver.solve(g);
-  T_01 << T_01 * inverse_se3(expmap_se3(T_eps));
+  T_10 << T_10 * inverse_se3(expmap_se3(T_eps));
   err_prev = err;
 
   int iters;
   for (iters = 1; iters < max_iters; ++iters) {
-    LinearizePointProjection(P0_list, p1_obs_list, p1_sigma_list, stereo_cam, T_01, H_p, g_p, err_p);
-    LinearizeLineProjection(L0_list, l1_obs_list, l1_sigma_list, stereo_cam, T_01, H_l, g_l, err_l);
+    LinearizePointProjection(P0_list, p1_obs_list, p1_sigma_list, stereo_cam, T_10, H_p, g_p, err_p);
+    LinearizeLineProjection(L0_list, l1_obs_list, l1_sigma_list, stereo_cam, T_10, H_l, g_l, err_l);
 
     H = H_p + H_l;
     g = g_p + g_l;
@@ -313,7 +313,7 @@ int OptimizePoseLevenbergMarquardtPL(const std::vector<Vector3d>& P0_list,
     // See: https://en.wikipedia.org/wiki/Levenberg%E2%80%93Marquardt_algorithm
     } else {
       lambda /= lambda_k_decrease;
-      T_01 << T_01 * inverse_se3(expmap_se3(T_eps));
+      T_10 << T_10 * inverse_se3(expmap_se3(T_eps));
     }
 
     // Stop if the pose solution hasn't changed much.
@@ -325,7 +325,7 @@ int OptimizePoseLevenbergMarquardtPL(const std::vector<Vector3d>& P0_list,
   }
 
   error = err;
-  C_01 = H.inverse();
+  C_10 = H.inverse();
 
   return iters;
 }
@@ -335,7 +335,7 @@ void LinearizePointProjection(const std::vector<Vector3d>& P0_list,
                               const std::vector<Vector2d>& p1_obs_list,
                               const std::vector<double>& p1_sigma_list,
                               const StereoCamera& stereo_cam,
-                              const Matrix4d& T_01,
+                              const Matrix4d& T_10,
                               Matrix6d& H,
                               Vector6d& g,
                               double& error)
@@ -351,7 +351,7 @@ void LinearizePointProjection(const std::vector<Vector3d>& P0_list,
 
   // Add up projection errors from all associated points.
   for (int i = 0; i < P0_list.size(); ++i) {
-    const Vector3d P1 = T_01.block<3, 3>(0, 0) * P0_list.at(i) + T_01.col(3).head(3);
+    const Vector3d P1 = T_10.block<3, 3>(0, 0) * P0_list.at(i) + T_10.col(3).head(3);
 
     // Project P1 to a pixel location in Camera_1.
     const Vector2d p1 = cam.Project(P1);
@@ -397,7 +397,7 @@ void LinearizeLineProjection(const std::vector<LineFeature3D> L0_list,
                              const std::vector<LineFeature2D> l1_obs_list,
                              const std::vector<double>& l1_sigma_list,
                              const StereoCamera& stereo_cam,
-                             const Matrix4d& T_01,
+                             const Matrix4d& T_10,
                              Matrix6d& H,
                              Vector6d& g,
                              double& error)
@@ -415,8 +415,8 @@ void LinearizeLineProjection(const std::vector<LineFeature3D> L0_list,
     const LineFeature3D& L0 = L0_list.at(i);
     const LineFeature2D& l1_obs = l1_obs_list.at(i);
 
-    const Vector3d& Ps = T_01.block<3, 3>(0, 0) * L0.P_start + T_01.col(3).head(3);
-    const Vector3d& Pe = T_01.block<3, 3>(0, 0) * L0.P_end   + T_01.col(3).head(3);
+    const Vector3d& Ps = T_10.block<3, 3>(0, 0) * L0.P_start + T_10.col(3).head(3);
+    const Vector3d& Pe = T_10.block<3, 3>(0, 0) * L0.P_end   + T_10.col(3).head(3);
 
     const Vector2d ps = cam.Project(Ps);
     const Vector2d pe = cam.Project(Pe);
@@ -488,7 +488,7 @@ void LinearizeLineProjection(const std::vector<LineFeature3D> L0_list,
 }
 
 
-int RemovePointOutliers(const Matrix4d& T_01,
+int RemovePointOutliers(const Matrix4d& T_10,
                         const std::vector<Vector3d>& P0_list,
                         const std::vector<Vector2d>& p1_obs_list,
                         const std::vector<double>& p1_sigma_list,
@@ -503,7 +503,7 @@ int RemovePointOutliers(const Matrix4d& T_01,
   const PinholeCamera& cam = stereo_cam.LeftIntrinsics();
 
   for (int i = 0; i < P0_list.size(); ++i) {
-    const Vector3d P1 = T_01.block<3, 3>(0, 0) * P0_list.at(i) + T_01.col(3).head(3);
+    const Vector3d P1 = T_10.block<3, 3>(0, 0) * P0_list.at(i) + T_10.col(3).head(3);
     const Vector2d p1 = cam.Project(P1);
     const double e = (p1 - p1_obs_list.at(i)).norm();
     const double sigma = p1_sigma_list.at(i);
@@ -516,7 +516,7 @@ int RemovePointOutliers(const Matrix4d& T_01,
 }
 
 
-int RemoveLineOutliers(const Matrix4d& T_01,
+int RemoveLineOutliers(const Matrix4d& T_10,
                        const std::vector<LineFeature3D>& L0_list,
                        const std::vector<LineFeature2D>& l1_obs_list,
                        const std::vector<double>& l1_sigma_list,
@@ -534,8 +534,8 @@ int RemoveLineOutliers(const Matrix4d& T_01,
     const LineFeature3D& L0 = L0_list.at(i);
     const LineFeature2D& l1_obs = l1_obs_list.at(i);
 
-    const Vector3d& Ps = T_01.block<3, 3>(0, 0) * L0.P_start + T_01.col(3).head(3);
-    const Vector3d& Pe = T_01.block<3, 3>(0, 0) * L0.P_end   + T_01.col(3).head(3);
+    const Vector3d& Ps = T_10.block<3, 3>(0, 0) * L0.P_start + T_10.col(3).head(3);
+    const Vector3d& Pe = T_10.block<3, 3>(0, 0) * L0.P_end   + T_10.col(3).head(3);
 
     const Vector2d ps = cam.Project(Ps);
     const Vector2d pe = cam.Project(Pe);
