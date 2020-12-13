@@ -1,6 +1,7 @@
 #include <eigen3/Eigen/QR>
 
 #include "core/math_util.hpp"
+#include "core/transform_util.hpp"
 #include "vo/optimization.hpp"
 
 namespace bm {

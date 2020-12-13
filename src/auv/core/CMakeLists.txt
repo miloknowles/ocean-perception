@@ -7,6 +7,7 @@ SET(LIBRARY_SRC
   pinhole_camera.hpp
   stereo_camera.hpp
   math_util.cpp
+  transform_util.cpp
   random.hpp
   file_utils.hpp
   line_feature.hpp

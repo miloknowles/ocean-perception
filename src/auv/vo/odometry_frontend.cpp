@@ -3,6 +3,7 @@
 #include "vo/optimization.hpp"
 
 #include "core/math_util.hpp"
+#include "core/transform_util.hpp"
 #include "core/line_segment.hpp"
 
 #include "viz/visualize_matches.hpp"

@@ -2,6 +2,7 @@
 
 #include "core/stereo_camera.hpp"
 #include "core/math_util.hpp"
+#include "core/transform_util.hpp"
 #include "core/random.hpp"
 #include "vo/optimization.hpp"
 
