@@ -5,6 +5,7 @@
 #include "core/file_utils.hpp"
 #include "core/math_util.hpp"
 #include "core/timer.hpp"
+#include "dataset/stereo_dataset.hpp"
 #include "viz/visualize_matches.hpp"
 #include "vo/optimization.hpp"
 #include "vo/point_detector.hpp"
@@ -15,6 +16,7 @@
 using namespace bm::core;
 using namespace bm::vo;
 using namespace bm::viz;
+using namespace bm::dataset;
 
 
 TEST(VOTest, TestSeq01)
@@ -26,27 +28,38 @@ TEST(VOTest, TestSeq01)
   opt.opt_max_error_stdevs = 3.0;
   OdometryFrontend frontend(stereo_camera, opt);
 
-  const std::string data_path = "/home/milo/datasets/Unity3D/farmsim/03_forward_only";
+  StereoDataset::Options dataset_opt;
+  dataset_opt.toplevel_path = "/home/milo/datasets/Unity3D/farmsim/03_forward_only";
+  StereoDataset dataset(dataset_opt);
+
+  // const std::string data_path = "/home/milo/datasets/Unity3D/farmsim/03_forward_only";
   // const std::string data_path = "/home/milo/datasets/Unity3D/farmsim/06_seafloor_easy";
   // const std::string data_path = "/home/milo/datasets/Unity3D/farmsim/05_forward_side";
-  const std::string lpath = "image_0";
-  const std::string rpath = "image_1";
+  // const std::string lpath = "image_0";
+  // const std::string rpath = "image_1";
 
-  std::vector<std::string> filenames_l, filenames_r;
-  FilenamesInDirectory(Join(data_path, lpath), filenames_l, true);
-  FilenamesInDirectory(Join(data_path, rpath), filenames_r, true);
+  // std::vector<std::string> filenames_l, filenames_r;
+  // FilenamesInDirectory(Join(data_path, lpath), filenames_l, true);
+  // FilenamesInDirectory(Join(data_path, rpath), filenames_r, true);
 
-  assert(filenames_l.size() == filenames_r.size());
+  // assert(filenames_l.size() == filenames_r.size());
 
   Matrix4d T_world_curr = Matrix4d::Identity();
 
-  for (int t = 0; t < filenames_l.size(); ++t) {
+  // for (int t = 0; t < filenames_l.size(); ++t) {
+  for (int t = 0; t < dataset.size(); ++t) {
     printf("-----------------------------------FRAME #%d-------------------------------------\n", t);
-    const Image1b iml = cv::imread(filenames_l.at(t), cv::IMREAD_GRAYSCALE);
-    const Image1b imr = cv::imread(filenames_r.at(t), cv::IMREAD_GRAYSCALE);
+    // const Image1b iml = cv::imread(filenames_l.at(t), cv::IMREAD_GRAYSCALE);
+    // const Image1b imr = cv::imread(filenames_r.at(t), cv::IMREAD_GRAYSCALE);
 
-    Image3b rgbl = cv::imread(filenames_l.at(t), cv::IMREAD_COLOR);
-    Image3b rgbr = cv::imread(filenames_r.at(t), cv::IMREAD_COLOR);
+    // Image3b rgbl = cv::imread(filenames_l.at(t), cv::IMREAD_COLOR);
+    // Image3b rgbr = cv::imread(filenames_r.at(t), cv::IMREAD_COLOR);
+
+    const Image1b& iml = dataset.Left(t, true);
+    const Image1b& imr = dataset.Right(t, true);
+
+    const Image3b& rgbl = dataset.Left(t, false);
+    const Image3b& rgbr = dataset.Right(t, false);
 
     Timer timer(true);
     OdometryEstimate odom = frontend.TrackStereoFrame(iml, imr);
