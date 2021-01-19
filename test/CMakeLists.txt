@@ -20,6 +20,7 @@ target_link_libraries(${PROJECT_NAME}_test
   ${PROJECT_NAME}_core
   ${PROJECT_NAME}_viz
   ${PROJECT_NAME}_vo
+  ${PROJECT_NAME}_dataset
   ${OpenCV_LIBRARIES}
   ${OpenCV_LIBS})
 

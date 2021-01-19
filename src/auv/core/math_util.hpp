@@ -47,47 +47,6 @@ inline double RadToDeg(const double rad)
   return rad * RAD_TO_DEG_D;
 }
 
-// From: https://github.com/rubengooj/stvo-pl/blob/master/src/auxiliar.cpp
-Matrix3d skew(Vector3d v);
-
-// From: https://github.com/rubengooj/stvo-pl/blob/master/src/auxiliar.cpp
-Matrix3d fast_skewexp(Vector3d v);
-
-// From: https://github.com/rubengooj/stvo-pl/blob/master/src/auxiliar.cpp
-Vector3d skewcoords(Matrix3d M);
-
-// From: https://github.com/rubengooj/stvo-pl/blob/master/src/auxiliar.cpp
-Matrix4d inverse_se3(Matrix4d T);
-
-// From: https://github.com/rubengooj/stvo-pl/blob/master/src/auxiliar.cpp
-Matrix4d expmap_se3(Vector6d x);
-
-// From: https://github.com/rubengooj/stvo-pl/blob/master/src/auxiliar.cpp
-Vector6d logmap_se3(Matrix4d T);
-
-
-// Project a 3D point from the 'world' frame to the image plane of the camera.
-inline Vector2d ProjectWorldPoint(const PinholeCamera& camera,
-                                  const Matrix4d& T_world_cam,
-                                  const Vector3d& P_world)
-{
-  return camera.Project(T_world_cam.block<3, 3>(0, 0) * P_world + T_world_cam.block<3, 1>(0, 3));
-}
-
-
-// Transform a 3D point from the 'ref' frame to the 'target' frame.
-inline Vector3d ApplyTransform(const Matrix4d& T_ref_target, const Vector3d& P_ref)
-{
-  return T_ref_target.block<3, 3>(0, 0) * P_ref + T_ref_target.block<3, 1>(0, 3);
-}
-
-
-// Returns the rotation of 1 in 0.
-inline Matrix3d RelativeRotation(const Matrix3d& R_0_w, const Matrix3d& R_1_w)
-{
-  return R_0_w.transpose() * R_1_w;
-}
-
 // Grabs the items from v based on indices.
 template <typename T>
 inline std::vector<T> Subset(const std::vector<T>& v, const std::vector<int>& indices)

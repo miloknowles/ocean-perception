@@ -21,8 +21,8 @@ using namespace core;
 
 
 struct OdometryEstimate {
-  Matrix4d T_1_0 = Matrix4d::Identity();
-  Matrix6d C_1_0 = Matrix6d::Identity();
+  Matrix4d T_0_1 = Matrix4d::Identity();
+  Matrix6d C_0_1 = Matrix6d::Identity();
   double error = -1;
 
   int tracked_keypoints = 0;

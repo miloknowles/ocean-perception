@@ -2,6 +2,7 @@
 
 #include "core/stereo_camera.hpp"
 #include "core/math_util.hpp"
+#include "core/transform_util.hpp"
 #include "core/random.hpp"
 #include "vo/optimization.hpp"
 
@@ -9,8 +10,8 @@ using namespace bm::core;
 using namespace bm::vo;
 
 
-static void SimulatePoints(const Matrix4d& T_0_w,
-                           const Matrix4d& T_1_w,
+static void SimulatePoints(const Matrix4d& T_w_0,
+                           const Matrix4d& T_w_1,
                            const std::vector<Vector3d>& P_w,
                            const StereoCamera& stereo_camera,
                            const std::vector<double>& p1_sigma_list,
@@ -20,7 +21,7 @@ static void SimulatePoints(const Matrix4d& T_0_w,
   P0_list.clear();
   P0_list.resize(P_w.size());
   for (int i = 0; i < P_w.size(); ++i) {
-    P0_list.at(i) = ApplyTransform(T_0_w.inverse(), P_w.at(i));
+    P0_list.at(i) = ApplyTransform(T_w_0.inverse(), P_w.at(i));
   }
 
   // Simulate observations from the Camera_1 pose.
@@ -28,7 +29,7 @@ static void SimulatePoints(const Matrix4d& T_0_w,
   p1_list.resize(P_w.size());
   for (int i = 0; i < P_w.size(); ++i) {
     const Vector2d noise = RandomNormal2d(0, p1_sigma_list.at(i));
-    p1_list.at(i) = ProjectWorldPoint(stereo_camera.LeftIntrinsics(), T_1_w.inverse(), P_w.at(i)) + noise;
+    p1_list.at(i) = ProjectWorldPoint(stereo_camera.LeftIntrinsics(), T_w_1.inverse(), P_w.at(i)) + noise;
   }
 }
 
@@ -41,18 +42,18 @@ static StereoCamera MakeStereoCamera()
 }
 
 
-static double ComputeTranslationError(const Matrix4d& T_0_w, const Matrix4d& T_1_w, const Matrix4d& T_01)
+static double ComputeTranslationError(const Matrix4d& T_w_0, const Matrix4d& T_w_1, const Matrix4d& T_10)
 {
-  const Vector3d t_true = T_1_w.col(3).head(3) - T_0_w.col(3).head(3);
-  const Vector3d t_odom = T_01.inverse().col(3).head(3);
+  const Vector3d t_true = T_w_1.col(3).head(3) - T_w_0.col(3).head(3);
+  const Vector3d t_odom = T_10.inverse().col(3).head(3);
   return (t_true - t_odom).norm();
 }
 
 
-static double ComputeRotationError(const Matrix4d& T_0_w, const Matrix4d& T_1_w, const Matrix4d& T_01)
+static double ComputeRotationError(const Matrix4d& T_w_0, const Matrix4d& T_w_1, const Matrix4d& T_10)
 {
-  const Matrix3d R_1_0_true = RelativeRotation(T_0_w.block<3, 3>(0, 0), T_1_w.block<3, 3>(0, 0));
-  const Matrix3d R_1_0_odom = T_01.inverse().block<3, 3>(0, 0);
+  const Matrix3d R_1_0_true = RelativeRotation(T_w_0.block<3, 3>(0, 0), T_w_1.block<3, 3>(0, 0));
+  const Matrix3d R_1_0_odom = T_10.inverse().block<3, 3>(0, 0);
   AngleAxisd axisangle(RelativeRotation(R_1_0_odom, R_1_0_true));
   return axisangle.angle();
 }
@@ -63,11 +64,11 @@ TEST(OptimizationTest, TestGN_01)
   const StereoCamera& stereo_cam = MakeStereoCamera();
 
   // Groundtruth poses of the 0th and 1th cameras.
-  const Matrix4d T_0_w = Matrix4d::Identity();
+  const Matrix4d T_w_0 = Matrix4d::Identity();
 
   // Translate the 1th camera to the right.
-  Matrix4d T_1_w = T_0_w;
-  T_1_w(0, 3) = 4.0;
+  Matrix4d T_w_1 = T_w_0;
+  T_w_1(0, 3) = 4.0;
 
   // Groundtruth location of 3D landmarks in the world.
   const std::vector<Vector3d> P_w = {
@@ -80,7 +81,7 @@ TEST(OptimizationTest, TestGN_01)
   const std::vector<double> p1_sigma_list = { 1.0, 1.0, 1.0 };
   std::vector<Vector2d> p1_list;
   std::vector<Vector3d> P0_list;
-  SimulatePoints(T_0_w, T_1_w, P_w, stereo_cam, p1_sigma_list, P0_list, p1_list);
+  SimulatePoints(T_w_0, T_w_1, P_w, stereo_cam, p1_sigma_list, P0_list, p1_list);
 
   const int max_iters = 10;
   const double min_error = 1e-7;
@@ -88,25 +89,25 @@ TEST(OptimizationTest, TestGN_01)
 
   // Outputs from the optimization.
   double error;
-  Matrix4d T_01 = Matrix4d::Identity();
-  T_01.col(3) = Vector4d(-0.1, 0.0, 0.0, 1);
+  Matrix4d T_10 = Matrix4d::Identity();
+  T_10.col(3) = Vector4d(-0.1, 0.0, 0.0, 1);
 
-  std::cout << "Starting pose T_01:\n" << T_01 << std::endl;
+  std::cout << "Starting pose T_10:\n" << T_10 << std::endl;
 
   Matrix6d C_01;
 
   const int iters = OptimizePoseGaussNewtonP(
-      P0_list, p1_list, p1_sigma_list, stereo_cam, T_01, C_01, error,
+      P0_list, p1_list, p1_sigma_list, stereo_cam, T_10, C_01, error,
       max_iters, min_error, min_error_delta);
 
   printf("iters=%d | error=%lf\n", iters, error);
-  std::cout << "Optimized pose T_01:" << std::endl;
-  std::cout << T_01 << std::endl;
+  std::cout << "Optimized pose T_10:" << std::endl;
+  std::cout << T_10 << std::endl;
   std::cout << "Covariance matrix:" << std::endl;
   std::cout << C_01 << std::endl;
 
-  const double t_err = ComputeTranslationError(T_0_w, T_1_w, T_01);
-  const double r_err = ComputeRotationError(T_0_w, T_1_w, T_01);
+  const double t_err = ComputeTranslationError(T_w_0, T_w_1, T_10);
+  const double r_err = ComputeRotationError(T_w_0, T_w_1, T_10);
   printf("ERROR: t=%lf (m) r=%lf (deg)\n", t_err, RadToDeg(r_err));
   ASSERT_LE(t_err, 0.05);
   ASSERT_LE(r_err, DegToRad(1));
@@ -118,13 +119,13 @@ TEST(OptimizationTest, TestLM_01)
   const StereoCamera& stereo_cam = MakeStereoCamera();
 
   // Groundtruth poses of the 0th and 1th cameras.
-  Transform3d Tr_0_w = Transform3d::Identity();
-  Tr_0_w = Tr_0_w.translate(Vector3d(0, 0.1, 0)).rotate(AngleAxisd(DegToRad(5), Vector3d::UnitY()));
-  Matrix4d T_0_w = Matrix4d::Identity();
-  T_0_w.block<3, 4>(0, 0) = Tr_0_w.matrix();
+  Transform3d Tr_w_0 = Transform3d::Identity();
+  Tr_w_0 = Tr_w_0.translate(Vector3d(0, 0.1, 0)).rotate(AngleAxisd(DegToRad(5), Vector3d::UnitY()));
+  Matrix4d T_w_0 = Matrix4d::Identity();
+  T_w_0.block<3, 4>(0, 0) = Tr_w_0.matrix();
 
   // Translate the 1th camera to the right.
-  Matrix4d T_1_w = Matrix4d::Identity();
+  Matrix4d T_w_1 = Matrix4d::Identity();
 
   // Groundtruth location of 3D landmarks in the world.
   const std::vector<Vector3d> P_w = {
@@ -137,7 +138,7 @@ TEST(OptimizationTest, TestLM_01)
   const std::vector<double> p1_sigma_list = { 1.0, 1.0, 1.0 };
   std::vector<Vector2d> p1_list;
   std::vector<Vector3d> P0_list;
-  SimulatePoints(T_0_w, T_1_w, P_w, stereo_cam, p1_sigma_list, P0_list, p1_list);
+  SimulatePoints(T_w_0, T_w_1, P_w, stereo_cam, p1_sigma_list, P0_list, p1_list);
 
   const int max_iters = 20;
   const double min_error = 1e-7;
@@ -145,24 +146,24 @@ TEST(OptimizationTest, TestLM_01)
 
   // Outputs from the optimization.
   double error;
-  Matrix4d T_01 = Matrix4d::Identity();
+  Matrix4d T_10 = Matrix4d::Identity();
 
-  std::cout << "Starting pose T_01:\n" << T_01 << std::endl;
+  std::cout << "Starting pose T_10:\n" << T_10 << std::endl;
 
   Matrix6d C_01;
 
   const int iters = OptimizePoseLevenbergMarquardtP(
-      P0_list, p1_list, p1_sigma_list, stereo_cam, T_01, C_01, error,
+      P0_list, p1_list, p1_sigma_list, stereo_cam, T_10, C_01, error,
       max_iters, min_error, min_error_delta);
 
   printf("iters=%d | error=%lf\n", iters, error);
-  std::cout << "Optimized pose T_01:" << std::endl;
-  std::cout << T_01 << std::endl;
+  std::cout << "Optimized pose T_10:" << std::endl;
+  std::cout << T_10 << std::endl;
   std::cout << "Covariance matrix:" << std::endl;
   std::cout << C_01 << std::endl;
 
-  const double t_err = ComputeTranslationError(T_0_w, T_1_w, T_01);
-  const double r_err = ComputeRotationError(T_0_w, T_1_w, T_01);
+  const double t_err = ComputeTranslationError(T_w_0, T_w_1, T_10);
+  const double r_err = ComputeRotationError(T_w_0, T_w_1, T_10);
   printf("ERROR: t=%lf (m) r=%lf (deg)\n", t_err, RadToDeg(r_err));
   ASSERT_LE(t_err, 0.05);
   ASSERT_LE(r_err, DegToRad(1));
@@ -174,17 +175,9 @@ TEST(OptimizationTest, TestLM_02)
   const StereoCamera& stereo_cam = MakeStereoCamera();
 
   // Groundtruth poses of the 0th and 1th cameras.
-  Matrix4d T_0_w = Matrix4d::Identity();
-  // T_0_w.col(3).head(3) = Vector3d(1, 2, -1);
-  Matrix4d T_1_w = Matrix4d::Identity();
-  T_1_w(2, 3) = 5.0;
-
-  // Groundtruth location of 3D landmarks in the world.
-  // std::vector<Vector3d> P_w = {
-  //   Vector3d(-3, 0.1, 7),
-  //   Vector3d(0, 0.2, 9),
-  //   Vector3d(3, 0.3, 8),
-  // };
+  Matrix4d T_w_0 = Matrix4d::Identity();
+  Matrix4d T_w_1 = Matrix4d::Identity();
+  T_w_1(2, 3) = 5.0;
 
   std::vector<Vector3d> P_w;
   for (double x = -5; x <= 5; ++x) {
@@ -199,7 +192,7 @@ TEST(OptimizationTest, TestLM_02)
 
   std::vector<Vector2d> p1_list;
   std::vector<Vector3d> P0_list;
-  SimulatePoints(T_0_w, T_1_w, P_w, stereo_cam, p1_sigma_list, P0_list, p1_list);
+  SimulatePoints(T_w_0, T_w_1, P_w, stereo_cam, p1_sigma_list, P0_list, p1_list);
 
   const int max_iters = 10;
   const double min_error = 1e-7;
@@ -207,25 +200,25 @@ TEST(OptimizationTest, TestLM_02)
 
   // Outputs from the optimization.
   double error;
-  Matrix4d T_01 = Matrix4d::Identity();
-  T_01.col(3).head(3) = Vector3d(0, 0, 0);
+  Matrix4d T_10 = Matrix4d::Identity();
+  T_10.col(3).head(3) = Vector3d(0, 0, 0);
 
-  std::cout << "Starting pose T_01:\n" << T_01 << std::endl;
+  std::cout << "Starting pose T_10:\n" << T_10 << std::endl;
 
   Matrix6d C_01;
 
   const int iters = OptimizePoseLevenbergMarquardtP(
-      P0_list, p1_list, p1_sigma_list, stereo_cam, T_01, C_01, error,
+      P0_list, p1_list, p1_sigma_list, stereo_cam, T_10, C_01, error,
       max_iters, min_error, min_error_delta);
 
   printf("iters=%d | error=%lf\n", iters, error);
-  std::cout << "Optimized pose T_01:" << std::endl;
-  std::cout << T_01 << std::endl;
+  std::cout << "Optimized pose T_10:" << std::endl;
+  std::cout << T_10 << std::endl;
   std::cout << "Covariance matrix:" << std::endl;
   std::cout << C_01 << std::endl;
 
-  const double t_err = ComputeTranslationError(T_0_w, T_1_w, T_01);
-  const double r_err = ComputeRotationError(T_0_w, T_1_w, T_01);
+  const double t_err = ComputeTranslationError(T_w_0, T_w_1, T_10);
+  const double r_err = ComputeRotationError(T_w_0, T_w_1, T_10);
   printf("ERROR: t=%lf (m) r=%lf (deg)\n", t_err, RadToDeg(r_err));
   ASSERT_LE(t_err, 0.05);
   ASSERT_LE(r_err, DegToRad(1));

@@ -29,7 +29,7 @@ void OdometryFrontendRos::Run(ros::NodeHandle& nh, float rate)
 
   assert(filenames_l.size() == filenames_r.size());
 
-  Matrix4d T_curr_world = Matrix4d::Identity();
+  Matrix4d T_world_curr = Matrix4d::Identity();
 
   ros::Publisher pose_pub = nh.advertise<geometry_msgs::PoseStamped>(pose_topic_, 1);
 
@@ -49,26 +49,26 @@ void OdometryFrontendRos::Run(ros::NodeHandle& nh, float rate)
       OdometryEstimate odom = frontend_.TrackStereoFrame(iml, imr);
 
       if (odom.tracked_keylines < 3 || odom.tracked_keypoints < 3) {
-        odom.T_1_0 = Matrix4d::Identity();
+        odom.T_0_1 = Matrix4d::Identity();
         std::cout << "[VO] Unreliable, setting identify transform" << std::endl;
       }
 
-      T_curr_world = T_curr_world * odom.T_1_0;
+      T_world_curr = T_world_curr * odom.T_0_1;
 
       printf("Tracked keypoints = %d | Tracked keylines = %d\n", odom.tracked_keypoints, odom.tracked_keylines);
-      std::cout << "Odometry estimate:\n" << odom.T_1_0 << std::endl;
-      std::cout << "Pose estimate:\n" << T_curr_world << std::endl;
+      std::cout << "Odometry estimate:\n" << odom.T_0_1 << std::endl;
+      std::cout << "Pose estimate:\n" << T_world_curr << std::endl;
       cv::waitKey(1);
 
-      const Eigen::Quaterniond q(T_curr_world.block<3, 3>(0, 0));
+      const Eigen::Quaterniond q(T_world_curr.block<3, 3>(0, 0));
 
       geometry_msgs::PoseStamped pose_msg;
       pose_msg.header.seq = ctr;
       pose_msg.header.stamp = ros::Time::now();
       pose_msg.header.frame_id = "world";
-      pose_msg.pose.position.x = T_curr_world(0, 3);
-      pose_msg.pose.position.x = T_curr_world(1, 3);
-      pose_msg.pose.position.x = T_curr_world(2, 3);
+      pose_msg.pose.position.x = T_world_curr(0, 3);
+      pose_msg.pose.position.x = T_world_curr(1, 3);
+      pose_msg.pose.position.x = T_world_curr(2, 3);
       pose_msg.pose.orientation.x = q.x();
       pose_msg.pose.orientation.y = q.y();
       pose_msg.pose.orientation.z = q.z();
