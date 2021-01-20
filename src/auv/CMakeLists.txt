@@ -1,4 +1,5 @@
 add_subdirectory(./core)
+add_subdirectory(./imaging)
 add_subdirectory(./viz)
 add_subdirectory(./dataset)
 add_subdirectory(./vo)
