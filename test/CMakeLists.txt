@@ -8,7 +8,8 @@ set(TEST_SOURCES
   vo/point_detector_test.cpp
   vo/line_detector_test.cpp
   vo/optimization_test.cpp
-  vo/vo_test.cpp)
+  vo/vo_test.cpp
+  imaging/enhance_test.cpp)
 
 # Add one big executable with all of the tests. Filter for specific tests with:
 # --gtest_filter=TestModuleName.UnitTestName.
@@ -30,5 +31,7 @@ add_test(NAME ${PROJECT_NAME}_test COMMAND ${PROJECT_NAME}_test --gtest_color=ye
 # NOTE(milo): This is a little bit hacky. For some reason, executables are installed to
 # devel/.private/auv/lib/auv/, and symlinks are made in devel/lib/auv. Not calling any install
 # commands anywhere - this is just where catkin decides to install things.
+# NOTE(milo): Weirdly, the copy doesn't always work. After adding a "tmp.png" file in resources,
+# the copy started working...
 message(${CATKIN_DEVEL_PREFIX}/${CATKIN_PACKAGE_BIN_DESTINATION})
 file(COPY ./resources DESTINATION ${CATKIN_DEVEL_PREFIX}/${CATKIN_PACKAGE_BIN_DESTINATION})
