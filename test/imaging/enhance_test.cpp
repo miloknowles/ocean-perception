@@ -21,7 +21,7 @@ TEST(EnhanceTest, TestEnhanceContrast)
 
   const Image3d& im3f_contrast = EnhanceContrast(im3f);
   cv::imshow("contrast", im3f_contrast);
-  cv::imwrite("contrast_enhance.png", im3f_contrast);
+  cv::imwrite("contrast_enhance.png", CastImage3fTo3b(im3f_contrast));
 
   cv::waitKey(0);
 }

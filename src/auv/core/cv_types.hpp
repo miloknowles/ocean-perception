@@ -5,7 +5,8 @@
 namespace bm {
 namespace core {
 
-static const double kUint8ToFloat = 1.0 / 256.0;
+static const float kUint8ToFloat = 1.0 / 255.0;
+static const float kFloatToUint8 = 255.0;
 
 
 typedef cv::Mat1b Image1b;
@@ -31,10 +32,18 @@ inline core::Image3d CastImage3bTo3d(const core::Image3b& im)
 
 
 // Convert a uint8 image [0, 255] to a 32-bit floating point image.
-inline core::Image3f CastImage3bTo3f(const core::Image3f& im)
+inline core::Image3f CastImage3bTo3f(const core::Image3b& im)
 {
   core::Image3f out;
   im.convertTo(out, CV_32FC3, kUint8ToFloat);
+
+  return out;
+}
+
+inline core::Image3b CastImage3fTo3b(const core::Image3f& im)
+{
+  core::Image3b out;
+  im.convertTo(out, CV_8UC3, kFloatToUint8);
 
   return out;
 }
