@@ -88,7 +88,7 @@ TEST(EnhanceTest, TestResizeDepth)
 }
 
 
-TEST(EnhanceTest, TestFastPercentile)
+TEST(EnhanceTest, TestFindDarkFast)
 {
   cv::namedWindow("contrast", cv::WINDOW_NORMAL);
 
@@ -110,7 +110,7 @@ TEST(EnhanceTest, TestFastPercentile)
   // cv::waitKey(0);
   Timer timer(true);
   Image1b dark_mask;
-  float thresh = FastPercentile(intensity, 0.01, dark_mask);
+  float thresh = FindDarkFast(intensity, 0.01, dark_mask);
   const double ms = timer.Elapsed().milliseconds();
   printf("Took %lf ms (%lf hz) to process frame\n", ms, 1000.0 / ms);
 

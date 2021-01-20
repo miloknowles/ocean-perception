@@ -13,7 +13,7 @@ core::Image1f LoadDepthTif(const std::string& filepath)
 }
 
 
-core::Image3f EnhanceContrast(const core::Image3f& im, const core::Image1f& intensity)
+core::Image3f EnhanceContrast(const core::Image3f& bgr, const core::Image1f& intensity)
 {
   double vmin, vmax;
   cv::Point pmin, pmax;
@@ -23,20 +23,20 @@ core::Image3f EnhanceContrast(const core::Image3f& im, const core::Image1f& inte
   // NOTE(milo): Make sure that we don't divide by zero (e.g monochrome image case).
   const double irange = (vmax - vmin) > 0 ? (vmax - vmin) : 1;
 
-  return (im - vmin) / irange;
+  return (bgr - vmin) / irange;
 }
 
 
-float FastPercentile(const core::Image1f& im, float percentile, core::Image1b& mask)
+float FindDarkFast(const core::Image1f& intensity, float percentile, core::Image1b& mask)
 {
-  const float N = static_cast<float>(im.rows * im.cols);
+  const float N = static_cast<float>(intensity.rows * intensity.cols);
   const int N_desired = static_cast<int>(percentile * N);
 
   float low = 0;
   float high = 1.0;
 
   // Start by assuming a uniform distribution over intensity (i.e 10th percentile <= 0.1 intensity).
-  mask = (im <= 1.5*percentile);
+  mask = (intensity <= 1.5*percentile);
   int N_dark = cv::countNonZero(mask);
   if (N_dark < N_desired) {
     low = 1.5*percentile;
@@ -51,7 +51,7 @@ float FastPercentile(const core::Image1f& im, float percentile, core::Image1b& m
   // 10-iters gives +/-0.1% accuracy.
   for (int iter = 0; iter < 8; ++iter) {
     float threshold = (high + low) / 2.0f;
-    mask = (im <= threshold);
+    mask = (intensity <= threshold);
     N_dark = cv::countNonZero(mask);
 
     if (N_dark < N_desired) {
