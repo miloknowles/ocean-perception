@@ -1,12 +1,17 @@
 #pragma once
 
 #include <iostream>
-#include "core/cv_types.hpp"
-
 #include "opencv2/imgproc.hpp"
+
+#include "core/cv_types.hpp"
 
 namespace bm {
 namespace imaging {
+
+
+// Load the depth maps from Sea-thru paper.
+core::Image1f LoadDepthTif(const std::string& filepath);
+
 
 /*
  * Increase the contrast of an image by using the entire dynamic range.
