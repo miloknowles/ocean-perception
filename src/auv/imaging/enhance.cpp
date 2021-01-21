@@ -327,7 +327,7 @@ Image3f RemoveBackscatter(const Image3f& bgr,
   Image1f Ic[3];
   cv::split(bgr, Ic);
 
-  // Set the range to 100m (max range) wherever it's zero.
+  // Set the range to max wherever it's zero.
   Image1f range_nonzero = range.clone();
   const Image1f& range_is_zero = kBackgroundRange * (range <= 0.0f);
   range_nonzero += range_is_zero;
@@ -348,6 +348,39 @@ Image3f RemoveBackscatter(const Image3f& bgr,
   Image3f out = Image3f(bgr.size(), 0);
   cv::merge(Ic, 3, out);
   out = cv::max(out, 0.0f);  // Clamp nonnegative.
+
+  return out;
+}
+
+
+Image3f CorrectAttenuationSimple(const Image3f& bgr,
+                                 const Image1f& range,
+                                 const Vector3f& beta_D)
+{
+  Image1f Ic[3];
+  cv::split(bgr, Ic);
+
+  // Set the range to max wherever it's zero.
+  Image1f range_nonzero = range.clone();
+  const Image1f& range_is_zero = kBackgroundRange * (range <= 0.0f);
+  range_nonzero += range_is_zero;
+
+  Image1f exp_b, exp_g, exp_r;
+  cv::exp(beta_D(0)*range_nonzero, exp_b);
+  cv::exp(beta_D(1)*range_nonzero, exp_g);
+  cv::exp(beta_D(2)*range_nonzero, exp_r);
+
+  std::cout << Ic[2].size() << std::endl;
+  std::cout << exp_r.size() << std::endl;
+
+  Ic[0] = Ic[0].mul(exp_b);
+  Ic[1] = Ic[1].mul(exp_g);
+  Ic[2] = Ic[2].mul(exp_r);
+
+  Image3f out(bgr.size(), 0);
+  cv::merge(Ic, 3, out);
+
+  out = cv::min(out, 1.0f);
 
   return out;
 }

@@ -11,50 +11,6 @@ using namespace core;
 using namespace imaging;
 
 
-// TEST(EnhanceTest, TestEnhanceContrast)
-// {
-//   cv::namedWindow("raw", cv::WINDOW_NORMAL);
-//   cv::namedWindow("contrast", cv::WINDOW_NORMAL);
-
-//   const Image3b im3b = cv::imread(
-//       "./resources/LFT_3374.png",
-//       cv::IMREAD_COLOR);
-
-//   const Image3d& im3f = CastImage3bTo3f(im3b);
-//   cv::imshow("raw", im3f);
-
-//   const Image3d& im3f_contrast = EnhanceContrast(im3f);
-//   cv::imshow("contrast", im3f_contrast);
-//   cv::imwrite("contrast_enhance.png", CastImage3fTo3b(im3f_contrast));
-
-//   cv::waitKey(0);
-// }
-
-
-TEST(EnhanceTest, TestDepth)
-{
-  const cv::Mat1f depth_raw = cv::imread(
-      "./resources/depthLFT_3374.exr",
-      CV_LOAD_IMAGE_ANYDEPTH);
-
-  // const cv::Mat1f depth_raw = cv::imread(
-  //   "/home/milo/Downloads/D5/depthMaps/depthLFT_3374.tif",
-  //   CV_LOAD_IMAGE_ANYDEPTH);
-
-  std::cout << depth_raw.type() << std::endl;
-  std::cout << CvReadableType(depth_raw.type()) << std::endl;
-
-  double vmin, vmax;
-  cv::Point pmin, pmax;
-  cv::minMaxLoc(depth_raw, &vmin, &vmax, &pmin, &pmax);
-
-  printf("Depth: min=%f max=%f\n", vmin, vmax);
-
-  cv::imshow("depth", depth_raw / vmax);
-  cv::waitKey(0);
-}
-
-
 // https://github.com/opencv/opencv/issues/7762
 TEST(EnhanceTest, TestResizeDepth)
 {
@@ -137,10 +93,8 @@ TEST(EnhanceTest, TestFindDarkFast)
 }
 
 
-TEST(EnhanceTest, TestEstimateBackscatter)
+TEST(EnhanceTest, TestSeathru)
 {
-  cv::namedWindow("contrast", cv::WINDOW_NORMAL);
-
   // Read image and cast to float.
   Image3b im_3b = cv::imread("./resources/LFT_3374.png", cv::IMREAD_COLOR);
   cv::resize(im_3b, im_3b, im_3b.size() / 4);
@@ -151,7 +105,6 @@ TEST(EnhanceTest, TestEstimateBackscatter)
   cv::imshow("contrast", im);
 
   Image1f intensity = ComputeIntensity(im);
-  cv::imshow("intensity", intensity);
 
   cv::Mat1f range = cv::imread(
     "./depthLFT_3374.exr",
@@ -163,9 +116,10 @@ TEST(EnhanceTest, TestEstimateBackscatter)
   float thresh = FindDarkFast(intensity, range, 0.01, dark_mask);
   const float N = static_cast<float>(im.rows * im.cols);
   float percentile = static_cast<float>(cv::countNonZero(dark_mask) / N);
-  printf("Threshold = %f | Actual percentile = %f | Num dark px = %d\n", thresh, percentile, cv::countNonZero(dark_mask));
+  printf("Threshold = %f | Actual percentile = %f | Num dark px = %d\n",
+         thresh, percentile, cv::countNonZero(dark_mask));
 
-  cv::imshow("mask", dark_mask);
+  cv::imshow("Dark Pixels", dark_mask);
 
   // Nonlinear opt to estimate backscatter.
   Vector3f B, beta_B, Jp, beta_D;
@@ -180,8 +134,11 @@ TEST(EnhanceTest, TestEstimateBackscatter)
   printf("Estimated backscatter in %lf ms\n", ms);
   printf("Final error = %f\n", err);
 
-  const Image3f& Id = RemoveBackscatter(im, range, B, beta_B);
-  cv::imshow("remove_back", Id);
+  const Image3f& Dc = RemoveBackscatter(im, range, B, beta_B);
+  cv::imshow("Remove Backscatter", Dc);
+
+  const Image3f& Jc = CorrectAttenuationSimple(Dc, range, Vector3f(0.5, 0.5, 0.5));
+  cv::imshow("Corrected Attenuation", Jc);
 
   cv::waitKey(0);
 }

@@ -64,5 +64,10 @@ Image3f RemoveBackscatter(const Image3f& bgr,
                           const Vector3f& B,
                           const Vector3f& beta_B);
 
+
+Image3f CorrectAttenuationSimple(const Image3f& bgr,
+                                 const Image1f& range,
+                                 const Vector3f& beta_D);
+
 }
 }
