@@ -175,7 +175,7 @@ TEST(EnhanceTest, TestEstimateBackscatter)
   beta_D << 1.0, 1.0, 1.0;
 
   Timer timer(true);
-  float err = EstimateBackscatter(im, range, dark_mask, 50, 10, B, beta_B, Jp, beta_D);
+  float err = EstimateBackscatter(im, range, dark_mask, 50, 20, B, beta_B, Jp, beta_D);
   const double ms = timer.Elapsed().milliseconds();
   printf("Estimated backscatter in %lf ms\n", ms);
   printf("Final error = %f\n", err);

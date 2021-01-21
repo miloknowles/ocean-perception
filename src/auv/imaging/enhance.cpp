@@ -138,7 +138,7 @@ float EstimateBackscatter(const Image3f& bgr,
   X.block<3, 1>(9, 0) = beta_D;
   LinearizeImageFormation(bgrs, ranges, B, beta_B, Jp, beta_D, J, R, err_prev);
   Matrix12f H = J.transpose() * J;
-  float lambda = 1e-2 * MaxDiagonal(H);
+  float lambda = 1e-3 * MaxDiagonal(H);
 
   const float lambda_k_increase = 2.0;
   const float lambda_k_decrease = 3.0;
@@ -163,7 +163,8 @@ float EstimateBackscatter(const Image3f& bgr,
 
     // Compute the error if we were to take the step dX.
     // LinearizeImageFormation(bgrs, ranges, B, beta_B, Jp, beta_D, J, R, err);
-    err = ComputeImageFormationError(bgrs, ranges, B, beta_B, Jp, beta_D);
+    const Vector12f X_test = (X + dX).cwiseMax(0);
+    err = ComputeImageFormationError(bgrs, ranges, X_test);
 
     // If error gets worse, want to increase the damping factor (more like gradient descent).
     // See: https://en.wikipedia.org/wiki/Levenberg%E2%80%93Marquardt_algorithm
@@ -178,8 +179,9 @@ float EstimateBackscatter(const Image3f& bgr,
       printf("Error decreased, err = %f lambda = %f\n", err, lambda);
 
       // Gauss-Newton update: https://en.wikipedia.org/wiki/Gauss%E2%80%93Newton_algorithm.
-      X = X + dX;
-      X = X.cwiseMax(0); // Constrain X to be nonnegative.
+      X = X_test;
+      // X = X + dX;
+      // X = X.cwiseMax(0); // Constrain X to be nonnegative.
 
       std::cout << "X updated:" << std::endl;
       std::cout << X << std::endl;
@@ -195,7 +197,7 @@ float EstimateBackscatter(const Image3f& bgr,
     }
   }
 
-  return err;
+  return err_prev;
 }
 
 
@@ -208,14 +210,16 @@ static float RobustWeightCauchy(float residual)
 
 float ComputeImageFormationError(const std::vector<Vector3f>& bgr,
                                 const std::vector<float>& ranges,
-                                Vector3f& B,
-                                Vector3f& beta_B,
-                                Vector3f& Jp,
-                                Vector3f& beta_D)
+                                const Vector12f& X)
 {
   assert(bgr.size() == ranges.size());
 
   float error = 0.0f;
+
+  const Vector3f& B = X.block<3, 1>(0, 0);
+  const Vector3f& beta_B = X.block<3, 1>(3, 0);
+  const Vector3f& Jp = X.block<3, 1>(6, 0);
+  const Vector3f& beta_D = X.block<3, 1>(9, 0);
 
   for (int i = 0; i < bgr.size(); ++i) {
     // Compute the residual BGR error.

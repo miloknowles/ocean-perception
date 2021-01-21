@@ -44,10 +44,7 @@ float EstimateBackscatter(const Image3f& bgr,
 
 float ComputeImageFormationError(const std::vector<Vector3f>& bgr,
                                 const std::vector<float>& ranges,
-                                Vector3f& B,
-                                Vector3f& beta_B,
-                                Vector3f& Jp,
-                                Vector3f& beta_D);
+                                const Vector12f& X);
 
 
 // Compute the Jacobian of the underwater image formation model w.r.t current estimated params
