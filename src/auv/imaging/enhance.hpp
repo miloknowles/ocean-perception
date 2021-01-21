@@ -31,15 +31,23 @@ inline Image1f ComputeIntensity(const Image3f& bgr)
 
 // Find the percentile-darkest pixels in an image. Returns the intensity threshold at which this
 // percentile occurrs (approximately).
-float FindDarkFast(const Image1f& intensity, float percentile, Image1b& mask);
+float FindDarkFast(const Image1f& intensity, const Image1f& range, float percentile, Image1b& mask);
 
 
-bool EstimateBackscatter(const Image3f& bgr,
+float EstimateBackscatter(const Image3f& bgr,
                          const Image1f& range,
                          const Image1b& dark_mask,
                          int num_px, int iters,
                          Vector3f& B, Vector3f& beta_B,
                          Vector3f& Jp, Vector3f& beta_D);
+
+
+float ComputeImageFormationError(const std::vector<Vector3f>& bgr,
+                                const std::vector<float>& ranges,
+                                Vector3f& B,
+                                Vector3f& beta_B,
+                                Vector3f& Jp,
+                                Vector3f& beta_D);
 
 
 // Compute the Jacobian of the underwater image formation model w.r.t current estimated params
@@ -52,7 +60,8 @@ void LinearizeImageFormation(const std::vector<Vector3f>& bgr,
                              Vector3f& Jp,
                              Vector3f& beta_D,
                              Eigen::MatrixXf& J,
-                             Eigen::VectorXf& R);
+                             Eigen::VectorXf& R,
+                             float& error);
 
 }
 }
