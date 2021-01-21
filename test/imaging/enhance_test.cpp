@@ -98,8 +98,7 @@ TEST(EnhanceTest, TestFindDarkFast)
   cv::resize(im_3b, im_3b, im_3b.size() / 4);
   const Image3f& im_3f = CastImage3bTo3f(im_3b);
 
-  const Image1f intensity_raw = ComputeIntensity(im_3f);
-  const Image3f& im = EnhanceContrast(im_3f, intensity_raw);
+  const Image3f& im = EnhanceContrast(im_3f);
   cv::imshow("contrast", im);
 
   Image1f intensity = ComputeIntensity(im);
@@ -122,3 +121,53 @@ TEST(EnhanceTest, TestFindDarkFast)
   cv::imshow("mask", dark_mask);
   cv::waitKey(0);
 }
+
+
+// TEST(EnhanceTest, TestEstimateBackscatter)
+// {
+//   cv::namedWindow("contrast", cv::WINDOW_NORMAL);
+
+//   // Read image and cast to float.
+//   Image3b im_3b = cv::imread(
+//       "./resources/LFT_3374.png",
+//       cv::IMREAD_COLOR);
+//   cv::resize(im_3b, im_3b, im_3b.size() / 4);
+//   const Image3f& im_3f = CastImage3bTo3f(im_3b);
+
+//   // Contrast boosting.
+//   const Image1f intensity_raw = ComputeIntensity(im_3f);
+//   const Image3f& im = EnhanceContrast(im_3f, intensity_raw);
+//   cv::imshow("contrast", im);
+
+//   Image1f intensity = ComputeIntensity(im);
+//   cv::imshow("intensity", intensity);
+
+//   // Find dark pixels.
+//   Image1b dark_mask;
+//   float thresh = FindDarkFast(intensity, 0.01, dark_mask);
+//   const float N = static_cast<float>(im.rows * im.cols);
+//   float percentile = static_cast<float>(cv::countNonZero(dark_mask) / N);
+//   printf("Threshold = %f | Actual percentile = %f | Num dark px = %d\n", thresh, percentile, cv::countNonZero(dark_mask));
+
+//   cv::imshow("mask", dark_mask);
+
+//   const cv::Mat1f range = cv::imread(
+//     "./depthLFT_3374.exr",
+//     CV_LOAD_IMAGE_ANYDEPTH);
+
+//   double vmin, vmax;
+//   cv::Point pmin, pmax;
+//   cv::minMaxLoc(range, &vmin, &vmax, &pmin, &pmax);
+
+//   printf("Depth: min=%f max=%f\n", vmin, vmax);
+
+//   // Nonlinear opt to estimate backscatter.
+//   Vector3f B, beta_B, Jp, beta_D;
+//   B << 0.5, 0.5, 0.5;
+//   beta_B << 1.0, 1.0, 1.0;
+//   Jp << 0.5, 0.5, 0.5;
+//   beta_D << 1.0, 1.0, 1.0;
+//   bool result = EstimateBackscatter(im, range, dark_mask, 16, 3, B, beta_B, Jp, beta_D);
+
+//   cv::waitKey(0);
+// }
