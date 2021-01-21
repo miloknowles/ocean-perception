@@ -60,5 +60,11 @@ void LinearizeImageFormation(const std::vector<Vector3f>& bgr,
                              Eigen::VectorXf& R,
                              float& error);
 
+
+Image3f RemoveBackscatter(const Image3f& bgr,
+                          const Image1f& range,
+                          const Vector3f& B,
+                          const Vector3f& beta_B);
+
 }
 }

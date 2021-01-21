@@ -180,5 +180,8 @@ TEST(EnhanceTest, TestEstimateBackscatter)
   printf("Estimated backscatter in %lf ms\n", ms);
   printf("Final error = %f\n", err);
 
+  const Image3f& Id = RemoveBackscatter(im, range, B, beta_B);
+  cv::imshow("remove_back", Id);
+
   cv::waitKey(0);
 }
