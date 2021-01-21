@@ -29,27 +29,25 @@ Image1f ComputeIntensity(const Image3f& bgr)
 
 Image3f EnhanceContrast(const Image3f& bgr)
 {
-  double bmin, bmax, gmin, gmax, rmin, rmax;
   cv::Point pmin, pmax;
 
   Image1f channels[3];
-  cv::split(bgr, channels);
 
-  cv::minMaxLoc(channels[0], &bmin, &bmax, &pmin, &pmax);
-  cv::minMaxLoc(channels[1], &gmin, &gmax, &pmin, &pmax);
-  cv::minMaxLoc(channels[2], &rmin, &rmax, &pmin, &pmax);
+  Image3f hsv;
+  cv::cvtColor(bgr, hsv, CV_BGR2HSV);
+  cv::split(hsv, channels);
 
-  // NOTE(milo): Make sure that we don't divide by zero (e.g monochrome image case).
-  const double db = (bmax - bmin) > 0 ? (bmax - bmin) : 1;
-  const double dg = (gmax - gmin) > 0 ? (gmax - gmin) : 1;
-  const double dr = (rmax - rmin) > 0 ? (rmax - rmin) : 1;
+  Image1f smoothed_value;
+  cv::resize(channels[2], smoothed_value, hsv.size() / 4);
 
-  Image3f out = Image3f(bgr.size(), 0);
-  channels[0] = (channels[0] - bmin) / db;
-  channels[1] = (channels[1] - gmin) / dg;
-  channels[2] = (channels[2] - rmin) / dr;
+  double vmin, vmax;
+  cv::minMaxLoc(smoothed_value, &vmin, &vmax, &pmin, &pmax);
 
-  cv::merge(channels, 3, out);
+  channels[2] = (channels[2] - vmin) / (vmax - vmin);
+  cv::merge(channels, 3, hsv);
+
+  Image3f out;
+  cv::cvtColor(hsv, out, CV_HSV2BGR);
 
   return out;
 }
