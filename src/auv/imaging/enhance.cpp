@@ -9,18 +9,30 @@ namespace bm {
 namespace imaging {
 
 
-core::Image1f LoadDepthTif(const std::string& filepath)
+// Range of background pixels (in meters).
+static const float kBackgroundRange = 30.0f;
+
+
+Image1f LoadDepthTif(const std::string& filepath)
 {
   return cv::imread(filepath, CV_LOAD_IMAGE_ANYDEPTH);
 }
 
 
-core::Image3f EnhanceContrast(const core::Image3f& bgr)
+Image1f ComputeIntensity(const Image3f& bgr)
+{
+  Image1f out;
+  cv::cvtColor(bgr, out, CV_BGR2GRAY);
+  return out;
+}
+
+
+Image3f EnhanceContrast(const Image3f& bgr)
 {
   double bmin, bmax, gmin, gmax, rmin, rmax;
   cv::Point pmin, pmax;
 
-  core::Image1f channels[3];
+  Image1f channels[3];
   cv::split(bgr, channels);
 
   cv::minMaxLoc(channels[0], &bmin, &bmax, &pmin, &pmax);
@@ -32,7 +44,7 @@ core::Image3f EnhanceContrast(const core::Image3f& bgr)
   const double dg = (gmax - gmin) > 0 ? (gmax - gmin) : 1;
   const double dr = (rmax - rmin) > 0 ? (rmax - rmin) : 1;
 
-  core::Image3f out = core::Image3f(bgr.size(), 0);
+  Image3f out = Image3f(bgr.size(), 0);
   channels[0] = (channels[0] - bmin) / db;
   channels[1] = (channels[1] - gmin) / dg;
   channels[2] = (channels[2] - rmin) / dr;
@@ -43,7 +55,7 @@ core::Image3f EnhanceContrast(const core::Image3f& bgr)
 }
 
 
-float FindDarkFast(const core::Image1f& intensity, const core::Image1f& range, float percentile, core::Image1b& mask)
+float FindDarkFast(const Image1f& intensity, const Image1f& range, float percentile, Image1b& mask)
 {
   const float N = static_cast<float>(intensity.rows * intensity.cols);
   const int N_desired = static_cast<int>(percentile * N);
@@ -51,7 +63,7 @@ float FindDarkFast(const core::Image1f& intensity, const core::Image1f& range, f
   float low = 0;
   float high = 1.0;
 
-  const core::Image1b& range_valid_mask = (range > 0.1);
+  const Image1b& range_valid_mask = (range > 0.1);
 
   // Start by assuming a uniform distribution over intensity (i.e 10th percentile <= 0.1 intensity).
   mask = (intensity <= 1.5*percentile & range_valid_mask);
@@ -85,6 +97,7 @@ float FindDarkFast(const core::Image1f& intensity, const core::Image1f& range, f
 }
 
 
+// Returns the max diagonal entry from a 12x12 matrix.
 static float MaxDiagonal(const Matrix12f& H)
 {
   float H_max = 0.0;
@@ -107,7 +120,7 @@ float EstimateBackscatter(const Image3f& bgr,
   std::vector<cv::Point> dark_px;
   cv::findNonZero(dark_mask, dark_px);
 
-  // Limit to a small number of pixel locations.
+  // Limit to a small number of pixel locations (randomly sampled).
   std::random_shuffle(dark_px.begin(), dark_px.end());
   dark_px.resize(std::min(num_px, static_cast<int>(dark_px.size())));
 
@@ -145,10 +158,9 @@ float EstimateBackscatter(const Image3f& bgr,
   const float step_size = 0.5f;
 
   for (int iter = 0; iter < iters; ++iter) {
-    printf("Gauss-Newton iter = %d\n", iter);
-
-    std::cout << "X current:" << std::endl;
-    std::cout << X << std::endl;
+    // printf("Gauss-Newton iter = %d\n", iter);
+    // std::cout << "X current:" << std::endl;
+    // std::cout << X << std::endl;
 
     // http://ceres-solver.org/nnls_solving.html
     Matrix12f H = J.transpose() * J;
@@ -159,7 +171,7 @@ float EstimateBackscatter(const Image3f& bgr,
 
     Eigen::ColPivHouseholderQR<Matrix12f> solver(H);
     const Vector12f dX = step_size * solver.solve(g);
-    std::cout << "dX:\n" << dX << std::endl;
+    // std::cout << "dX:\n" << dX << std::endl;
 
     // Compute the error if we were to take the step dX.
     // LinearizeImageFormation(bgrs, ranges, B, beta_B, Jp, beta_D, J, R, err);
@@ -170,21 +182,19 @@ float EstimateBackscatter(const Image3f& bgr,
     // See: https://en.wikipedia.org/wiki/Levenberg%E2%80%93Marquardt_algorithm
     if (err > err_prev) {
       lambda *= lambda_k_increase;
-      printf("Error increased, lambda = %f\n", lambda);
+      // printf("Error increased, lambda = %f\n", lambda);
 
     // If error improves, decrease the damping factor (more like Gauss-Newton).
     // See: https://en.wikipedia.org/wiki/Levenberg%E2%80%93Marquardt_algorithm
     } else {
       lambda /= lambda_k_decrease;
-      printf("Error decreased, err = %f lambda = %f\n", err, lambda);
+      // printf("Error decreased, err = %f lambda = %f\n", err, lambda);
 
       // Gauss-Newton update: https://en.wikipedia.org/wiki/Gauss%E2%80%93Newton_algorithm.
       X = X_test;
-      // X = X + dX;
-      // X = X.cwiseMax(0); // Constrain X to be nonnegative.
 
-      std::cout << "X updated:" << std::endl;
-      std::cout << X << std::endl;
+      // std::cout << "X updated:" << std::endl;
+      // std::cout << X << std::endl;
 
       // Pull individual vars out for next linearization.
       B = X.block<3, 1>(0, 0);
@@ -319,7 +329,7 @@ Image3f RemoveBackscatter(const Image3f& bgr,
 
   // Set the range to 100m (max range) wherever it's zero.
   Image1f range_nonzero = range.clone();
-  const Image1f& range_is_zero = 20.0f * (range <= 0.0f);
+  const Image1f& range_is_zero = kBackgroundRange * (range <= 0.0f);
   range_nonzero += range_is_zero;
 
   Image1f exp_b, exp_g, exp_r;

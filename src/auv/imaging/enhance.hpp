@@ -21,12 +21,8 @@ Image1f LoadDepthTif(const std::string& filepath);
 Image3f EnhanceContrast(const Image3f& bgr);
 
 
-inline Image1f ComputeIntensity(const Image3f& bgr)
-{
-  Image1f out;
-  cv::cvtColor(bgr, out, CV_BGR2GRAY);
-  return out;
-}
+// Compute the grayscale intensity of a BGR image.
+Image1f ComputeIntensity(const Image3f& bgr);
 
 
 // Find the percentile-darkest pixels in an image. Returns the intensity threshold at which this
@@ -34,6 +30,7 @@ inline Image1f ComputeIntensity(const Image3f& bgr)
 float FindDarkFast(const Image1f& intensity, const Image1f& range, float percentile, Image1b& mask);
 
 
+// Estimate the formation model parameters of an underwater scene using a set of dark pixels.
 float EstimateBackscatter(const Image3f& bgr,
                          const Image1f& range,
                          const Image1b& dark_mask,
@@ -42,14 +39,13 @@ float EstimateBackscatter(const Image3f& bgr,
                          Vector3f& Jp, Vector3f& beta_D);
 
 
+// Compute the residual error of an image given a set of formation model parameters.
 float ComputeImageFormationError(const std::vector<Vector3f>& bgr,
-                                const std::vector<float>& ranges,
-                                const Vector12f& X);
+                                 const std::vector<float>& ranges,
+                                 const Vector12f& X);
 
 
-// Compute the Jacobian of the underwater image formation model w.r.t current estimated params
-// B (backscatter color), beta_B (attenuation coeff. for backscattering), Jp (object color),
-// beta_D (attenuation coeff. for direct light).
+// Compute the Jacobian of the underwater image formation model wrt model parameters.
 void LinearizeImageFormation(const std::vector<Vector3f>& bgr,
                              const std::vector<float>& ranges,
                              Vector3f& B,
@@ -61,6 +57,8 @@ void LinearizeImageFormation(const std::vector<Vector3f>& bgr,
                              float& error);
 
 
+// Removes backscattering from an image using the estimation veiling light B and attenuation
+// coefficient of veiling light beta_B.
 Image3f RemoveBackscatter(const Image3f& bgr,
                           const Image1f& range,
                           const Vector3f& B,
