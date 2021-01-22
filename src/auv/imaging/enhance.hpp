@@ -72,7 +72,7 @@ Image3f CorrectAttenuationSimple(const Image3f& bgr,
                                  const Vector3f& beta_D);
 
 
-Image3f EstimateIlluminant(const Image3f& bgr,
+Image3f EstimateIlluminantGaussian(const Image3f& bgr,
                            const Image1f& range,
                            int ksizeX,
                            int ksizeY,
@@ -80,11 +80,11 @@ Image3f EstimateIlluminant(const Image3f& bgr,
                            double sigmaY);
 
 
-Image3f EstimateIlluminantBilateral(const Image3f& bgr,
-                                    const Image1f& range,
-                                    int r,
-                                    double eps,
-                                    int s);
+Image3f EstimateIlluminantGuided(const Image3f& bgr,
+                                 const Image1f& range,
+                                 int r,
+                                 double eps,
+                                 int s);
 
 }
 }

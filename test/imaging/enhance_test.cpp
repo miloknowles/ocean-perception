@@ -150,8 +150,8 @@ TEST(EnhanceTest, TestSeathru)
   printf("ksize: %d\n", ksize);
 
   // const Image3f& illuminant = EstimateIlluminant(Dc, range, ksize, ksize, 0.3*static_cast<float>(ksize), 0.3*static_cast<float>(ksize));
-  double eps = 0.01;
-  int s = 4;
+  double eps = 0.1;
+  int s = 8;
 
   // for (int r = 32; r < 1024; r *= 2) {
   //   printf("r=%d w=%d h=%d\n", r, im.cols, im.rows);
@@ -167,7 +167,7 @@ TEST(EnhanceTest, TestSeathru)
   int r = core::NextEvenInt(Dc.cols / 3);
   std::cout << r << std::endl;
 
-  const Image3f& illuminant = EstimateIlluminantBilateral(Dc, range, r, eps, s);
+  const Image3f& illuminant = EstimateIlluminantGuided(Dc, range, r, eps, s);
   cv::imshow("illuminant", illuminant);
 
   const Image3f& Jc = Dc / illuminant;
