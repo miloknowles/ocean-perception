@@ -180,9 +180,15 @@ TEST(EnhanceTest, TestSeathruDataset)
     cv::resize(bgr, bgr, downsize);
 
     Timer timer(true);
-    EnhanceUnderwater(bgr, range, 0.02, 48, 5, 1.2);
+    const Image3f enhanced = EnhanceUnderwater(bgr, range, 0.02, 48, 5, 1.2);
     const double ms = timer.Elapsed().milliseconds();
     printf("Took %lf ms (%lf hz) to process frame\n", ms, 1000.0 / ms);
+
+    cv::imshow("enhanced", enhanced);
+    // double vmin, vmax;
+    // cv::Point pmin, pmax;
+    // cv::minMaxLoc(enhanced, &vmin, &vmax, &pmin, &pmax);
+    // std::cout << vmin << " " << vmax << std::endl;
     cv::waitKey(0);
   }
 }

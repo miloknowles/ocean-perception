@@ -283,22 +283,22 @@ Image3f RemoveBackscatter(const Image3f& bgr,
   cv::split(bgr, Ic);
 
   // Set the range to max wherever it's zero.
-  Image1f range_nonzero = range.clone();
-  const Image1f& range_is_zero = kBackgroundRange * (range <= 0.0f);
-  range_nonzero += range_is_zero;
+  Image1f range_default;
+  cv::threshold(range, range_default, 1e-3, kBackgroundRange, CV_THRESH_BINARY_INV);
+  Image1f range_nonzero = range + range_default;
 
   Image1f exp_b, exp_g, exp_r;
   cv::exp(-beta_B(0)*range_nonzero, exp_b);
   cv::exp(-beta_B(1)*range_nonzero, exp_g);
   cv::exp(-beta_B(2)*range_nonzero, exp_r);
 
-  const Image1f Bb = B(0) * (1.0f - exp_b);
-  const Image1f Bg = B(1) * (1.0f - exp_g);
-  const Image1f Br = B(2) * (1.0f - exp_r);
+  exp_b = B(0) * (1.0f - exp_b);
+  exp_g = B(1) * (1.0f - exp_g);
+  exp_b = B(2) * (1.0f - exp_b);
 
-  Ic[0] = Ic[0] - Bb;
-  Ic[1] = Ic[1] - Bg;
-  Ic[2] = Ic[2] - Br;
+  Ic[0] = Ic[0] - exp_b;
+  Ic[1] = Ic[1] - exp_g;
+  Ic[2] = Ic[2] - exp_r;
 
   Image3f out = Image3f(bgr.size(), 0);
   cv::merge(Ic, 3, out);

@@ -40,6 +40,12 @@ Image3f EstimateIlluminantGuided(const Image3f& bgr,
 }
 
 
+// TODO(milo): Optimize the OpenCV-heavy function calls here. Or maybe recompile OpenCV?
+// With OpenCV compiled properly on the Jetson, image operations should be faster.
+// EnhanceContrast() --> 3 ms
+// RemoveBackscatter() --> 3.5 ms
+// EstimateIlluminant() --> 1.7ms
+// EstimateBackscatter is really fast with -O3 compile option!
 Image3f EnhanceUnderwater(const Image3f& bgr,
                           const Image1f& range,
                           float dark_percentile,
@@ -60,17 +66,15 @@ Image3f EnhanceUnderwater(const Image3f& bgr,
 
   // Optimize image formation parameters to best match observed dark pixels.
   Vector3f B, beta_B, Jp, beta_D;
+
+  // NOTE(milo): I set this initial guess based on the D5 3374 image from Sea-thru.
   B << 0.132, 0.115, 0.0559;
   beta_B << 0.358, 0.695, 1.11;
   Jp << 0.05, 0.05, 0.05;
   beta_D << 1.17, 1.23, 0.891;
 
-  Timer t1(true);
   const float error = EstimateBackscatter(
       I, range, is_dark, backscatter_num_px, backscatter_opt_iters, B, beta_B, Jp, beta_D);
-  printf("Backscatter ms=%f\n", t1.Elapsed().milliseconds());
-
-  printf("backscatter error = %f\n", error);
 
   const Image3f D = RemoveBackscatter(I, range, B, beta_B);
   // cv::imshow("remove_scatter", D);
@@ -80,16 +84,10 @@ Image3f EnhanceUnderwater(const Image3f& bgr,
   const int s = 8;
   const int r = core::NextEvenInt(D.cols / 3);
 
-  Timer t2(true);
   const Image3f illuminant = EstimateIlluminantGuided(D, range, r, eps, s);
-  printf("Illuminant ms=%f\n", t2.Elapsed().milliseconds());
-  cv::imshow("illuminant", illuminant);
+  // cv::imshow("illuminant", illuminant);
 
   Image3f J = D / illuminant;
-  cv::imshow("enhanced", J);
-
-  // J = brightness_boost * WhiteBalanceSimple(J);
-  // cv::imshow("enhanced_bright", J);
 
   return J;
 }
