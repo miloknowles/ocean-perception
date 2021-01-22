@@ -31,7 +31,6 @@ TEST(EnhanceTest, TestResizeDepth)
   cv::resize(depth, out, cv::Size(w / 4, h / 4));
 
   cv::imwrite("./depth_resized.exr", out);
-  // cv::imwrite("./depth_resized.png", out);
 
   const cv::Mat1f exr = cv::imread(
     "./depth_resized.exr",
@@ -44,7 +43,7 @@ TEST(EnhanceTest, TestResizeDepth)
   cv::Point pmin, pmax;
   cv::minMaxLoc(exr, &vmin, &vmax, &pmin, &pmax);
 
-  printf("Depth: min=%f max=%f\n", vmin, vmax);
+  printf("Saved depth statistics: min=%f max=%f\n", vmin, vmax);
 }
 
 
@@ -52,47 +51,35 @@ TEST(EnhanceTest, TestFindDarkFast)
 {
   cv::namedWindow("contrast", cv::WINDOW_NORMAL);
 
-  Image3b im_3b = cv::imread(
-      "./resources/LFT_3374.png",
-      cv::IMREAD_COLOR);
-  cv::resize(im_3b, im_3b, im_3b.size() / 4);
-  const Image3f& im_3f = CastImage3bTo3f(im_3b);
-
-  const Image3f& im = EnhanceContrast(im_3f);
+  Image3b raw = cv::imread("./resources/LFT_3374.png", cv::IMREAD_COLOR);
+  cv::resize(raw, raw, raw.size() / 4);
+  Image3f im = CastImage3bTo3f(raw);
+  im = EnhanceContrast(im);
   cv::imshow("contrast", im);
 
   Image1f intensity = ComputeIntensity(im);
   cv::imshow("intensity", intensity);
 
-  std::cout << intensity.size() << std::endl;
-
-  cv::Mat1f range = cv::imread(
-    "./depthLFT_3374.exr",
-    CV_LOAD_IMAGE_ANYDEPTH);
+  cv::Mat1f range = cv::imread("./depthLFT_3374.exr", CV_LOAD_IMAGE_ANYDEPTH);
   cv::resize(range, range, intensity.size());
 
   double vmin, vmax;
   cv::Point pmin, pmax;
   cv::minMaxLoc(range, &vmin, &vmax, &pmin, &pmax);
-
   printf("Depth: min=%f max=%f\n", vmin, vmax);
 
-  std::cout << intensity.size() << std::endl;
-  std::cout << range.size() << std::endl;
-
-  // cv::waitKey(0);
   Timer timer(true);
-  Image1b dark_mask;
-  float thresh = FindDarkFast(intensity, range, 0.01, dark_mask);
+  Image1b is_dark;
+  float thresh = FindDarkFast(intensity, range, 0.02, is_dark);
   const double ms = timer.Elapsed().milliseconds();
   printf("Took %lf ms (%lf hz) to process frame\n", ms, 1000.0 / ms);
 
   const float N = static_cast<float>(im.rows * im.cols);
-  float percentile = static_cast<float>(cv::countNonZero(dark_mask) / N);
+  float percentile = static_cast<float>(cv::countNonZero(is_dark) / N);
 
-  printf("Threshold = %f | Actual percentile = %f | Num dark px = %d\n", thresh, percentile, cv::countNonZero(dark_mask));
+  printf("threshold=%f | pct=%f | ndark=%d\n", thresh, percentile, cv::countNonZero(is_dark));
 
-  cv::imshow("mask", dark_mask);
+  cv::imshow("is_dark", is_dark);
   cv::waitKey(0);
 }
 
@@ -116,14 +103,14 @@ TEST(EnhanceTest, TestSeathru)
   cv::resize(range, range, intensity.size());
 
   // Find dark pixels.
-  Image1b dark_mask;
-  float thresh = FindDarkFast(intensity, range, 0.02, dark_mask);
+  Image1b is_dark;
+  float thresh = FindDarkFast(intensity, range, 0.02, is_dark);
   const float N = static_cast<float>(im.rows * im.cols);
-  float percentile = static_cast<float>(cv::countNonZero(dark_mask) / N);
+  float percentile = static_cast<float>(cv::countNonZero(is_dark) / N);
   printf("Threshold = %f | Actual percentile = %f | Num dark px = %d\n",
-         thresh, percentile, cv::countNonZero(dark_mask));
+         thresh, percentile, cv::countNonZero(is_dark));
 
-  cv::imshow("Dark Pixels", dark_mask);
+  cv::imshow("Dark Pixels", is_dark);
 
   // Nonlinear opt to estimate backscatter.
   Vector3f B, beta_B, Jp, beta_D;
@@ -133,7 +120,7 @@ TEST(EnhanceTest, TestSeathru)
   beta_D << 1.0, 1.0, 1.0;
 
   Timer timer(true);
-  float err = EstimateBackscatter(im, range, dark_mask, 100, 20, B, beta_B, Jp, beta_D);
+  float err = EstimateBackscatter(im, range, is_dark, 100, 20, B, beta_B, Jp, beta_D);
   const double ms = timer.Elapsed().milliseconds();
   printf("Estimated backscatter in %lf ms\n", ms);
   printf("Final error = %f\n", err);
@@ -145,14 +132,9 @@ TEST(EnhanceTest, TestSeathru)
   const Image3f& Dc = RemoveBackscatter(im, range, B, beta_B);
   cv::imshow("Remove Backscatter", Dc);
 
-  // std::cout << "beta_B: " << beta_B << std::endl;
-  // const Image3f& Jc = CorrectAttenuationSimple(Dc, range, beta_B);
-  // cv::imshow("Corrected Attenuation", Jc);
-
   const int ksize = core::NextOddInt(Dc.rows / 5);
   printf("ksize: %d\n", ksize);
 
-  // const Image3f& illuminant = EstimateIlluminant(Dc, range, ksize, ksize, 0.3*static_cast<float>(ksize), 0.3*static_cast<float>(ksize));
   double eps = 0.1;
   int s = 8;
 
@@ -179,7 +161,7 @@ TEST(EnhanceTest, TestSeathruDataset)
   std::string dataset_folder = "/home/milo/Downloads/D5/";
   std::string output_folder = "/home/milo/Desktop/seathru_output/";
 
-  FilenamesInDirectory(core::Join(dataset_folder, "Raw"), img_fnames, true);
+  FilenamesInDirectory(core::Join(dataset_folder, "PNG"), img_fnames, true);
   FilenamesInDirectory(core::Join(dataset_folder, "depthMaps"), rng_fnames, true);
 
   for (int i = 0; i < img_fnames.size(); ++i) {
@@ -197,7 +179,10 @@ TEST(EnhanceTest, TestSeathruDataset)
     cv::resize(range, range, downsize);
     cv::resize(bgr, bgr, downsize);
 
-    EnhanceUnderwater(bgr, range, 0.02, 100, 20, 1.1);
+    Timer timer(true);
+    EnhanceUnderwater(bgr, range, 0.02, 48, 5, 1.2);
+    const double ms = timer.Elapsed().milliseconds();
+    printf("Took %lf ms (%lf hz) to process frame\n", ms, 1000.0 / ms);
     cv::waitKey(0);
   }
 }

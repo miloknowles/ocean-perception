@@ -44,7 +44,7 @@ float FindDarkFast(const Image1f& intensity, const Image1f& range, float percent
   const int N_desired = static_cast<int>(percentile * N);
 
   float low = 0;
-  float high = 1.0;
+  float high = 0.5;
 
   const Image1b& range_valid_mask = (range > 0.1);
 
@@ -128,10 +128,6 @@ float EstimateBackscatter(const Image3f& bgr,
   const float step_size = 0.5f;
 
   for (int iter = 0; iter < iters; ++iter) {
-    // printf("Gauss-Newton iter = %d\n", iter);
-    // std::cout << "X current:" << std::endl;
-    // std::cout << X << std::endl;
-
     // http://ceres-solver.org/nnls_solving.html
     Matrix12f H = J.transpose() * J;
     const Vector12f g = -J.transpose() * R;
@@ -141,7 +137,6 @@ float EstimateBackscatter(const Image3f& bgr,
 
     Eigen::ColPivHouseholderQR<Matrix12f> solver(H);
     const Vector12f dX = step_size * solver.solve(g);
-    // std::cout << "dX:\n" << dX << std::endl;
 
     // Compute the error if we were to take the step dX.
     // LinearizeImageFormation(bgrs, ranges, B, beta_B, Jp, beta_D, J, R, err);
@@ -162,9 +157,6 @@ float EstimateBackscatter(const Image3f& bgr,
 
       // Gauss-Newton update: https://en.wikipedia.org/wiki/Gauss%E2%80%93Newton_algorithm.
       X = X_test;
-
-      // std::cout << "X updated:" << std::endl;
-      // std::cout << X << std::endl;
 
       // Pull individual vars out for next linearization.
       B = X.block<3, 1>(0, 0);
@@ -248,7 +240,7 @@ void LinearizeImageFormation(const std::vector<Vector3f>& bgr,
     const float r_r = (bgr_actual(2) - bgr_model(2));
 
     // Residual is the SSD of BGR error.
-    const float r = std::pow(r_b, 2) + std::pow(r_g, 2) + std::pow(r_r, 2);
+    const float r = r_b*r_b + r_g*r_g + r_r*r_r;
     const float weight = RobustWeightCauchy(r);
     // const float rinv = 1.0 / std::max(r, (float)1e-7);
     R(i) = weight*r;
