@@ -1,10 +1,16 @@
 SET(LIBRARY_NAME ${PROJECT_NAME}_imaging)
 
 SET(LIBRARY_SRC
-  enhance.cpp
-  enhance.hpp
+  io.cpp
+  io.hpp
+  backscatter.cpp
+  backscatter.hpp
+  normalization.cpp
+  normalization.hpp
   fast_guided_filter.cpp
-  fast_guided_filter.hpp)
+  fast_guided_filter.hpp
+  enhance.cpp
+  enhance.hpp)
 
 add_library(${LIBRARY_NAME} SHARED ${LIBRARY_SRC})
 set_target_properties(${LIBRARY_NAME} PROPERTIES LINKER_LANGUAGE CXX)

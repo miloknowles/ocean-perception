@@ -5,6 +5,11 @@
 
 #include "core/timer.hpp"
 #include "core/math_util.hpp"
+#include "core/file_utils.hpp"
+
+#include "imaging/io.hpp"
+#include "imaging/backscatter.hpp"
+#include "imaging/normalization.hpp"
 #include "imaging/enhance.hpp"
 
 using namespace bm;
@@ -24,8 +29,6 @@ TEST(EnhanceTest, TestResizeDepth)
 
   cv::Mat1f out;
   cv::resize(depth, out, cv::Size(w / 4, h / 4));
-
-  std::cout << "did resize" << std::endl;
 
   cv::imwrite("./depth_resized.exr", out);
   // cv::imwrite("./depth_resized.png", out);
@@ -153,17 +156,6 @@ TEST(EnhanceTest, TestSeathru)
   double eps = 0.1;
   int s = 8;
 
-  // for (int r = 32; r < 1024; r *= 2) {
-  //   printf("r=%d w=%d h=%d\n", r, im.cols, im.rows);
-  //   const Image3f& illuminant = EstimateIlluminantBilateral(Dc, range, r, eps, s);
-  //   cv::imshow("illuminant", illuminant);
-
-  //   const Image3f& Jc = Dc / illuminant;
-  //   cv::imshow("Jc", Jc);
-
-  //   cv::waitKey(0);
-  // }
-
   int r = core::NextEvenInt(Dc.cols / 3);
   std::cout << r << std::endl;
 
@@ -173,5 +165,39 @@ TEST(EnhanceTest, TestSeathru)
   const Image3f& Jc = Dc / illuminant;
   cv::imshow("Jc", Jc);
 
+  const Image3f Jc_balanced = 1.1f * WhiteBalanceSimple(Jc);
+  cv::imshow("balanced", Jc_balanced);
+
   cv::waitKey(0);
+}
+
+
+TEST(EnhanceTest, TestSeathruDataset)
+{
+  std::vector<std::string> img_fnames;
+  std::vector<std::string> rng_fnames;
+  std::string dataset_folder = "/home/milo/Downloads/D5/";
+  std::string output_folder = "/home/milo/Desktop/seathru_output/";
+
+  FilenamesInDirectory(core::Join(dataset_folder, "Raw"), img_fnames, true);
+  FilenamesInDirectory(core::Join(dataset_folder, "depthMaps"), rng_fnames, true);
+
+  for (int i = 0; i < img_fnames.size(); ++i) {
+    const std::string& img_fname = img_fnames.at(i);
+    const std::string& rng_fname = rng_fnames.at(i);
+    std::cout << "Processing: " << img_fname << std::endl;
+
+    Image3b bgr = cv::imread(img_fname, cv::IMREAD_COLOR);
+    cv::Mat1f range = cv::imread(rng_fname, CV_LOAD_IMAGE_ANYDEPTH);
+
+    std::cout << bgr.size();
+
+    const cv::Size downsize = bgr.size() / 16;
+    std::cout << "Resizing image to " << downsize << std::endl;
+    cv::resize(range, range, downsize);
+    cv::resize(bgr, bgr, downsize);
+
+    EnhanceUnderwater(bgr, range, 0.02, 100, 20, 1.1);
+    cv::waitKey(0);
+  }
 }
