@@ -61,7 +61,7 @@ float EstimateBeta(const Image1f& range,
   float lambda = 1e-3 * MaxDiagonal(H);
   const float lambda_k_increase = 2.0;
   const float lambda_k_decrease = 3.0;
-  const float step_size = 0.5f;
+  const float step_size = 1.0f;
 
   for (int iter = 0; iter < iters; ++iter) {
     // Levenberg-Marquardt diagonal thing.
@@ -75,7 +75,16 @@ float EstimateBeta(const Image1f& range,
 
     // Compute the error if we were to take the step dX.
     // LinearizeImageFormation(bgrs, ranges, B, beta_B, Jp, beta_D, J, R, err);
-    const Vector12f X_test = (X + dX).cwiseMax(0);
+    Vector12f X_test = (X + dX);
+
+    // a and c are nonnegative.
+    X_test.block<3, 1>(0, 0) = X_test.block<3, 1>(0, 0).cwiseMax(0);
+    X_test.block<3, 1>(6, 0) = X_test.block<3, 1>(6, 0).cwiseMax(0);
+
+    // b and d are nonpositive.
+    X_test.block<3, 1>(3, 0) = X_test.block<3, 1>(3, 0).cwiseMin(0);
+    X_test.block<3, 1>(9, 0) = X_test.block<3, 1>(9, 0).cwiseMin(0);
+
     // err = ComputeError(ranges, illuminants, X_test);
     LinearizeBeta(ranges, illuminants, X_test, H, g, err);
 
@@ -140,13 +149,15 @@ void LinearizeBeta(const std::vector<float>& ranges,
     // std::cout << "exp_dz:\n" << exp_dz << std::endl;
 
     const Vector3f beta_c = a.cwiseProduct(exp_bz) + c.cwiseProduct(exp_dz);
-    const Vector3f beta_c2 = beta_c.cwiseProduct(beta_c);
+    const Vector3f beta_c2 = beta_c.array() * beta_c.array();
     const Vector3f beta_c2_inv = beta_c2.cwiseMax(1e-7).cwiseInverse();
 
     const Vector3f z_c = -log_E.cwiseQuotient(beta_c.cwiseMax(1e-7));
 
     // Difference between observed z and model-predicted z.
     const Vector3f r_c = (Vector3f(z, z, z) - z_c);
+    std::cout << "z_true:\n" << z << std::endl;
+    std::cout << "z_c:\n" << z << std::endl;
 
     // Residual is the SSD of z errors.
     const float r = r_c(0)*r_c(0) + r_c(1)*r_c(1) + r_c(2)*r_c(2);
@@ -156,10 +167,10 @@ void LinearizeBeta(const std::vector<float>& ranges,
     // Outer chain-rule stuff that multiplies everything.
     const Vector3f outer = -2.0f * r_c.array() * log_E.array() * beta_c2_inv.array();
 
-    const Vector3f J_ac = outer.array() * (b * z).array().exp();
-    const Vector3f J_bc = outer.array() * z * a.array() * (b * z).array().exp();
-    const Vector3f J_cc = outer.array() * (d * z).array().exp();
-    const Vector3f J_dc = outer.array() * z * c.array() * (d * z).array().exp();
+    const Vector3f J_ac = outer.array() * exp_bz.array();
+    const Vector3f J_bc = outer.array() * z * a.array() * exp_bz.array();
+    const Vector3f J_cc = outer.array() * exp_dz.array();
+    const Vector3f J_dc = outer.array() * z * c.array() * exp_dz.array();
 
     Vector12f J;
     J.block<3, 1>(0, 0) = J_ac;

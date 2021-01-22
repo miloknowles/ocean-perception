@@ -74,10 +74,12 @@ Image3f EnhanceUnderwater(const Image3f& bgr,
   Jp << 0.05, 0.05, 0.05;
   beta_D << 1.17, 1.23, 0.891;
 
-  const float error = EstimateBackscatter(
+  const float B_error = EstimateBackscatter(
       I, range, is_dark, backscatter_num_px, backscatter_opt_iters, B, beta_B, Jp, beta_D);
 
-  std::cout << "Estimated backscatter parameters:" << std::endl;
+  std::cout << "----------------------------------------" << std::endl;
+  std::cout << "Estimated backscatter params:" << std::endl;
+  printf("error = %f\n", B_error);
   std::cout << "B:\n" << B << std::endl;
   std::cout << "beta_B:\n" << beta_B << std::endl;
 
@@ -94,13 +96,17 @@ Image3f EnhanceUnderwater(const Image3f& bgr,
 
   Vector12f X_beta_D;
   X_beta_D << 0.5, 0.5, 0.5,
-              -0.33, -0.66, -0.99,
+              -0.5, -0.5, -0.5,
               0.5, 0.5, 0.5,
-              -0.33, -0.66, -0.99;
+              -0.5, -0.5, -0.5;
 
-  float beta_D_error = EstimateBeta(range, illuminant, 100, 10, X_beta_D);
-  printf("Attenuation estimate: error = %f\n", beta_D_error);
-  std::cout << "beta:\n" << X_beta_D << std::endl;
+  Timer t0(true);
+  float D_error = EstimateBeta(range, illuminant, 200, 10, X_beta_D);
+  printf("elapsed = %f\n", t0.Elapsed().milliseconds());
+  std::cout << "----------------------------------------" << std::endl;
+  std::cout << "Estimated direct attenuation params" << std::endl;
+  printf("error = %f\n", D_error);
+  std::cout << "beta_D:\n" << X_beta_D << std::endl;
 
   Image3f J = D / illuminant;
 
