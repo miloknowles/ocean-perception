@@ -18,6 +18,17 @@ static const double DEG_TO_RAD_D = M_PI / 180.0;
 static const double RAD_TO_DEG_D = 180.0 / M_PI;
 
 
+inline int NextEvenInt(int x)
+{
+  return x + (x % 2);
+}
+
+inline int NextOddInt(int x)
+{
+  return x + (1 - x % 2);
+}
+
+
 // Return the unit direction vector.
 inline Vector2d NormalizedDirection(const ld::KeyLine& kl)
 {

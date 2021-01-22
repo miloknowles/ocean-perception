@@ -19,6 +19,8 @@ Image1f LoadDepthTif(const std::string& filepath);
 
 // Increase the dynamic range of an image with (image - vmin) / (vmax - vmin).
 Image3f EnhanceContrast(const Image3f& bgr);
+Image3f EnhanceContrastFactor(const Image3f& bgr);
+Image3f EnhanceContrastChannelwise(const Image3f& bgr);
 
 
 // Compute the grayscale intensity of a BGR image.
@@ -68,6 +70,21 @@ Image3f RemoveBackscatter(const Image3f& bgr,
 Image3f CorrectAttenuationSimple(const Image3f& bgr,
                                  const Image1f& range,
                                  const Vector3f& beta_D);
+
+
+Image3f EstimateIlluminant(const Image3f& bgr,
+                           const Image1f& range,
+                           int ksizeX,
+                           int ksizeY,
+                           double sigmaX,
+                           double sigmaY);
+
+
+Image3f EstimateIlluminantBilateral(const Image3f& bgr,
+                                    const Image1f& range,
+                                    int r,
+                                    double eps,
+                                    int s);
 
 }
 }

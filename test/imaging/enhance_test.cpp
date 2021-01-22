@@ -4,6 +4,7 @@
 #include "opencv2/imgproc.hpp"
 
 #include "core/timer.hpp"
+#include "core/math_util.hpp"
 #include "imaging/enhance.hpp"
 
 using namespace bm;
@@ -113,7 +114,7 @@ TEST(EnhanceTest, TestSeathru)
 
   // Find dark pixels.
   Image1b dark_mask;
-  float thresh = FindDarkFast(intensity, range, 0.01, dark_mask);
+  float thresh = FindDarkFast(intensity, range, 0.02, dark_mask);
   const float N = static_cast<float>(im.rows * im.cols);
   float percentile = static_cast<float>(cv::countNonZero(dark_mask) / N);
   printf("Threshold = %f | Actual percentile = %f | Num dark px = %d\n",
@@ -129,16 +130,48 @@ TEST(EnhanceTest, TestSeathru)
   beta_D << 1.0, 1.0, 1.0;
 
   Timer timer(true);
-  float err = EstimateBackscatter(im, range, dark_mask, 50, 20, B, beta_B, Jp, beta_D);
+  float err = EstimateBackscatter(im, range, dark_mask, 100, 20, B, beta_B, Jp, beta_D);
   const double ms = timer.Elapsed().milliseconds();
   printf("Estimated backscatter in %lf ms\n", ms);
   printf("Final error = %f\n", err);
+  std::cout << B << std::endl;
+  std::cout << beta_B << std::endl;
+  std::cout << Jp << std::endl;
+  std::cout << beta_D << std::endl;
 
   const Image3f& Dc = RemoveBackscatter(im, range, B, beta_B);
   cv::imshow("Remove Backscatter", Dc);
 
-  const Image3f& Jc = CorrectAttenuationSimple(Dc, range, Vector3f(0.5, 0.5, 0.5));
-  cv::imshow("Corrected Attenuation", Jc);
+  // std::cout << "beta_B: " << beta_B << std::endl;
+  // const Image3f& Jc = CorrectAttenuationSimple(Dc, range, beta_B);
+  // cv::imshow("Corrected Attenuation", Jc);
+
+  const int ksize = core::NextOddInt(Dc.rows / 5);
+  printf("ksize: %d\n", ksize);
+
+  // const Image3f& illuminant = EstimateIlluminant(Dc, range, ksize, ksize, 0.3*static_cast<float>(ksize), 0.3*static_cast<float>(ksize));
+  double eps = 0.01;
+  int s = 4;
+
+  // for (int r = 32; r < 1024; r *= 2) {
+  //   printf("r=%d w=%d h=%d\n", r, im.cols, im.rows);
+  //   const Image3f& illuminant = EstimateIlluminantBilateral(Dc, range, r, eps, s);
+  //   cv::imshow("illuminant", illuminant);
+
+  //   const Image3f& Jc = Dc / illuminant;
+  //   cv::imshow("Jc", Jc);
+
+  //   cv::waitKey(0);
+  // }
+
+  int r = core::NextEvenInt(Dc.cols / 3);
+  std::cout << r << std::endl;
+
+  const Image3f& illuminant = EstimateIlluminantBilateral(Dc, range, r, eps, s);
+  cv::imshow("illuminant", illuminant);
+
+  const Image3f& Jc = Dc / illuminant;
+  cv::imshow("Jc", Jc);
 
   cv::waitKey(0);
 }

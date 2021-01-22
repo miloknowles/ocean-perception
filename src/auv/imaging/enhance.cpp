@@ -2,15 +2,17 @@
 
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgproc.hpp>
+#include <opencv2/ximgproc/edge_filter.hpp>
 
 #include "imaging/enhance.hpp"
+#include "imaging/fast_guided_filter.hpp"
 
 namespace bm {
 namespace imaging {
 
 
 // Range of background pixels (in meters).
-static const float kBackgroundRange = 30.0f;
+static const float kBackgroundRange = 20.0f;
 
 
 Image1f LoadDepthTif(const std::string& filepath)
@@ -37,6 +39,8 @@ Image3f EnhanceContrast(const Image3f& bgr)
   cv::cvtColor(bgr, hsv, CV_BGR2HSV);
   cv::split(hsv, channels);
 
+  // NOTE(milo): Smooth out high intensity noise to get a better estimate of the min/max values.
+  // The contras-boosted image will look slightly brighter as a result.
   Image1f smoothed_value;
   cv::resize(channels[2], smoothed_value, hsv.size() / 4);
 
@@ -50,6 +54,41 @@ Image3f EnhanceContrast(const Image3f& bgr)
   cv::cvtColor(hsv, out, CV_HSV2BGR);
 
   return out;
+}
+
+
+Image3f EnhanceContrastChannelwise(const Image3f& bgr)
+{
+  double bmin, bmax, gmin, gmax, rmin, rmax;
+  cv::Point pmin, pmax;
+
+  Image1f channels[3];
+  cv::split(bgr, channels);
+
+  cv::minMaxLoc(channels[0], &bmin, &bmax, &pmin, &pmax);
+  cv::minMaxLoc(channels[1], &gmin, &gmax, &pmin, &pmax);
+  cv::minMaxLoc(channels[2], &rmin, &rmax, &pmin, &pmax);
+
+  // NOTE(milo): Make sure that we don't divide by zero (e.g monochrome image case).
+  const double db = (bmax - bmin) > 0 ? (bmax - bmin) : 1;
+  const double dg = (gmax - gmin) > 0 ? (gmax - gmin) : 1;
+  const double dr = (rmax - rmin) > 0 ? (rmax - rmin) : 1;
+
+  Image3f out = Image3f(bgr.size(), 0);
+  channels[0] = (channels[0] - bmin) / db;
+  channels[1] = (channels[1] - gmin) / dg;
+  channels[2] = (channels[2] - rmin) / dr;
+
+  cv::merge(channels, 3, out);
+
+  return out;
+}
+
+
+Image3f EnhanceContrastFactor(const Image3f& bgr)
+{
+  const float factor = 1.5f;
+  return cv::min(cv::max(factor*(bgr - 0.5) + 0.5, 0), 1.0);
 }
 
 
@@ -381,6 +420,34 @@ Image3f CorrectAttenuationSimple(const Image3f& bgr,
   out = cv::min(out, 1.0f);
 
   return out;
+}
+
+
+Image3f EstimateIlluminant(const Image3f& bgr,
+                           const Image1f& range,
+                           int ksizeX,
+                           int ksizeY,
+                           double sigmaX,
+                           double sigmaY)
+{
+  Image3f lsac;
+  cv::GaussianBlur(bgr, lsac, cv::Size(ksizeX, ksizeY), sigmaX, sigmaY, cv::BORDER_REPLICATE);
+
+  // Akkaynak et al. multiply by a factor of 2 to get the illuminant.
+  return 2.0f * lsac;
+}
+
+
+Image3f EstimateIlluminantBilateral(const Image3f& bgr,
+                                    const Image1f& range,
+                                    int r,
+                                    double eps,
+                                    int s)
+{
+  const Image3f& lsac = fastGuidedFilter(range, bgr, r, eps, s);
+
+  // Akkaynak et al. multiply by a factor of 2 to get the illuminant.
+  return 2.0f * lsac;
 }
 
 }
