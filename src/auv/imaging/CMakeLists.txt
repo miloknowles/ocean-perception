@@ -5,6 +5,8 @@ SET(LIBRARY_SRC
   io.hpp
   backscatter.cpp
   backscatter.hpp
+  attenuation.cpp
+  attenuation.hpp
   normalization.cpp
   normalization.hpp
   fast_guided_filter.cpp

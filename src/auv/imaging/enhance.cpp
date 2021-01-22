@@ -5,6 +5,7 @@
 #include "core/timer.hpp"
 #include "imaging/enhance.hpp"
 #include "imaging/backscatter.hpp"
+#include "imaging/attenuation.hpp"
 #include "imaging/normalization.hpp"
 #include "imaging/fast_guided_filter.hpp"
 
@@ -55,14 +56,14 @@ Image3f EnhanceUnderwater(const Image3f& bgr,
 {
   // Contrast boosting.
   Image3f I = EnhanceContrast(bgr);
-  // cv::imshow("enhance_contrast", I);
+  cv::imshow("enhance_contrast", I);
 
   const Image1f intensity = ComputeIntensity(I);
 
   // Find dark pixels.
   Image1b is_dark;
   FindDarkFast(intensity, range, dark_percentile, is_dark);
-  // cv::imshow("dark_mask", is_dark);
+  cv::imshow("dark_mask", is_dark);
 
   // Optimize image formation parameters to best match observed dark pixels.
   Vector3f B, beta_B, Jp, beta_D;
@@ -76,8 +77,12 @@ Image3f EnhanceUnderwater(const Image3f& bgr,
   const float error = EstimateBackscatter(
       I, range, is_dark, backscatter_num_px, backscatter_opt_iters, B, beta_B, Jp, beta_D);
 
+  std::cout << "Estimated backscatter parameters:" << std::endl;
+  std::cout << "B:\n" << B << std::endl;
+  std::cout << "beta_B:\n" << beta_B << std::endl;
+
   const Image3f D = RemoveBackscatter(I, range, B, beta_B);
-  // cv::imshow("remove_scatter", D);
+  cv::imshow("remove_scatter", D);
 
   // Tuned the guided filter params offline.
   const double eps = 0.01;
@@ -85,7 +90,17 @@ Image3f EnhanceUnderwater(const Image3f& bgr,
   const int r = core::NextEvenInt(D.cols / 3);
 
   const Image3f illuminant = EstimateIlluminantGuided(D, range, r, eps, s);
-  // cv::imshow("illuminant", illuminant);
+  cv::imshow("illuminant", illuminant);
+
+  Vector12f X_beta_D;
+  X_beta_D << 0.5, 0.5, 0.5,
+              -0.33, -0.66, -0.99,
+              0.5, 0.5, 0.5,
+              -0.33, -0.66, -0.99;
+
+  float beta_D_error = EstimateBeta(range, illuminant, 100, 10, X_beta_D);
+  printf("Attenuation estimate: error = %f\n", beta_D_error);
+  std::cout << "beta:\n" << X_beta_D << std::endl;
 
   Image3f J = D / illuminant;
 

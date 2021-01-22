@@ -8,32 +8,28 @@ namespace bm {
 namespace imaging {
 
 
+static const float kGammaPowerInv = 2.2f;
+static const float kGammaPower = 1.0f / 2.2f;
+
+
 Image3f EnhanceContrast(const Image3f& bgr)
 {
   cv::Point pmin, pmax;
 
   Image1f channels[3];
 
-  Timer t1(true);
   Image3f hsv;
   cv::cvtColor(bgr, hsv, CV_BGR2HSV);
-  printf("color conv = %f\n", t1.Elapsed().milliseconds());
 
-  t1.Reset();
   cv::split(hsv, channels);
-  printf("split = %f\n", t1.Elapsed().milliseconds());
 
   // NOTE(milo): Smooth out high intensity noise to get a better estimate of the min/max values.
   // The contras-boosted image will look slightly brighter as a result.
-  t1.Reset();
   Image1f smoothed_value;
   cv::resize(channels[2], smoothed_value, hsv.size() / 4);
-  printf("resize = %f\n", t1.Elapsed().milliseconds());
 
-  t1.Reset();
   double vmin, vmax;
   cv::minMaxLoc(smoothed_value, &vmin, &vmax, &pmin, &pmax);
-  printf("minmax = %f\n", t1.Elapsed().milliseconds());
 
   channels[2] = (channels[2] - vmin) / (vmax - vmin);
   cv::merge(channels, 3, hsv);
@@ -84,6 +80,23 @@ Image3f WhiteBalanceSimple(const Image3f& bgr)
 
   return out;
 }
+
+
+Image3f LinearToGamma(const Image3f& bgr_linear)
+{
+  Image3f out;
+  cv::pow(bgr_linear, kGammaPower, out);
+  return out;
+}
+
+
+Image3f GammaToLinear(const Image3f& bgr_gamma)
+{
+  Image3f out;
+  cv::pow(bgr_gamma, kGammaPowerInv, out);
+  return out;
+}
+
 
 }
 }

@@ -18,5 +18,11 @@ Image3f EnhanceContrastFactor(const Image3f& bgr);
 Image3f WhiteBalanceSimple(const Image3f& bgr);
 
 
+Image3f LinearToGamma(const Image3f& bgr_linear);
+
+
+Image3f GammaToLinear(const Image3f& bgr_gamma);
+
+
 }
 }

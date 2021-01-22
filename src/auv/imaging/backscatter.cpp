@@ -22,7 +22,7 @@ static const float kBackgroundRange = 20.0f;
 static float MaxDiagonal(const Matrix12f& H)
 {
   float H_max = 0.0;
-  for (int i = 0; i < 6; ++i) {
+  for (int i = 0; i < 12; ++i) {
     if (H(i, i) > H_max || H(i, i) < -H_max) {
       H_max = std::fabs(H(i, i));
     }
@@ -269,6 +269,7 @@ void LinearizeImageFormation(const std::vector<Vector3f>& bgr,
                 J_beta_Db, J_beta_Dg, J_beta_Dr;
 
     // NOTE(milo): All entries in the Jacobian have this outermost chain rule component.
+    // TODO(milo): I think the 0.5 factor is wrong...
     J.row(i) *= (0.5f * weight);
   }
 }

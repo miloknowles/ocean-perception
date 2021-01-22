@@ -158,11 +158,27 @@ TEST(EnhanceTest, TestSeathruDataset)
 {
   std::vector<std::string> img_fnames;
   std::vector<std::string> rng_fnames;
-  std::string dataset_folder = "/home/milo/Downloads/D5/";
+  std::string dataset_folder = "/home/milo/datasets/seathru/D3/";
   std::string output_folder = "/home/milo/Desktop/seathru_output/";
 
-  FilenamesInDirectory(core::Join(dataset_folder, "PNG"), img_fnames, true);
-  FilenamesInDirectory(core::Join(dataset_folder, "depthMaps"), rng_fnames, true);
+  // FilenamesInDirectory(core::Join(dataset_folder, "Raw"), img_fnames, true);
+  // FilenamesInDirectory(core::Join(dataset_folder, "depthMaps"), rng_fnames, true);
+
+  img_fnames = {
+    "/home/milo/datasets/seathru/D3/Raw/T_S04856.png",
+    "/home/milo/datasets/seathru/D3/Raw/T_S04857.png",
+    "/home/milo/datasets/seathru/D3/Raw/T_S04858.png",
+    "/home/milo/datasets/seathru/D3/Raw/T_S04859.png",
+    "/home/milo/datasets/seathru/D3/Raw/T_S04860.png"
+  };
+
+  rng_fnames = {
+    "/home/milo/datasets/seathru/D3/depthMaps/depthT_S04856.tif",
+    "/home/milo/datasets/seathru/D3/depthMaps/depthT_S04857.tif",
+    "/home/milo/datasets/seathru/D3/depthMaps/depthT_S04858.tif",
+    "/home/milo/datasets/seathru/D3/depthMaps/depthT_S04859.tif",
+    "/home/milo/datasets/seathru/D3/depthMaps/depthT_S04860.tif"
+  };
 
   for (int i = 0; i < img_fnames.size(); ++i) {
     const std::string& img_fname = img_fnames.at(i);
@@ -180,11 +196,12 @@ TEST(EnhanceTest, TestSeathruDataset)
     cv::resize(bgr, bgr, downsize);
 
     Timer timer(true);
-    const Image3f enhanced = EnhanceUnderwater(bgr, range, 0.02, 48, 5, 1.2);
+    const Image3f J = EnhanceUnderwater(bgr, range, 0.01, 48, 5, 1.2);
     const double ms = timer.Elapsed().milliseconds();
     printf("Took %lf ms (%lf hz) to process frame\n", ms, 1000.0 / ms);
 
-    cv::imshow("enhanced", enhanced);
+    cv::imshow("J_linear", J);
+    cv::imshow("J_gamma", LinearToGamma(J));
     // double vmin, vmax;
     // cv::Point pmin, pmax;
     // cv::minMaxLoc(enhanced, &vmin, &vmax, &pmin, &pmax);
