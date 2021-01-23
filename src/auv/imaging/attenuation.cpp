@@ -277,9 +277,9 @@ Image3f CorrectAttenuation(const Image3f& bgr, const Image1f& range, const Vecto
   const float d_r = X(11);
 
   Image1f beta_cz[3];
-  beta_cz[0] = z.mul(a_b * MatExp(z * b_b) + c_b + MatExp(z * d_b));
-  beta_cz[1] = z.mul(a_g * MatExp(z * b_g) + c_g + MatExp(z * d_g));
-  beta_cz[2] = z.mul(a_r * MatExp(z * b_r) + c_r + MatExp(z * d_r));
+  beta_cz[0] = z.mul(a_b * MatExp(z * b_b) + c_b * MatExp(z * d_b));
+  beta_cz[1] = z.mul(a_g * MatExp(z * b_g) + c_g * MatExp(z * d_g));
+  beta_cz[2] = z.mul(a_r * MatExp(z * b_r) + c_r * MatExp(z * d_r));
 
   Image3f E;
   cv::merge(beta_cz, 3, E);
