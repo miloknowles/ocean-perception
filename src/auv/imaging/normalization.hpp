@@ -24,5 +24,8 @@ Image3f LinearToGamma(const Image3f& bgr_linear);
 Image3f GammaToLinear(const Image3f& bgr_gamma);
 
 
+// Clip the image to the range [vmin, vmax], and then stretch to be [0, 1].
+Image3f EnhanceContrastDerya(const Image3f& bgr, float vmin, float vmax);
+
 }
 }

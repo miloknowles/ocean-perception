@@ -88,7 +88,7 @@ TEST(EnhanceTest, TestSeathruDataset)
 {
   std::vector<std::string> img_fnames;
   std::vector<std::string> rng_fnames;
-  std::string dataset_folder = "/home/milo/datasets/seathru/D3/";
+  std::string dataset_folder = "/home/milo/datasets/seathru/D5/";
   std::string output_folder = "/home/milo/Desktop/seathru_output/";
 
   FilenamesInDirectory(core::Join(dataset_folder, "Raw"), img_fnames, true);
@@ -115,19 +115,22 @@ TEST(EnhanceTest, TestSeathruDataset)
     const std::string& rng_fname = rng_fnames.at(i);
     std::cout << "Processing: " << img_fname << std::endl;
 
-    Image3b bgr = cv::imread(img_fname, cv::IMREAD_COLOR);
-    cv::Mat1f range = cv::imread(rng_fname, CV_LOAD_IMAGE_ANYDEPTH);
+    Image3b raw = cv::imread(img_fname, cv::IMREAD_COLOR);
+    // cv::cvtColor(raw, raw, cv::COLOR_BGR2RGB);
+    Image3f bgr = CastImage3bTo3f(raw);
 
-    std::cout << bgr.size();
+    cv::Mat1f range = cv::imread(rng_fname, CV_LOAD_IMAGE_ANYDEPTH);
 
     const cv::Size downsize = bgr.size() / 16;
     std::cout << "Resizing image to " << downsize << std::endl;
     cv::resize(range, range, downsize);
     cv::resize(bgr, bgr, downsize);
 
+    cv::imshow("original", bgr);
+
     Timer timer(true);
     Image3f J;
-    const EUInfo info = EnhanceUnderwater(bgr, range, 64, 10, 128, 20, J);
+    const EUInfo info = EnhanceUnderwater(bgr, range, 64, 10, 512, 20, J);
     const double ms = timer.Elapsed().milliseconds();
     printf("Took %lf ms (%lf hz) to process frame\n", ms, 1000.0 / ms);
 
@@ -137,6 +140,7 @@ TEST(EnhanceTest, TestSeathruDataset)
     printf("  BACKSCATTER: %d\n", info.success_backscatter);
     printf("  ILLUMINANT:  %d\n", info.success_illuminant);
     printf("  ATTENUATION: %d\n", info.success_attenuation);
+    std::cout << info.beta_D << std::endl;
 
     cv::imshow("J_linear", J);
     cv::imshow("J_gamma", LinearToGamma(J));

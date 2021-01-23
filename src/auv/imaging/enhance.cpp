@@ -29,7 +29,8 @@ EUInfo EnhanceUnderwater(const Image3f& bgr,
   EUInfo info;
 
   Image3f I = EnhanceContrast(bgr);
-  cv::imshow("enhance_contrast", I);
+  // Image3f I = EnhanceContrastDerya(bgr, 0.0f, 0.2f);
+  cv::imshow("enhance_contrast", LinearToGamma(I));
 
   const Image1f intensity = ComputeIntensity(I);
 
@@ -67,10 +68,15 @@ EUInfo EnhanceUnderwater(const Image3f& bgr,
 
   cv::imshow("il", il);
 
-  info.beta_D << 1.0, 1.7, 3.5,
-                -0.71, -1.3, -2.1,
-                1.7, 1.4, 4.9,
-                -0.83, -1.4, -0.45;
+  // info.beta_D << 1.0, 1.7, 3.5,
+  //               -0.71, -1.3, -2.1,
+  //               1.7, 1.4, 4.9,
+  //               -0.83, -1.4, -0.45;
+
+  info.beta_D << 0.17, 0.25, 0.5,
+                -0.05, -0.1, -0.05,
+                0.6, 0.9, 1.8,
+                -0.66, -0.98, -0.43;
 
   info.error_attenuation = EstimateBeta(range, il, beta_num_px, beta_opt_iters, info.beta_D);
 

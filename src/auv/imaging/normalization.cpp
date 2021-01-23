@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <opencv2/imgproc.hpp>
+#include <opencv2/highgui.hpp>
 
 #include "core/timer.hpp"
 #include "imaging/normalization.hpp"
@@ -97,6 +98,17 @@ Image3f GammaToLinear(const Image3f& bgr_gamma)
   return out;
 }
 
+
+// Clip the image to the range [vmin, vmax], and then stretch to be [0, 1].
+Image3f EnhanceContrastDerya(const Image3f& bgr, float vmin, float vmax)
+{
+  assert(vmin >= 0.0f && vmin < vmax);
+  assert(vmax <= 1.0f);
+
+  Image3f out = cv::max(cv::min(bgr, vmax), vmin);
+
+  return (out - vmin) / (vmax - vmin);
+}
 
 }
 }

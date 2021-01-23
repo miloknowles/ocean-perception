@@ -104,7 +104,7 @@ float EstimateBeta(const Image1f& range,
   LinearizeBeta(ranges, illuminants, X, H, g, err);
 
   float lambda = 1e-3 * MaxDiagonal(H);
-  const float lambda_k_increase = 2.0;
+  const float lambda_k_increase = 4.0;
   const float lambda_k_decrease = 3.0;
   const float step_size = 0.5f;
 
