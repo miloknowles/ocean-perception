@@ -1,10 +1,15 @@
 #include <algorithm>
 #include <iostream>
 
+#include <opencv2/imgproc.hpp>
+
 #include "imaging/attenuation.hpp"
 
 namespace bm {
 namespace imaging {
+
+
+static const float kBackgroundRange = 20.0f;
 
 
 static float MaxDiagonal(const Matrix12f& H)
@@ -237,6 +242,50 @@ void LinearizeBeta(const std::vector<float>& ranges,
 
   // Normalize error by # of samples.
   error /= static_cast<float>(M);
+}
+
+
+static Image1f MatExp(const Image1f& m)
+{
+  Image1f out;
+  cv::exp(m, out);
+  return out;
+}
+
+
+Image3f CorrectAttenuation(const Image3f& bgr, const Image1f& range, const Vector12f& X)
+{
+  // Set the range to max wherever it's zero.
+  Image1f range_default;
+  cv::threshold(range, range_default, 1e-3, kBackgroundRange, CV_THRESH_BINARY_INV);
+  const Image1f z = range + range_default;
+
+  const float a_b = X(0);
+  const float a_g = X(1);
+  const float a_r = X(2);
+
+  const float b_b = X(3);
+  const float b_g = X(4);
+  const float b_r = X(5);
+
+  const float c_b = X(6);
+  const float c_g = X(7);
+  const float c_r = X(8);
+
+  const float d_b = X(9);
+  const float d_g = X(10);
+  const float d_r = X(11);
+
+  Image1f beta_cz[3];
+  beta_cz[0] = z.mul(a_b * MatExp(z * b_b) + c_b + MatExp(z * d_b));
+  beta_cz[1] = z.mul(a_g * MatExp(z * b_g) + c_g + MatExp(z * d_g));
+  beta_cz[2] = z.mul(a_r * MatExp(z * b_r) + c_r + MatExp(z * d_r));
+
+  Image3f E;
+  cv::merge(beta_cz, 3, E);
+  cv::exp(E, E);
+
+  return bgr.mul(E);
 }
 
 }

@@ -29,5 +29,8 @@ void LinearizeBeta(const std::vector<float>& ranges,
                    Vector12f& g,
                    float& error);
 
+
+Image3f CorrectAttenuation(const Image3f& bgr, const Image1f& range, const Vector12f& X);
+
 }
 }

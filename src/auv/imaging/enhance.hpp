@@ -35,7 +35,8 @@ Image3f EnhanceUnderwater(const Image3f& bgr,
                           float dark_percentile,
                           int backscatter_num_px,
                           int backscatter_opt_iters,
-                          float brightness_boost);
+                          int beta_num_px,
+                          int beta_opt_iters);
 
 }
 }

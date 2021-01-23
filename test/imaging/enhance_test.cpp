@@ -196,7 +196,7 @@ TEST(EnhanceTest, TestSeathruDataset)
     cv::resize(bgr, bgr, downsize);
 
     Timer timer(true);
-    const Image3f J = EnhanceUnderwater(bgr, range, 0.01, 48, 5, 1.2);
+    const Image3f J = EnhanceUnderwater(bgr, range, 0.01, 48, 10, 64, 20);
     const double ms = timer.Elapsed().milliseconds();
     printf("Took %lf ms (%lf hz) to process frame\n", ms, 1000.0 / ms);
 

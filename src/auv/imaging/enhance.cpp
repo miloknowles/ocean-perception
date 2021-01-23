@@ -52,7 +52,8 @@ Image3f EnhanceUnderwater(const Image3f& bgr,
                           float dark_percentile,
                           int backscatter_num_px,
                           int backscatter_opt_iters,
-                          float brightness_boost)
+                          int beta_num_px,
+                          int beta_opt_iters)
 {
   // Contrast boosting.
   Image3f I = EnhanceContrast(bgr);
@@ -101,14 +102,15 @@ Image3f EnhanceUnderwater(const Image3f& bgr,
               -0.83, -1.4, -0.45;
 
   Timer t0(true);
-  float D_error = EstimateBeta(range, illuminant, 48, 10, X_beta_D);
+  float D_error = EstimateBeta(range, illuminant, beta_num_px, beta_opt_iters, X_beta_D);
   printf("elapsed = %f\n", t0.Elapsed().milliseconds());
   std::cout << "----------------------------------------" << std::endl;
   std::cout << "Estimated direct attenuation params" << std::endl;
   printf("error = %f\n", D_error);
   std::cout << "beta_D:\n" << X_beta_D << std::endl;
 
-  Image3f J = D / illuminant;
+  // Image3f J = D / illuminant;
+  const Image3f J = CorrectAttenuation(D, range, X_beta_D);
 
   return J;
 }
