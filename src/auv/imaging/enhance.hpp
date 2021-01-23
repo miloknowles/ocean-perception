@@ -10,33 +10,30 @@ namespace imaging {
 using namespace core;
 
 
-Image3f CorrectAttenuationSimple(const Image3f& bgr,
-                                 const Image1f& range,
-                                 const Vector3f& beta_D);
+struct EUInfo {
+  bool success_finddark;
+  bool success_backscatter;
+  bool success_illuminant;
+  bool success_attenuation;
+
+  float error_backscatter;
+  float error_attenuation;
+
+  // Backscatter model params.
+  Vector3f B, beta_B, Jp, beta_Dp;
+
+  // Attenuation model params.
+  Vector12f beta_D;
+};
 
 
-Image3f EstimateIlluminantGaussian(const Image3f& bgr,
-                           const Image1f& range,
-                           int ksizeX,
-                           int ksizeY,
-                           double sigmaX,
-                           double sigmaY);
-
-
-Image3f EstimateIlluminantGuided(const Image3f& bgr,
-                                 const Image1f& range,
-                                 int r,
-                                 double eps,
-                                 int s);
-
-
-Image3f EnhanceUnderwater(const Image3f& bgr,
+EUInfo EnhanceUnderwater(const Image3f& bgr,
                           const Image1f& range,
-                          float dark_percentile,
-                          int backscatter_num_px,
-                          int backscatter_opt_iters,
+                          int back_num_px,
+                          int back_opt_iters,
                           int beta_num_px,
-                          int beta_opt_iters);
+                          int beta_opt_iters,
+                          Image3f& out);
 
 }
 }

@@ -84,76 +84,6 @@ TEST(EnhanceTest, TestFindDarkFast)
 }
 
 
-TEST(EnhanceTest, TestSeathru)
-{
-  // Read image and cast to float.
-  Image3b im_3b = cv::imread("./resources/LFT_3374.png", cv::IMREAD_COLOR);
-  cv::resize(im_3b, im_3b, im_3b.size() / 4);
-  const Image3f& im_3f = CastImage3bTo3f(im_3b);
-
-  // Contrast boosting.
-  const Image3f& im = EnhanceContrast(im_3f);
-  cv::imshow("contrast", im);
-
-  Image1f intensity = ComputeIntensity(im);
-
-  cv::Mat1f range = cv::imread(
-    "./depthLFT_3374.exr",
-    CV_LOAD_IMAGE_ANYDEPTH);
-  cv::resize(range, range, intensity.size());
-
-  // Find dark pixels.
-  Image1b is_dark;
-  float thresh = FindDarkFast(intensity, range, 0.02, is_dark);
-  const float N = static_cast<float>(im.rows * im.cols);
-  float percentile = static_cast<float>(cv::countNonZero(is_dark) / N);
-  printf("Threshold = %f | Actual percentile = %f | Num dark px = %d\n",
-         thresh, percentile, cv::countNonZero(is_dark));
-
-  cv::imshow("Dark Pixels", is_dark);
-
-  // Nonlinear opt to estimate backscatter.
-  Vector3f B, beta_B, Jp, beta_D;
-  B << 0.5, 0.5, 0.5;
-  beta_B << 1.0, 1.0, 1.0;
-  Jp << 0.5, 0.5, 0.5;
-  beta_D << 1.0, 1.0, 1.0;
-
-  Timer timer(true);
-  float err = EstimateBackscatter(im, range, is_dark, 100, 20, B, beta_B, Jp, beta_D);
-  const double ms = timer.Elapsed().milliseconds();
-  printf("Estimated backscatter in %lf ms\n", ms);
-  printf("Final error = %f\n", err);
-  std::cout << B << std::endl;
-  std::cout << beta_B << std::endl;
-  std::cout << Jp << std::endl;
-  std::cout << beta_D << std::endl;
-
-  const Image3f& Dc = RemoveBackscatter(im, range, B, beta_B);
-  cv::imshow("Remove Backscatter", Dc);
-
-  const int ksize = core::NextOddInt(Dc.rows / 5);
-  printf("ksize: %d\n", ksize);
-
-  double eps = 0.1;
-  int s = 8;
-
-  int r = core::NextEvenInt(Dc.cols / 3);
-  std::cout << r << std::endl;
-
-  const Image3f& illuminant = EstimateIlluminantGuided(Dc, range, r, eps, s);
-  cv::imshow("illuminant", illuminant);
-
-  const Image3f& Jc = Dc / illuminant;
-  cv::imshow("Jc", Jc);
-
-  const Image3f Jc_balanced = 1.1f * WhiteBalanceSimple(Jc);
-  cv::imshow("balanced", Jc_balanced);
-
-  cv::waitKey(0);
-}
-
-
 TEST(EnhanceTest, TestSeathruDataset)
 {
   std::vector<std::string> img_fnames;
@@ -161,24 +91,24 @@ TEST(EnhanceTest, TestSeathruDataset)
   std::string dataset_folder = "/home/milo/datasets/seathru/D3/";
   std::string output_folder = "/home/milo/Desktop/seathru_output/";
 
-  // FilenamesInDirectory(core::Join(dataset_folder, "Raw"), img_fnames, true);
-  // FilenamesInDirectory(core::Join(dataset_folder, "depthMaps"), rng_fnames, true);
+  FilenamesInDirectory(core::Join(dataset_folder, "Raw"), img_fnames, true);
+  FilenamesInDirectory(core::Join(dataset_folder, "depthMaps"), rng_fnames, true);
 
-  img_fnames = {
-    "/home/milo/datasets/seathru/D3/Raw/T_S04856.png",
-    "/home/milo/datasets/seathru/D3/Raw/T_S04857.png",
-    "/home/milo/datasets/seathru/D3/Raw/T_S04858.png",
-    "/home/milo/datasets/seathru/D3/Raw/T_S04859.png",
-    "/home/milo/datasets/seathru/D3/Raw/T_S04860.png"
-  };
+  // img_fnames = {
+  //   "/home/milo/datasets/seathru/D3/Raw/T_S04856.png",
+  //   "/home/milo/datasets/seathru/D3/Raw/T_S04857.png",
+  //   "/home/milo/datasets/seathru/D3/Raw/T_S04858.png",
+  //   "/home/milo/datasets/seathru/D3/Raw/T_S04859.png",
+  //   "/home/milo/datasets/seathru/D3/Raw/T_S04860.png"
+  // };
 
-  rng_fnames = {
-    "/home/milo/datasets/seathru/D3/depthMaps/depthT_S04856.tif",
-    "/home/milo/datasets/seathru/D3/depthMaps/depthT_S04857.tif",
-    "/home/milo/datasets/seathru/D3/depthMaps/depthT_S04858.tif",
-    "/home/milo/datasets/seathru/D3/depthMaps/depthT_S04859.tif",
-    "/home/milo/datasets/seathru/D3/depthMaps/depthT_S04860.tif"
-  };
+  // rng_fnames = {
+  //   "/home/milo/datasets/seathru/D3/depthMaps/depthT_S04856.tif",
+  //   "/home/milo/datasets/seathru/D3/depthMaps/depthT_S04857.tif",
+  //   "/home/milo/datasets/seathru/D3/depthMaps/depthT_S04858.tif",
+  //   "/home/milo/datasets/seathru/D3/depthMaps/depthT_S04859.tif",
+  //   "/home/milo/datasets/seathru/D3/depthMaps/depthT_S04860.tif"
+  // };
 
   for (int i = 0; i < img_fnames.size(); ++i) {
     const std::string& img_fname = img_fnames.at(i);
@@ -196,16 +126,20 @@ TEST(EnhanceTest, TestSeathruDataset)
     cv::resize(bgr, bgr, downsize);
 
     Timer timer(true);
-    const Image3f J = EnhanceUnderwater(bgr, range, 0.01, 48, 10, 64, 20);
+    Image3f J;
+    const EUInfo info = EnhanceUnderwater(bgr, range, 64, 10, 128, 20, J);
     const double ms = timer.Elapsed().milliseconds();
     printf("Took %lf ms (%lf hz) to process frame\n", ms, 1000.0 / ms);
 
+    std::cout << "---------------------------------" << std::endl;
+    printf("[INFO] ENHANCE UNDERWATER INFO:\n");
+    printf("  FINDDARK:    %d\n", info.success_finddark);
+    printf("  BACKSCATTER: %d\n", info.success_backscatter);
+    printf("  ILLUMINANT:  %d\n", info.success_illuminant);
+    printf("  ATTENUATION: %d\n", info.success_attenuation);
+
     cv::imshow("J_linear", J);
     cv::imshow("J_gamma", LinearToGamma(J));
-    // double vmin, vmax;
-    // cv::Point pmin, pmax;
-    // cv::minMaxLoc(enhanced, &vmin, &vmax, &pmin, &pmax);
-    // std::cout << vmin << " " << vmax << std::endl;
     cv::waitKey(0);
   }
 }

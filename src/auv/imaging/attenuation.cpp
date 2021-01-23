@@ -4,6 +4,7 @@
 #include <opencv2/imgproc.hpp>
 
 #include "imaging/attenuation.hpp"
+#include "imaging/fast_guided_filter.hpp"
 
 namespace bm {
 namespace imaging {
@@ -12,6 +13,32 @@ namespace imaging {
 static const float kBackgroundRange = 10.0f;
 
 
+Image3f EstimateIlluminantGaussian(const Image3f& bgr,
+                                   const Image1f& range,
+                                   int ksizeX,
+                                   int ksizeY,
+                                   double sigmaX,
+                                   double sigmaY)
+{
+  Image3f lsac;
+  cv::GaussianBlur(bgr, lsac, cv::Size(ksizeX, ksizeY), sigmaX, sigmaY, cv::BORDER_REPLICATE);
+
+  // Akkaynak et al. multiply by a factor of 2 to get the il.
+  return 2.0f * lsac;
+}
+
+
+Image3f EstimateIlluminantGuided(const Image3f& bgr,
+                                 const Image1f& range,
+                                 int r,
+                                 double eps,
+                                 int s)
+{
+  const Image3f& lsac = fastGuidedFilter(range, bgr, r, eps, s);
+
+  // Akkaynak et al. multiply by a factor of 2 to get the il.
+  return 2.0f * lsac;
+}
 static float MaxDiagonal(const Matrix12f& H)
 {
   float H_max = 0.0;
