@@ -33,19 +33,32 @@ float EstimateBeta(const Image1f& range,
 {
   const Image1b range_valid = (range > 1e-3);
 
-  std::vector<cv::Point> px_with_range;
-  cv::findNonZero(range_valid, px_with_range);
+  // Good as long as at least 25% of the image has valid (nonzero) range.
+  const int px_per_row = std::sqrt(4*num_px);
+  const int stride_x = (range.cols - 10) / px_per_row;
+  const int stride_y = (range.rows - 10) / px_per_row;
+
+  // Sample points from a uniform grid (and skip borders).
+  std::vector<cv::Point> sample_px;
+  for (int x = 5; x < (range.cols - 5); x += stride_x) {
+    for (int y = 5; y < (range.rows - 5); y += stride_y) {
+      const cv::Point px(x, y);
+      if (range_valid(px)) {
+        sample_px.emplace_back(px);
+      }
+    }
+  }
 
   // Limit to a small number of pixel locations (randomly sampled).
   // TODO(milo): Avoid giant random shuffle.
-  std::random_shuffle(px_with_range.begin(), px_with_range.end());
-  px_with_range.resize(std::min(num_px, static_cast<int>(px_with_range.size())));
+  std::random_shuffle(sample_px.begin(), sample_px.end());
+  sample_px.resize(std::min(num_px, static_cast<int>(sample_px.size())));
 
-  std::vector<float> ranges(px_with_range.size());
-  std::vector<Vector3f> illuminants(px_with_range.size());
+  std::vector<float> ranges(sample_px.size());
+  std::vector<Vector3f> illuminants(sample_px.size());
 
-  for (int i = 0; i < px_with_range.size(); ++i) {
-    const cv::Point& pt = px_with_range.at(i);
+  for (int i = 0; i < sample_px.size(); ++i) {
+    const cv::Point& pt = sample_px.at(i);
     ranges.at(i) = range(pt);
     illuminants.at(i) = Vector3f(illuminant(pt)[0], illuminant(pt)[1], illuminant(pt)[2]);
   }
@@ -176,21 +189,13 @@ void LinearizeBeta(const std::vector<float>& ranges,
     const Vector3f E = illuminants.at(i).cwiseMax(1e-3);
     const Vector3f log_E = E.array().log();
 
-    // std::cout << "E:\n" << E << std::endl;
-    // std::cout << "log_E:\n" << log_E << std::endl;
-
     const Vector3f a = X.block<3, 1>(0, 0);
     const Vector3f b = X.block<3, 1>(3, 0);
     const Vector3f c = X.block<3, 1>(6, 0);
     const Vector3f d = X.block<3, 1>(9, 0);
 
-    // std::cout << "a:\n" << a << std::endl;
-
     const Vector3f exp_bz = (b * z).array().exp();
     const Vector3f exp_dz = (d * z).array().exp();
-
-    // std::cout << "exp_bz:\n" << exp_bz << std::endl;
-    // std::cout << "exp_dz:\n" << exp_dz << std::endl;
 
     const Vector3f beta_c = a.cwiseProduct(exp_bz) + c.cwiseProduct(exp_dz);
     const Vector3f beta_c_inv = beta_c.cwiseMax(1e-3).cwiseInverse();
@@ -201,8 +206,6 @@ void LinearizeBeta(const std::vector<float>& ranges,
 
     // Difference between observed z and model-predicted z.
     const Vector3f r_c = Vector3f::Constant(z) - z_c;
-    // std::cout << "z_true:\n" << z << std::endl;
-    // std::cout << "z_c:\n" << z_c << std::endl;
 
     // Residual is the SSD of z errors.
     const float r = r_c(0)*r_c(0) + r_c(1)*r_c(1) + r_c(2)*r_c(2);
