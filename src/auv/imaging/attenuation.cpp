@@ -9,7 +9,7 @@ namespace bm {
 namespace imaging {
 
 
-static const float kBackgroundRange = 20.0f;
+static const float kBackgroundRange = 10.0f;
 
 
 static float MaxDiagonal(const Matrix12f& H)
@@ -253,12 +253,21 @@ static Image1f MatExp(const Image1f& m)
 }
 
 
+static Image1f SetMaxRangeWhereZero(const Image1f& range)
+{
+  double rmin, rmax;
+  cv::Point pmin, pmax;
+  cv::minMaxLoc(range, &rmin, &rmax, &pmin, &pmax);
+
+  Image1f add_where_zero;
+  cv::threshold(range, add_where_zero, 0.0f, rmax, CV_THRESH_BINARY_INV);
+  return range + add_where_zero;
+}
+
+
 Image3f CorrectAttenuation(const Image3f& bgr, const Image1f& range, const Vector12f& X)
 {
-  // Set the range to max wherever it's zero.
-  Image1f range_default;
-  cv::threshold(range, range_default, 1e-3, kBackgroundRange, CV_THRESH_BINARY_INV);
-  const Image1f z = range + range_default;
+  const Image1f& z = SetMaxRangeWhereZero(range);
 
   const float a_b = X(0);
   const float a_g = X(1);
