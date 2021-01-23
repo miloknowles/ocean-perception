@@ -61,7 +61,7 @@ float EstimateBeta(const Image1f& range,
   float lambda = 1e-3 * MaxDiagonal(H);
   const float lambda_k_increase = 2.0;
   const float lambda_k_decrease = 3.0;
-  const float step_size = 1.0f;
+  const float step_size = 0.5f;
 
   for (int iter = 0; iter < iters; ++iter) {
     // Levenberg-Marquardt diagonal thing.
@@ -74,7 +74,6 @@ float EstimateBeta(const Image1f& range,
     const Vector12f dX = step_size * solver.solve(g);
 
     // Compute the error if we were to take the step dX.
-    // LinearizeImageFormation(bgrs, ranges, B, beta_B, Jp, beta_D, J, R, err);
     Vector12f X_test = (X + dX);
 
     // a and c are nonnegative.
@@ -85,20 +84,19 @@ float EstimateBeta(const Image1f& range,
     X_test.block<3, 1>(3, 0) = X_test.block<3, 1>(3, 0).cwiseMin(0);
     X_test.block<3, 1>(9, 0) = X_test.block<3, 1>(9, 0).cwiseMin(0);
 
-    // err = ComputeError(ranges, illuminants, X_test);
-    LinearizeBeta(ranges, illuminants, X_test, H, g, err);
+    err = ComputeError(ranges, illuminants, X_test);
 
     // If error gets worse, want to increase the damping factor (more like gradient descent).
     // See: https://en.wikipedia.org/wiki/Levenberg%E2%80%93Marquardt_algorithm
     if (err > err_prev) {
       lambda *= lambda_k_increase;
-      // printf("Error increased, lambda = %f\n", lambda);
+      printf("Error increased, lambda = %f\n", lambda);
 
     // If error improves, decrease the damping factor (more like Gauss-Newton).
     // See: https://en.wikipedia.org/wiki/Levenberg%E2%80%93Marquardt_algorithm
     } else {
       lambda /= lambda_k_decrease;
-      // printf("Error decreased, err = %f lambda = %f\n", err, lambda);
+      printf("Error decreased, err = %f lambda = %f\n", err, lambda);
 
       // Gauss-Newton update: https://en.wikipedia.org/wiki/Gauss%E2%80%93Newton_algorithm.
       X = X_test;
@@ -112,6 +110,48 @@ float EstimateBeta(const Image1f& range,
 }
 
 
+float ComputeError(const std::vector<float>& ranges,
+                   const std::vector<Vector3f>& illuminants,
+                   const Vector12f& X)
+{
+  assert(ranges.size() == illuminants.size());
+
+  float error = 0.0f;
+  const int M = ranges.size();
+
+  for (int i = 0; i < ranges.size(); ++i) {
+    const float z = ranges.at(i);
+
+    const Vector3f E = illuminants.at(i).cwiseMax(1e-3);
+    const Vector3f log_E = E.array().log();
+
+    const Vector3f a = X.block<3, 1>(0, 0);
+    const Vector3f b = X.block<3, 1>(3, 0);
+    const Vector3f c = X.block<3, 1>(6, 0);
+    const Vector3f d = X.block<3, 1>(9, 0);
+
+    const Vector3f exp_bz = (b * z).array().exp();
+    const Vector3f exp_dz = (d * z).array().exp();
+
+    const Vector3f beta_c = a.cwiseProduct(exp_bz) + c.cwiseProduct(exp_dz);
+    const Vector3f beta_c_inv = beta_c.cwiseMax(1e-3).cwiseInverse();
+
+    const Vector3f z_c = -log_E.array() * beta_c_inv.array();
+
+    // Difference between observed z and model-predicted z.
+    const Vector3f r_c = Vector3f::Constant(z) - z_c;
+
+    // Residual is the SSD of z errors.
+    const float r = r_c(0)*r_c(0) + r_c(1)*r_c(1) + r_c(2)*r_c(2);
+
+    // NOTE(milo): Weighting the error is misleading, and leads to wrong changes to lambda in LM.
+    error += r;
+  }
+
+  return error / static_cast<float>(M);
+}
+
+
 void LinearizeBeta(const std::vector<float>& ranges,
                    const std::vector<Vector3f> illuminants,
                    const Vector12f& X,
@@ -121,15 +161,19 @@ void LinearizeBeta(const std::vector<float>& ranges,
 {
   assert(ranges.size() == illuminants.size());
 
-  H = Matrix12f::Zero();
-  g = Vector12f::Zero();
   error = 0.0f;
+  const int M = ranges.size();
+
+  // Initialize Jacobian w/ zeros.
+  Eigen::MatrixXf J = Eigen::MatrixXf::Zero(M, 12);
+
+  // Initialize residual error vector R.
+  Eigen::VectorXf R = Eigen::VectorXf::Zero(M);
 
   for (int i = 0; i < ranges.size(); ++i) {
-    // Compute the residual BGR error.
     const float z = ranges.at(i);
 
-    const Vector3f E = illuminants.at(i).cwiseMax(1e-7);
+    const Vector3f E = illuminants.at(i).cwiseMax(1e-3);
     const Vector3f log_E = E.array().log();
 
     // std::cout << "E:\n" << E << std::endl;
@@ -149,20 +193,24 @@ void LinearizeBeta(const std::vector<float>& ranges,
     // std::cout << "exp_dz:\n" << exp_dz << std::endl;
 
     const Vector3f beta_c = a.cwiseProduct(exp_bz) + c.cwiseProduct(exp_dz);
+    const Vector3f beta_c_inv = beta_c.cwiseMax(1e-3).cwiseInverse();
     const Vector3f beta_c2 = beta_c.array() * beta_c.array();
-    const Vector3f beta_c2_inv = beta_c2.cwiseMax(1e-7).cwiseInverse();
+    const Vector3f beta_c2_inv = beta_c2.cwiseMax(1e-3).cwiseInverse();
 
-    const Vector3f z_c = -log_E.cwiseQuotient(beta_c.cwiseMax(1e-7));
+    const Vector3f z_c = -log_E.array() * beta_c_inv.array();
 
     // Difference between observed z and model-predicted z.
-    const Vector3f r_c = (Vector3f(z, z, z) - z_c);
-    std::cout << "z_true:\n" << z << std::endl;
-    std::cout << "z_c:\n" << z << std::endl;
+    const Vector3f r_c = Vector3f::Constant(z) - z_c;
+    // std::cout << "z_true:\n" << z << std::endl;
+    // std::cout << "z_c:\n" << z_c << std::endl;
 
     // Residual is the SSD of z errors.
     const float r = r_c(0)*r_c(0) + r_c(1)*r_c(1) + r_c(2)*r_c(2);
     const float weight = RobustWeightCauchy(r);
-    error += weight * r;
+    R(i) = weight * r;
+
+    // NOTE(milo): Weighting the error is misleading, and leads to wrong changes to lambda in LM.
+    error += r;
 
     // Outer chain-rule stuff that multiplies everything.
     const Vector3f outer = -2.0f * r_c.array() * log_E.array() * beta_c2_inv.array();
@@ -172,15 +220,20 @@ void LinearizeBeta(const std::vector<float>& ranges,
     const Vector3f J_cc = outer.array() * exp_dz.array();
     const Vector3f J_dc = outer.array() * z * c.array() * exp_dz.array();
 
-    Vector12f J;
-    J.block<3, 1>(0, 0) = J_ac;
-    J.block<3, 1>(3, 0) = J_bc;
-    J.block<3, 1>(6, 0) = J_cc;
-    J.block<3, 1>(9, 0) = J_dc;
+    Vector12f Ji;
+    Ji.block<3, 1>(0, 0) = J_ac;
+    Ji.block<3, 1>(3, 0) = J_bc;
+    Ji.block<3, 1>(6, 0) = J_cc;
+    Ji.block<3, 1>(9, 0) = J_dc;
 
-    H += J * J.transpose() * weight;
-    g += J * r * weight;
+    J.row(i) = weight * Ji;
   }
+
+  H = J.transpose() * J;
+  g = -J.transpose() * R;
+
+  // Normalize error by # of samples.
+  error /= static_cast<float>(M);
 }
 
 }

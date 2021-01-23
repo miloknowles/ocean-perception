@@ -95,13 +95,13 @@ Image3f EnhanceUnderwater(const Image3f& bgr,
   cv::imshow("illuminant", illuminant);
 
   Vector12f X_beta_D;
-  X_beta_D << 0.5, 0.5, 0.5,
-              -0.5, -0.5, -0.5,
-              0.5, 0.5, 0.5,
-              -0.5, -0.5, -0.5;
+  X_beta_D << 1.0, 1.7, 3.5,
+              -0.71, -1.3, -2.1,
+              1.7, 1.4, 4.9,
+              -0.83, -1.4, -0.45;
 
   Timer t0(true);
-  float D_error = EstimateBeta(range, illuminant, 200, 10, X_beta_D);
+  float D_error = EstimateBeta(range, illuminant, 48, 10, X_beta_D);
   printf("elapsed = %f\n", t0.Elapsed().milliseconds());
   std::cout << "----------------------------------------" << std::endl;
   std::cout << "Estimated direct attenuation params" << std::endl;

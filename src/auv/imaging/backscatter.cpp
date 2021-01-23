@@ -200,12 +200,11 @@ float ComputeImageFormationError(const std::vector<Vector3f>& bgr,
     const float r_r = (bgr_actual(2) - bgr_model(2));
 
     // Residual is the SSD of BGR error.
-    const float r = std::pow(r_b, 2) + std::pow(r_g, 2) + std::pow(r_r, 2);
-    const float weight = RobustWeightCauchy(r);
-    error += weight*r;
+    const float r = r_b*r_b + r_g*r_g + r_r*r_r;
+    error += r;
   }
 
-  return error;
+  return error / static_cast<float>(bgr.size());
 }
 
 
@@ -242,9 +241,8 @@ void LinearizeImageFormation(const std::vector<Vector3f>& bgr,
     // Residual is the SSD of BGR error.
     const float r = r_b*r_b + r_g*r_g + r_r*r_r;
     const float weight = RobustWeightCauchy(r);
-    // const float rinv = 1.0 / std::max(r, (float)1e-7);
     R(i) = weight*r;
-    error += weight*r;
+    error += r;
 
     const float J_Bb = -2.0f * r_b * atten_back(0);
     const float J_Bg = -2.0f * r_g * atten_back(1);
@@ -269,9 +267,10 @@ void LinearizeImageFormation(const std::vector<Vector3f>& bgr,
                 J_beta_Db, J_beta_Dg, J_beta_Dr;
 
     // NOTE(milo): All entries in the Jacobian have this outermost chain rule component.
-    // TODO(milo): I think the 0.5 factor is wrong...
-    J.row(i) *= (0.5f * weight);
+    J.row(i) *= weight;
   }
+
+  error /= static_cast<float>(bgr.size());
 }
 
 
