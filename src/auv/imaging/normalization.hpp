@@ -8,6 +8,10 @@ namespace imaging {
 
 using namespace core;
 
+
+Image3f Normalize(const Image3f& bgr);
+
+
 // Increase the dynamic range of an image with (image - vmin) / (vmax - vmin).
 Image3f EnhanceContrast(const Image3f& bgr);
 

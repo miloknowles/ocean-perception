@@ -42,6 +42,35 @@ Image3f EnhanceContrast(const Image3f& bgr)
 }
 
 
+Image3f Normalize(const Image3f& bgr)
+{
+  cv::Point pmin, pmax;
+
+  Image1f channels[3];
+
+  Image3f hsv;
+  cv::cvtColor(bgr, hsv, CV_BGR2HSV);
+
+  cv::split(hsv, channels);
+
+  // NOTE(milo): Smooth out high intensity noise to get a better estimate of the min/max values.
+  // The contras-boosted image will look slightly brighter as a result.
+  Image1f smoothed_value;
+  cv::resize(channels[2], smoothed_value, hsv.size() / 8);
+
+  double vmin, vmax;
+  cv::minMaxLoc(smoothed_value, &vmin, &vmax, &pmin, &pmax);
+
+  channels[2] = (channels[2] - vmin) / (vmax - vmin);
+  cv::merge(channels, 3, hsv);
+
+  Image3f out;
+  cv::cvtColor(hsv, out, CV_HSV2BGR);
+
+  return out;
+}
+
+
 Image3f EnhanceContrastFactor(const Image3f& bgr)
 {
   const float factor = 1.5f;

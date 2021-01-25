@@ -294,7 +294,7 @@ Image3f RemoveBackscatter(const Image3f& bgr,
 
   exp_b = B(0) * (1.0f - exp_b);
   exp_g = B(1) * (1.0f - exp_g);
-  exp_b = B(2) * (1.0f - exp_b);
+  exp_r = B(2) * (1.0f - exp_r);
 
   Ic[0] = Ic[0] - exp_b;
   Ic[1] = Ic[1] - exp_g;
