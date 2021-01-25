@@ -28,7 +28,7 @@ EUInfo EnhanceUnderwater(const Image3f& bgr,
 {
   EUInfo info;
 
-  Image3f I = EnhanceContrast(bgr);
+  Image3f I = Normalize(bgr);
   // Image3f I = EnhanceContrastDerya(bgr, 0.0f, 0.2f);
   cv::imshow("enhance_contrast", LinearToGamma(I));
 
@@ -84,7 +84,7 @@ EUInfo EnhanceUnderwater(const Image3f& bgr,
 
   // Image3f J = D / il;
   out = CorrectAttenuation(D, range, info.beta_D);
-  // out = WhiteBalanceSimple(out);
+  out = Normalize(CorrectColorRatio(out));
 
   return info;
 }

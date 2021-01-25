@@ -86,6 +86,7 @@ Image3f WhiteBalanceSimple(const Image3f& bgr)
   // Smooth out high intensity noise to get a better min/max estimate.
   Image3f bgr_smoothed;
   cv::resize(bgr, bgr_smoothed, bgr.size() / 16);
+  cv::imshow("bgr_smoothed", bgr_smoothed);
 
   Image1f channels[3];
   cv::split(bgr_smoothed, channels);
@@ -137,6 +138,23 @@ Image3f EnhanceContrastDerya(const Image3f& bgr, float vmin, float vmax)
   Image3f out = cv::max(cv::min(bgr, vmax), vmin);
 
   return (out - vmin) / (vmax - vmin);
+}
+
+
+Image3f CorrectColorRatio(const Image3f& bgr)
+{
+  Image1f channels[3];
+  cv::split(bgr, channels);
+
+  const cv::Scalar bgr_mean = cv::mean(bgr);
+
+  channels[0] *= (bgr_mean(1) / bgr_mean(0));
+  channels[2] *= (bgr_mean(1) / bgr_mean(2));
+
+  Image3f out;
+  cv::merge(channels, 3, out);
+
+  return out;
 }
 
 }
