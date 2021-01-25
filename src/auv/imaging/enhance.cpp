@@ -32,10 +32,9 @@ EUInfo EnhanceUnderwater(const Image3f& bgr,
   Image3f I = Normalize(bgr);
   cv::imshow("enhance_contrast", LinearToGamma(I));
 
-  const Image1f intensity = ComputeIntensity(I);
-
   // Find dark pixels.
   Image1b is_dark;
+  const Image1f intensity = ComputeIntensity(I);
   FindDarkFast(intensity, range, 0.01, is_dark);
   cv::imshow("dark_mask", is_dark);
 
@@ -67,19 +66,6 @@ EUInfo EnhanceUnderwater(const Image3f& bgr,
   info.success_illuminant = true;
 
   cv::imshow("il", il);
-
-  // info.beta_D << 1.0, 1.7, 3.5,
-  //               -0.71, -1.3, -2.1,
-  //               1.7, 1.4, 4.9,
-  //               -0.83, -1.4, -0.45;
-
-  // if (beta_D_guess.norm())
-
-  // info.beta_D << 0.17, 0.25, 0.5,
-  //               -0.05, -0.1, -0.05,
-  //               0.6, 0.9, 1.8,
-  //               -0.66, -0.98, -0.43;
-
   info.beta_D = beta_D_guess;
 
   // a and c are nonnegative.
@@ -91,7 +77,6 @@ EUInfo EnhanceUnderwater(const Image3f& bgr,
   info.beta_D.block<3, 1>(9, 0) = info.beta_D.block<3, 1>(9, 0).cwiseMin(0);
 
   info.error_attenuation = EstimateBeta(range, il, beta_num_px, beta_opt_iters, info.beta_D);
-
   info.success_attenuation = (info.error_attenuation < 0.1f);
 
   // Image3f J = D / il;

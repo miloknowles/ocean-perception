@@ -35,5 +35,8 @@ Image3f EnhanceContrastDerya(const Image3f& bgr, float vmin, float vmax);
 // Normalizes the image so that its average pixel color is gray.
 Image3f CorrectColorRatio(const Image3f& bgr);
 
+
+Image3f CorrectColorApprox(const Image3f& bgr);
+
 }
 }

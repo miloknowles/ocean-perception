@@ -153,5 +153,21 @@ Image3f CorrectColorRatio(const Image3f& bgr)
   return out;
 }
 
+
+Image3f CorrectColorApprox(const Image3f& bgr)
+{
+  Image1f channels[3];
+  cv::split(bgr, channels);
+
+  channels[0] *= 1.0f;
+  channels[2] *= 4.4;
+
+  Image3f out;
+  cv::merge(channels, 3, out);
+
+  return out;
+}
+
+
 }
 }

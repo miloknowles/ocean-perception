@@ -89,10 +89,10 @@ TEST(EnhanceTest, TestSeathruDataset)
 {
   std::vector<std::string> img_fnames;
   std::vector<std::string> rng_fnames;
-  std::string dataset_folder = "/home/milo/datasets/seathru/D1/";
+  std::string dataset_folder = "/home/milo/datasets/seathru/D3/";
   std::string output_folder = "/home/milo/Desktop/seathru_output/";
 
-  FilenamesInDirectory(core::Join(dataset_folder, "ManualColorBalanced"), img_fnames, true);
+  FilenamesInDirectory(core::Join(dataset_folder, "CameraColorBalanced"), img_fnames, true);
   FilenamesInDirectory(core::Join(dataset_folder, "depthMaps"), rng_fnames, true);
 
   // img_fnames = {
@@ -129,7 +129,8 @@ TEST(EnhanceTest, TestSeathruDataset)
     cv::resize(range, range, downsize);
     cv::resize(bgr, bgr, downsize);
 
-    cv::imshow("original", LinearToGamma(bgr));
+    bgr = CorrectColorApprox(bgr);
+    cv::imshow("original", bgr);
 
     Timer timer(true);
     Image3f J;
