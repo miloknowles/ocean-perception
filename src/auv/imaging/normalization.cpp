@@ -9,10 +9,6 @@ namespace bm {
 namespace imaging {
 
 
-static const float kGammaPowerInv = 2.2f;
-static const float kGammaPower = 1.0f / 2.2f;
-
-
 Image3f EnhanceContrast(const Image3f& bgr)
 {
   cv::Point pmin, pmax;
@@ -113,18 +109,18 @@ Image3f WhiteBalanceSimple(const Image3f& bgr)
 }
 
 
-Image3f LinearToGamma(const Image3f& bgr_linear)
+Image3f LinearToGamma(const Image3f& bgr_linear, float gamma_power)
 {
   Image3f out;
-  cv::pow(bgr_linear, kGammaPower, out);
+  cv::pow(bgr_linear, gamma_power, out);
   return out;
 }
 
 
-Image3f GammaToLinear(const Image3f& bgr_gamma)
+Image3f GammaToLinear(const Image3f& bgr_gamma, float gamma_power)
 {
   Image3f out;
-  cv::pow(bgr_gamma, kGammaPowerInv, out);
+  cv::pow(bgr_gamma, gamma_power, out);
   return out;
 }
 

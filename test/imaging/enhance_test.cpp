@@ -133,9 +133,19 @@ TEST(EnhanceTest, TestSeathruDataset)
 
     Timer timer(true);
     Image3f J;
-    const EUInfo info = EnhanceUnderwater(bgr, range, 256, 10, 1024, 20, J);
+
+    Vector12f good_atten_coeff = AttenuationCoeffInitialGuess();
+
+    const EUInfo info = EnhanceUnderwater(bgr, range, 256, 10, 1024, 20, good_atten_coeff, J);
     const double ms = timer.Elapsed().milliseconds();
     printf("Took %lf ms (%lf hz) to process frame\n", ms, 1000.0 / ms);
+
+    // If the last attenuation coefficients were good, use them again. Otherwise revert to defaults.
+    if (info.success_attenuation) {
+      good_atten_coeff = info.beta_D;
+    } else {
+      good_atten_coeff = AttenuationCoeffInitialGuess();
+    }
 
     std::cout << "---------------------------------" << std::endl;
     printf("[INFO] ENHANCE UNDERWATER INFO:\n");
@@ -151,7 +161,7 @@ TEST(EnhanceTest, TestSeathruDataset)
     std::cout << info.beta_B << std::endl;
 
     cv::imshow("LINEAR", J);
-    cv::imshow("GAMMA", LinearToGamma(J));
+    cv::imshow("GAMMA", LinearToGamma(J, 0.5f));
 
     cv::waitKey(0);
   }

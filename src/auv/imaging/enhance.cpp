@@ -24,12 +24,12 @@ EUInfo EnhanceUnderwater(const Image3f& bgr,
                           int back_opt_iters,
                           int beta_num_px,
                           int beta_opt_iters,
+                          Vector12f beta_D_guess,
                           Image3f& out)
 {
   EUInfo info;
 
   Image3f I = Normalize(bgr);
-  // Image3f I = EnhanceContrastDerya(bgr, 0.0f, 0.2f);
   cv::imshow("enhance_contrast", LinearToGamma(I));
 
   const Image1f intensity = ComputeIntensity(I);
@@ -73,10 +73,22 @@ EUInfo EnhanceUnderwater(const Image3f& bgr,
   //               1.7, 1.4, 4.9,
   //               -0.83, -1.4, -0.45;
 
-  info.beta_D << 0.17, 0.25, 0.5,
-                -0.05, -0.1, -0.05,
-                0.6, 0.9, 1.8,
-                -0.66, -0.98, -0.43;
+  // if (beta_D_guess.norm())
+
+  // info.beta_D << 0.17, 0.25, 0.5,
+  //               -0.05, -0.1, -0.05,
+  //               0.6, 0.9, 1.8,
+  //               -0.66, -0.98, -0.43;
+
+  info.beta_D = beta_D_guess;
+
+  // a and c are nonnegative.
+  info.beta_D.block<3, 1>(0, 0) = info.beta_D.block<3, 1>(0, 0).cwiseMax(0);
+  info.beta_D.block<3, 1>(6, 0) = info.beta_D.block<3, 1>(6, 0).cwiseMax(0);
+
+  // b and d are nonpositive.
+  info.beta_D.block<3, 1>(3, 0) = info.beta_D.block<3, 1>(3, 0).cwiseMin(0);
+  info.beta_D.block<3, 1>(9, 0) = info.beta_D.block<3, 1>(9, 0).cwiseMin(0);
 
   info.error_attenuation = EstimateBeta(range, il, beta_num_px, beta_opt_iters, info.beta_D);
 

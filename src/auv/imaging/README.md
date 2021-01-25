@@ -34,4 +34,3 @@ ufraw-batch --temperature=23000 --green=0.323 --gamma=1.0 --linearity=0.0 --expo
 # These images will have a blue-green tint
 ufraw-batch --wb=camera --gamma=1.0 --linearity=0.0 --exposure=3.0 --base-curve=linear --curve=linear --out-type=png --shrink=8 *.ARW
 ```
-/
