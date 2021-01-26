@@ -45,7 +45,7 @@ TEST(EnhanceTest, TestResizeDepth)
 TEST(EnhanceTest, TestStereoAndVoEnhance)
 {
   std::vector<std::string> img_fnames;
-  const std::string dataset_folder = "./resources/underwater/images/";
+  const std::string dataset_folder = "./resources/test_images_enhance/images/";
 
   // std::string dataset_folder = "/home/milo/datasets/seathru/D5/ManualColorBalanced/";
   // std::string dataset_folder = "/home/milo/datasets/caddy/CADDY_gestures_sample_dataset/biograd-A/true_positives/raw/";
