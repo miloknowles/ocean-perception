@@ -24,6 +24,8 @@ Image3f WhiteBalanceSimple(const Image3f& bgr);
 
 Image3f LinearToGamma(const Image3f& bgr_linear, float gamma_power = 0.4545f);
 Image3f GammaToLinear(const Image3f& bgr_gamma, float gamma_power = 2.2f);
+Image1f LinearToGamma(const Image1f& bgr_linear, float gamma_power = 0.4545f);
+Image1f GammaToLinear(const Image1f& bgr_gamma, float gamma_power = 2.2f);
 
 
 // Clip the image to the range [vmin, vmax], and then stretch to be [0, 1].

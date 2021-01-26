@@ -109,18 +109,15 @@ TEST(EnhanceTest, TestStereoEnhance)
 
     cv::imshow("original", I);
 
-    Image3f Ib = EnhanceContrast(I);
-    cv::imshow("contrast", Ib);
-
-    Image3f J = LinearToGamma(NormalizeColorIlluminant(I), 0.8f);
-    cv::imshow("normalized", J);
+    Image3f J = Normalize(NormalizeColorIlluminant(I));
+    cv::imshow("stereo_ready", J);
 
     Image1f gray;
     cv::cvtColor(J, gray, CV_BGR2GRAY);
     cv::imshow("gray", gray);
 
     Image1f sharp = Sharpen(gray);
-    cv::imshow("sharp", sharp);
+    cv::imshow("vo_ready", LinearToGamma(sharp, 0.7));
 
     cv::waitKey(0);
   }

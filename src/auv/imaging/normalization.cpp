@@ -52,9 +52,9 @@ Image3f Normalize(const Image3f& bgr)
   cv::split(hsv, channels);
 
   // NOTE(milo): Smooth out high intensity noise to get a better estimate of the min/max values.
-  // The contras-boosted image will look slightly brighter as a result.
+  // The contrast-boosted image will look slightly brighter as a result.
   Image1f smoothed_value;
-  cv::resize(channels[2], smoothed_value, hsv.size() / 16);
+  cv::resize(channels[2], smoothed_value, hsv.size() / 8);
 
   double vmin, vmax;
   cv::minMaxLoc(smoothed_value, &vmin, &vmax, &pmin, &pmax);
@@ -126,6 +126,22 @@ Image3f GammaToLinear(const Image3f& bgr_gamma, float gamma_power)
 }
 
 
+Image1f LinearToGamma(const Image1f& bgr_linear, float gamma_power)
+{
+  Image1f out;
+  cv::pow(bgr_linear, gamma_power, out);
+  return out;
+}
+
+
+Image1f GammaToLinear(const Image1f& bgr_gamma, float gamma_power)
+{
+  Image1f out;
+  cv::pow(bgr_gamma, gamma_power, out);
+  return out;
+}
+
+
 // Clip the image to the range [vmin, vmax], and then stretch to be [0, 1].
 Image3f EnhanceContrastDerya(const Image3f& bgr, float vmin, float vmax)
 {
@@ -180,8 +196,6 @@ Image1f Sharpen(const Image1f& gray)
 
   Image1b low_contrast_mask = cv::abs(gray - blurred) < threshold;
   Image1f sharpened = gray*(1 + amount) - blurred*amount;
-
-  cv::imshow("msak", low_contrast_mask);
 
   gray.copyTo(sharpened, low_contrast_mask);
 
