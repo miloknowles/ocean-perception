@@ -3,6 +3,8 @@
 #include <opencv2/highgui.hpp>
 
 #include "core/timer.hpp"
+#include "core/math_util.hpp"
+#include "imaging/illuminant.hpp"
 #include "imaging/normalization.hpp"
 
 namespace bm {
@@ -81,8 +83,7 @@ Image3f WhiteBalanceSimple(const Image3f& bgr)
 
   // Smooth out high intensity noise to get a better min/max estimate.
   Image3f bgr_smoothed;
-  cv::resize(bgr, bgr_smoothed, bgr.size() / 16);
-  cv::imshow("bgr_smoothed", bgr_smoothed);
+  cv::resize(bgr, bgr_smoothed, bgr.size() / 8);
 
   Image1f channels[3];
   cv::split(bgr_smoothed, channels);
@@ -132,7 +133,6 @@ Image3f EnhanceContrastDerya(const Image3f& bgr, float vmin, float vmax)
   assert(vmax <= 1.0f);
 
   Image3f out = cv::max(cv::min(bgr, vmax), vmin);
-
   return (out - vmin) / (vmax - vmin);
 }
 
@@ -159,19 +159,13 @@ Image3f CorrectColorRatio(const Image3f& bgr)
 }
 
 
-Image3f CorrectColorApprox(const Image3f& bgr)
+Image3f NormalizeColorIlluminant(const Image3f bgr)
 {
-  Image1f channels[3];
-  cv::split(bgr, channels);
+  const int ksize = NextOddInt(bgr.cols / 3);
+  const double sigma = static_cast<float>(ksize) / 4.0f;
 
-  channels[0] *= 1.0f;
-  channels[1] *= 1.3f;
-  channels[2] *= 1.5f;
-
-  Image3f out;
-  cv::merge(channels, 3, out);
-
-  return out;
+  Image3f Il = EstimateIlluminantGaussian(bgr, ksize, ksize, sigma, sigma);
+  return Normalize(bgr / Il);
 }
 
 

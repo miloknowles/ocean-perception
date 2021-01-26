@@ -5,6 +5,8 @@ SET(LIBRARY_SRC
   io.hpp
   backscatter.cpp
   backscatter.hpp
+  illuminant.cpp
+  illuminant.hpp
   attenuation.cpp
   attenuation.hpp
   normalization.cpp

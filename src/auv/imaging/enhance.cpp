@@ -7,6 +7,7 @@
 #include "imaging/backscatter.hpp"
 #include "imaging/attenuation.hpp"
 #include "imaging/normalization.hpp"
+#include "imaging/illuminant.hpp"
 
 namespace bm {
 namespace imaging {
@@ -18,7 +19,7 @@ namespace imaging {
 // RemoveBackscatter() --> 3.5 ms
 // Estimateil() --> 1.7ms
 // EstimateBackscatter is really fast with -O3 compile option!
-EUInfo EnhanceUnderwater(const Image3f& bgr,
+EUInfo EnhanceUnderwater(const Image3f& I,
                           const Image1f& range,
                           int back_num_px,
                           int back_opt_iters,
@@ -28,9 +29,6 @@ EUInfo EnhanceUnderwater(const Image3f& bgr,
                           Image3f& out)
 {
   EUInfo info;
-
-  Image3f I = Normalize(bgr);
-  cv::imshow("enhance_contrast", LinearToGamma(I));
 
   // Find dark pixels.
   Image1b is_dark;
@@ -62,7 +60,7 @@ EUInfo EnhanceUnderwater(const Image3f& bgr,
   const double eps = 0.01;
   const int s = 8;
   const int r = core::NextEvenInt(D.cols / 3);
-  const Image3f il = EstimateIlluminantGuided(D, range, r, eps, s);
+  const Image3f il = EstimateIlluminantRangeGuided(D, range, r, eps, s);
   info.success_illuminant = true;
 
   cv::imshow("il", il);
@@ -81,7 +79,7 @@ EUInfo EnhanceUnderwater(const Image3f& bgr,
 
   // Image3f J = D / il;
   out = CorrectAttenuation(D, range, info.beta_D);
-  out = CorrectColorApprox(out);
+  // out = CorrectColorApprox(out);
 
   return info;
 }

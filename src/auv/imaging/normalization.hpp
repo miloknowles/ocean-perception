@@ -23,8 +23,6 @@ Image3f WhiteBalanceSimple(const Image3f& bgr);
 
 
 Image3f LinearToGamma(const Image3f& bgr_linear, float gamma_power = 0.4545f);
-
-
 Image3f GammaToLinear(const Image3f& bgr_gamma, float gamma_power = 2.2f);
 
 
@@ -36,7 +34,10 @@ Image3f EnhanceContrastDerya(const Image3f& bgr, float vmin, float vmax);
 Image3f CorrectColorRatio(const Image3f& bgr);
 
 
-Image3f CorrectColorApprox(const Image3f& bgr);
+// Normalizes the colors in an image based on local illuminant.
+// The result is more grayish, with the global color cast removed.
+Image3f NormalizeColorIlluminant(const Image3f bgr);
+
 
 }
 }
