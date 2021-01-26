@@ -22,79 +22,36 @@ using namespace imaging;
 // https://github.com/opencv/opencv/issues/7762
 TEST(EnhanceTest, TestResizeDepth)
 {
-  const cv::Mat1f depth = cv::imread(
-    "/home/milo/Downloads/D5/depthMaps/depthLFT_3374.tif",
-    CV_LOAD_IMAGE_ANYDEPTH);
+  const std::string resources_path = "/home/milo/bluemeadow/catkin_ws/src/auv/test/resources/";
 
-  const int w = depth.cols;
-  const int h = depth.rows;
+  const std::vector<std::string> depth_fnames = {
+    "depthLFT_3374.tif",
+    "depthT_S03047.tif",
+    "depthT_S04856.tif",
+    "depthLFT_3390.tif"
+  };
 
-  cv::Mat1f out;
-  cv::resize(depth, out, cv::Size(w / 4, h / 4));
+  for (const std::string& fn : depth_fnames) {
+    const std::string fullpath = Join(resources_path, fn);
+    const Image1f depth = cv::imread(fullpath, CV_LOAD_IMAGE_ANYDEPTH);
 
-  cv::imwrite("./depth_resized.exr", out);
-
-  const cv::Mat1f exr = cv::imread(
-    "./depth_resized.exr",
-    CV_LOAD_IMAGE_ANYDEPTH);
-
-  std::cout << exr.type() << std::endl;
-  std::cout << CvReadableType(exr.type()) << std::endl;
-
-  double vmin, vmax;
-  cv::Point pmin, pmax;
-  cv::minMaxLoc(exr, &vmin, &vmax, &pmin, &pmax);
-
-  printf("Saved depth statistics: min=%f max=%f\n", vmin, vmax);
+    Image1f out;
+    cv::resize(depth, out, depth.size() / 8);
+    cv::imwrite(Join(resources_path, fn + ".exr"), out);
+  }
 }
 
 
-TEST(EnhanceTest, TestFindDarkFast)
-{
-  cv::namedWindow("contrast", cv::WINDOW_NORMAL);
-
-  Image3b raw = cv::imread("./resources/LFT_3374.png", cv::IMREAD_COLOR);
-  cv::resize(raw, raw, raw.size() / 4);
-  Image3f im = CastImage3bTo3f(raw);
-  im = EnhanceContrast(im);
-  cv::imshow("contrast", im);
-
-  Image1f intensity = ComputeIntensity(im);
-  cv::imshow("intensity", intensity);
-
-  cv::Mat1f range = cv::imread("./depthLFT_3374.exr", CV_LOAD_IMAGE_ANYDEPTH);
-  cv::resize(range, range, intensity.size());
-
-  double vmin, vmax;
-  cv::Point pmin, pmax;
-  cv::minMaxLoc(range, &vmin, &vmax, &pmin, &pmax);
-  printf("Depth: min=%f max=%f\n", vmin, vmax);
-
-  Timer timer(true);
-  Image1b is_dark;
-  float thresh = FindDarkFast(intensity, range, 0.02, is_dark);
-  const double ms = timer.Elapsed().milliseconds();
-  printf("Took %lf ms (%lf hz) to process frame\n", ms, 1000.0 / ms);
-
-  const float N = static_cast<float>(im.rows * im.cols);
-  float percentile = static_cast<float>(cv::countNonZero(is_dark) / N);
-
-  printf("threshold=%f | pct=%f | ndark=%d\n", thresh, percentile, cv::countNonZero(is_dark));
-
-  cv::imshow("is_dark", is_dark);
-  cv::waitKey(0);
-}
-
-
-TEST(EnhanceTest, TestStereoEnhance)
+TEST(EnhanceTest, TestStereoAndVoEnhance)
 {
   std::vector<std::string> img_fnames;
-  std::string dataset_folder = "/home/milo/datasets/seathru/D5/";
+  const std::string dataset_folder = "./resources/underwater/images/";
+
+  // std::string dataset_folder = "/home/milo/datasets/seathru/D5/ManualColorBalanced/";
   // std::string dataset_folder = "/home/milo/datasets/caddy/CADDY_gestures_sample_dataset/biograd-A/true_positives/raw/";
   // std::string dataset_folder = "/home/milo/datasets/flying_things_3d/frames_cleanpass/TEST/A/0000/left";
 
-  FilenamesInDirectory(core::Join(dataset_folder, "ManualColorBalanced"), img_fnames, true);
-  // FilenamesInDirectory(dataset_folder, img_fnames, true);
+  FilenamesInDirectory(dataset_folder, img_fnames, true);
 
   for (int i = 0; i < img_fnames.size(); ++i) {
     const std::string& img_fname = img_fnames.at(i);
