@@ -12,16 +12,12 @@ Viewing .ARW files on Ubuntu using ufraw:
 
 Dataset: http://csms.haifa.ac.il/profiles/tTreibitz/datasets/sea_thru/index.html
 
-```bash
 OpenCV had trouble opening the file types that come with Sea-thru. For example, the NEF images were 1/10th the correct size when loaded with cv::imread.
 
 NOTE: This conversion is really slow! The .ARW files are pretty huge.
 
-# For D5
-mogrify -format png *.NEF
-# This also might work: ufraw-batch --curve=linear --out-type=png *.NEF
-
-# For D3
+```bash
+# For D1, D2, D3
 # http://manpages.ubuntu.com/manpages/bionic/man1/ufraw-batch.1.html
 sudo apt install ufraw
 ufraw-batch --curve=linear --out-type=png *.ARW
@@ -33,4 +29,8 @@ ufraw-batch --temperature=23000 --green=0.323 --gamma=1.0 --linearity=0.0 --expo
 # Uses ufraw default "camera" color transformation
 # These images will have a blue-green tint
 ufraw-batch --wb=camera --gamma=1.0 --linearity=0.0 --exposure=3.0 --base-curve=linear --curve=linear --out-type=png --shrink=8 *.ARW
+
+# For D5
+# ufraw-batch --wb=auto --gamma=1.0 --linearity=0.0 --exposure=3.0 --base-curve=linear --curve=linear --out-type=png --shrink=8 *.NEF
+ufraw-batch --temperature=8523 --green=0.633 --gamma=1.0 --linearity=0.0 --exposure=3.0 --base-curve=linear --curve=linear --out-type=png --shrink=8 *.NEF
 ```

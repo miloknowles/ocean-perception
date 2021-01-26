@@ -143,6 +143,11 @@ Image3f CorrectColorRatio(const Image3f& bgr)
   cv::split(bgr, channels);
 
   const cv::Scalar bgr_mean = cv::mean(bgr);
+  std::cout << bgr_mean << std::endl;
+
+  const float blue_ratio = bgr_mean(1) / bgr_mean(0);
+  const float red_ratio = bgr_mean(1) / bgr_mean(2);
+  printf("Blue ratio = %f // Red ratio = %f\n", blue_ratio, red_ratio);
 
   channels[0] *= (bgr_mean(1) / bgr_mean(0));
   channels[2] *= (bgr_mean(1) / bgr_mean(2));
@@ -160,7 +165,8 @@ Image3f CorrectColorApprox(const Image3f& bgr)
   cv::split(bgr, channels);
 
   channels[0] *= 1.0f;
-  channels[2] *= 4.4;
+  channels[1] *= 1.3f;
+  channels[2] *= 1.5f;
 
   Image3f out;
   cv::merge(channels, 3, out);

@@ -81,7 +81,7 @@ EUInfo EnhanceUnderwater(const Image3f& bgr,
 
   // Image3f J = D / il;
   out = CorrectAttenuation(D, range, info.beta_D);
-  out = Normalize(CorrectColorRatio(out));
+  out = CorrectColorApprox(out);
 
   return info;
 }

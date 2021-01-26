@@ -89,10 +89,10 @@ TEST(EnhanceTest, TestSeathruDataset)
 {
   std::vector<std::string> img_fnames;
   std::vector<std::string> rng_fnames;
-  std::string dataset_folder = "/home/milo/datasets/seathru/D3/";
+  std::string dataset_folder = "/home/milo/datasets/seathru/D5/";
   std::string output_folder = "/home/milo/Desktop/seathru_output/";
 
-  FilenamesInDirectory(core::Join(dataset_folder, "CameraColorBalanced"), img_fnames, true);
+  FilenamesInDirectory(core::Join(dataset_folder, "ManualColorBalanced"), img_fnames, true);
   FilenamesInDirectory(core::Join(dataset_folder, "depthMaps"), rng_fnames, true);
 
   // img_fnames = {
@@ -101,12 +101,12 @@ TEST(EnhanceTest, TestSeathruDataset)
     // "/home/milo/datasets/seathru/D3/Raw/T_S04858.png",
     // "/home/milo/datasets/seathru/D3/Raw/T_S04859.png",
     // "/home/milo/datasets/seathru/D3/Raw/T_S04910.png"
-    // "/home/milo/Desktop/T_S03119_balanced.png"
+    // "/home/milo/Desktop/T_S04856_auto.png"
     // "/home/milo/Downloads/D3/Raw/T_S04910.png"
   // };
 
   // rng_fnames = {
-    // "/home/milo/datasets/seathru/D3/depthMaps/depthT_S04856.tif",
+    // "/home/milo/datasets/seathru/D3/depthMaps/depthT_S04856.tif"
     // "/home/milo/datasets/seathru/D3/depthMaps/depthT_S04857.tif",
     // "/home/milo/datasets/seathru/D3/depthMaps/depthT_S04858.tif",
     // "/home/milo/datasets/seathru/D3/depthMaps/depthT_S04859.tif",
@@ -114,6 +114,9 @@ TEST(EnhanceTest, TestSeathruDataset)
     // "/home/milo/datasets/seathru/D1/depthMaps/depthT_S03119.tif"
     // "/home/milo/Downloads/D3/depthMaps/depthT_S04910.tif"
   // };
+
+  float good_atten_coeff_err = std::numeric_limits<float>::max();
+  Vector12f good_atten_coeff = BetaInitialGuess2();
 
   for (int i = 0; i < img_fnames.size(); ++i) {
     const std::string& img_fname = img_fnames.at(i);
@@ -129,23 +132,19 @@ TEST(EnhanceTest, TestSeathruDataset)
     cv::resize(range, range, downsize);
     cv::resize(bgr, bgr, downsize);
 
-    bgr = CorrectColorApprox(bgr);
+    // bgr = CorrectColorApprox(bgr);
     cv::imshow("original", bgr);
 
     Timer timer(true);
     Image3f J;
 
-    Vector12f good_atten_coeff = AttenuationCoeffInitialGuess();
-
-    const EUInfo info = EnhanceUnderwater(bgr, range, 256, 10, 1024, 20, good_atten_coeff, J);
+    const EUInfo info = EnhanceUnderwater(bgr, range, 256, 10, 256, 20, good_atten_coeff, J);
     const double ms = timer.Elapsed().milliseconds();
     printf("Took %lf ms (%lf hz) to process frame\n", ms, 1000.0 / ms);
 
     // If the last attenuation coefficients were good, use them again. Otherwise revert to defaults.
     if (info.success_attenuation) {
       good_atten_coeff = info.beta_D;
-    } else {
-      good_atten_coeff = AttenuationCoeffInitialGuess();
     }
 
     std::cout << "---------------------------------" << std::endl;
