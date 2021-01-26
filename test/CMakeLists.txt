@@ -22,16 +22,16 @@ target_link_libraries(${PROJECT_NAME}_test
   ${PROJECT_NAME}_viz
   ${PROJECT_NAME}_vo
   ${PROJECT_NAME}_dataset
+  ${PROJECT_NAME}_imaging
   ${OpenCV_LIBRARIES}
   ${OpenCV_LIBS})
 
 add_test(NAME ${PROJECT_NAME}_test COMMAND ${PROJECT_NAME}_test --gtest_color=yes)
 
-# Copy any input data that is needed to run the tests.
-# NOTE(milo): This is a little bit hacky. For some reason, executables are installed to
-# devel/.private/auv/lib/auv/, and symlinks are made in devel/lib/auv. Not calling any install
-# commands anywhere - this is just where catkin decides to install things.
-# NOTE(milo): Weirdly, the copy doesn't always work. After adding a "tmp.png" file in resources,
-# the copy started working...
-message(${CATKIN_DEVEL_PREFIX}/${CATKIN_PACKAGE_BIN_DESTINATION})
-file(COPY ./resources DESTINATION ${CATKIN_DEVEL_PREFIX}/${CATKIN_PACKAGE_BIN_DESTINATION})
+# NOTE(milo): Using the "copy" command didn't seem to work...
+# Move resource files to the install location so that tests can use them.
+add_custom_command(
+  TARGET ${PROJECT_NAME}_test POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy_directory
+          ${CMAKE_SOURCE_DIR}/test/resources/
+          ${CATKIN_DEVEL_PREFIX}/${CATKIN_PACKAGE_BIN_DESTINATION}/resources/)

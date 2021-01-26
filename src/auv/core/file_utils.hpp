@@ -10,7 +10,7 @@ namespace fs = boost::filesystem;
 
 
 // Reads all filenames in a directory and returns the number found.
-int FilenamesInDirectory(const std::string& dir, std::vector<std::string>& out, bool sort = false)
+inline int FilenamesInDirectory(const std::string& dir, std::vector<std::string>& out, bool sort = false)
 {
   for (auto item = fs::directory_iterator(fs::path(dir)); item != fs::directory_iterator(); ++item) {
     // Skip directories.
@@ -25,7 +25,7 @@ int FilenamesInDirectory(const std::string& dir, std::vector<std::string>& out, 
   return static_cast<int>(out.size());
 }
 
-std::string Join(const std::string& a, const std::string& b)
+inline std::string Join(const std::string& a, const std::string& b)
 {
   return (fs::path(a) / fs::path(b)).string();
 }

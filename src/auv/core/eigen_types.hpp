@@ -24,6 +24,11 @@ typedef Eigen::Matrix<float, 6, 6> Matrix6f;
 typedef Eigen::Matrix<double, 6, 1> Vector6d;
 typedef Eigen::Matrix<double, 6, 6> Matrix6d;
 
+typedef Eigen::Matrix<float, 12, 1> Vector12f;
+typedef Eigen::Matrix<double, 12, 1> Vector12d;
+typedef Eigen::Matrix<float, 12, 12> Matrix12f;
+typedef Eigen::Matrix<double, 12, 12> Matrix12d;
+
 // Put Eigen matrix types in our namespace.
 typedef Eigen::Matrix3f Matrix3f;
 typedef Eigen::Matrix4f Matrix4f;

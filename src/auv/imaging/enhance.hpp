@@ -1,32 +1,40 @@
 #pragma once
 
-#include <iostream>
 #include "core/cv_types.hpp"
-
-#include "opencv2/imgproc.hpp"
+#include "core/image_util.hpp"
+#include "core/eigen_types.hpp"
 
 namespace bm {
 namespace imaging {
 
-/*
- * Increase the contrast of an image by using the entire dynamic range.
- */
-inline core::Image3f EnhanceContrast(const core::Image3f& im)
-{
-  double vmin, vmax;
-  cv::Point pmin, pmax;
+using namespace core;
 
-  // Convert RGB image to intensity.
-  cv::Mat1f intensity;
-  cv::cvtColor(im, intensity, CV_RGB2GRAY);
 
-  cv::minMaxLoc(intensity, &vmin, &vmax, &pmin, &pmax);
+struct EUInfo {
+  bool success_finddark;
+  bool success_backscatter;
+  bool success_illuminant;
+  bool success_attenuation;
 
-  // NOTE(milo): Make sure that we don't divide by zero (e.g monochrome image case).
-  const double irange = (vmax - vmin) > 0 ? (vmax - vmin) : 1;
+  float error_backscatter;
+  float error_attenuation;
 
-  return (im - vmin) / irange;
-}
+  // Backscatter model params.
+  Vector3f B, beta_B, Jp, beta_Dp;
+
+  // Attenuation model params.
+  Vector12f beta_D;
+};
+
+
+EUInfo EnhanceUnderwater(const Image3f& bgr,
+                          const Image1f& range,
+                          int back_num_px,
+                          int back_opt_iters,
+                          int beta_num_px,
+                          int beta_opt_iters,
+                          Vector12f beta_D_guess,
+                          Image3f& out);
 
 }
 }
