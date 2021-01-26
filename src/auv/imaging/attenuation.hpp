@@ -34,21 +34,6 @@ Image3f CorrectAttenuationSimple(const Image3f& bgr,
                                  const Vector3f& beta_D);
 
 
-Image3f EstimateIlluminantGaussian(const Image3f& bgr,
-                           const Image1f& range,
-                           int ksizeX,
-                           int ksizeY,
-                           double sigmaX,
-                           double sigmaY);
-
-
-Image3f EstimateIlluminantGuided(const Image3f& bgr,
-                                 const Image1f& range,
-                                 int r,
-                                 double eps,
-                                 int s);
-
-
 // Estimate the direct attenuation coefficients using Levenberg-Mardquardt optimization.
 float EstimateBeta(const Image1f& range,
                    const Image3f illuminant,

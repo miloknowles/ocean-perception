@@ -12,6 +12,7 @@
 #include "imaging/normalization.hpp"
 #include "imaging/enhance.hpp"
 #include "imaging/attenuation.hpp"
+#include "imaging/illuminant.hpp"
 
 using namespace bm;
 using namespace core;
@@ -85,6 +86,44 @@ TEST(EnhanceTest, TestFindDarkFast)
 }
 
 
+TEST(EnhanceTest, TestStereoEnhance)
+{
+  std::vector<std::string> img_fnames;
+  std::string dataset_folder = "/home/milo/datasets/seathru/D5/";
+  // std::string dataset_folder = "/home/milo/datasets/caddy/CADDY_gestures_sample_dataset/biograd-A/true_positives/raw/";
+  // std::string dataset_folder = "/home/milo/datasets/flying_things_3d/frames_cleanpass/TEST/A/0000/left";
+
+  FilenamesInDirectory(core::Join(dataset_folder, "ManualColorBalanced"), img_fnames, true);
+  // FilenamesInDirectory(dataset_folder, img_fnames, true);
+
+  for (int i = 0; i < img_fnames.size(); ++i) {
+    const std::string& img_fname = img_fnames.at(i);
+    std::cout << "Processing: " << img_fname << std::endl;
+
+    Image3b raw = cv::imread(img_fname, cv::IMREAD_COLOR);
+    Image3f I = CastImage3bTo3f(raw);
+
+    const cv::Size downsize = I.size() / 2;
+    std::cout << "Resizing image to " << downsize << std::endl;
+    cv::resize(I, I, downsize);
+
+    cv::imshow("original", I);
+
+    Image3f J = Normalize(NormalizeColorIlluminant(I));
+    cv::imshow("stereo_ready", J);
+
+    Image1f gray;
+    cv::cvtColor(J, gray, CV_BGR2GRAY);
+    cv::imshow("gray", gray);
+
+    Image1f sharp = Sharpen(gray);
+    cv::imshow("vo_ready", LinearToGamma(sharp, 0.7));
+
+    cv::waitKey(0);
+  }
+}
+
+
 TEST(EnhanceTest, TestSeathruDataset)
 {
   std::vector<std::string> img_fnames;
@@ -132,11 +171,13 @@ TEST(EnhanceTest, TestSeathruDataset)
     cv::resize(range, range, downsize);
     cv::resize(bgr, bgr, downsize);
 
-    // bgr = CorrectColorApprox(bgr);
     cv::imshow("original", bgr);
 
     Timer timer(true);
     Image3f J;
+
+    Image3f I = Normalize(bgr);
+    cv::imshow("normalized", LinearToGamma(Normalize(CorrectColorRatio(bgr))));
 
     const EUInfo info = EnhanceUnderwater(bgr, range, 256, 10, 256, 20, good_atten_coeff, J);
     const double ms = timer.Elapsed().milliseconds();

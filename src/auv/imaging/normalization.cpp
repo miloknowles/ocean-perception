@@ -3,6 +3,8 @@
 #include <opencv2/highgui.hpp>
 
 #include "core/timer.hpp"
+#include "core/math_util.hpp"
+#include "imaging/illuminant.hpp"
 #include "imaging/normalization.hpp"
 
 namespace bm {
@@ -50,7 +52,7 @@ Image3f Normalize(const Image3f& bgr)
   cv::split(hsv, channels);
 
   // NOTE(milo): Smooth out high intensity noise to get a better estimate of the min/max values.
-  // The contras-boosted image will look slightly brighter as a result.
+  // The contrast-boosted image will look slightly brighter as a result.
   Image1f smoothed_value;
   cv::resize(channels[2], smoothed_value, hsv.size() / 8);
 
@@ -81,8 +83,7 @@ Image3f WhiteBalanceSimple(const Image3f& bgr)
 
   // Smooth out high intensity noise to get a better min/max estimate.
   Image3f bgr_smoothed;
-  cv::resize(bgr, bgr_smoothed, bgr.size() / 16);
-  cv::imshow("bgr_smoothed", bgr_smoothed);
+  cv::resize(bgr, bgr_smoothed, bgr.size() / 8);
 
   Image1f channels[3];
   cv::split(bgr_smoothed, channels);
@@ -125,6 +126,22 @@ Image3f GammaToLinear(const Image3f& bgr_gamma, float gamma_power)
 }
 
 
+Image1f LinearToGamma(const Image1f& bgr_linear, float gamma_power)
+{
+  Image1f out;
+  cv::pow(bgr_linear, gamma_power, out);
+  return out;
+}
+
+
+Image1f GammaToLinear(const Image1f& bgr_gamma, float gamma_power)
+{
+  Image1f out;
+  cv::pow(bgr_gamma, gamma_power, out);
+  return out;
+}
+
+
 // Clip the image to the range [vmin, vmax], and then stretch to be [0, 1].
 Image3f EnhanceContrastDerya(const Image3f& bgr, float vmin, float vmax)
 {
@@ -132,7 +149,6 @@ Image3f EnhanceContrastDerya(const Image3f& bgr, float vmin, float vmax)
   assert(vmax <= 1.0f);
 
   Image3f out = cv::max(cv::min(bgr, vmax), vmin);
-
   return (out - vmin) / (vmax - vmin);
 }
 
@@ -159,21 +175,32 @@ Image3f CorrectColorRatio(const Image3f& bgr)
 }
 
 
-Image3f CorrectColorApprox(const Image3f& bgr)
+Image3f NormalizeColorIlluminant(const Image3f bgr)
 {
-  Image1f channels[3];
-  cv::split(bgr, channels);
+  const int ksize = NextOddInt(bgr.cols / 3);
+  const double sigma = static_cast<float>(ksize) / 4.0f;
 
-  channels[0] *= 1.0f;
-  channels[1] *= 1.3f;
-  channels[2] *= 1.5f;
-
-  Image3f out;
-  cv::merge(channels, 3, out);
-
-  return out;
+  Image3f Il = EstimateIlluminantGaussian(bgr, ksize, ksize, sigma, sigma);
+  return Normalize(bgr / Il);
 }
 
+
+Image1f Sharpen(const Image1f& gray)
+{
+  Image1f blurred;
+  double sigma = 1.0;
+  double threshold = 0.01;
+  double amount = 0.5;
+
+  cv::GaussianBlur(gray, blurred, cv::Size(3, 3), sigma, sigma);
+
+  Image1b low_contrast_mask = cv::abs(gray - blurred) < threshold;
+  Image1f sharpened = gray*(1 + amount) - blurred*amount;
+
+  gray.copyTo(sharpened, low_contrast_mask);
+
+  return sharpened;
+}
 
 }
 }
