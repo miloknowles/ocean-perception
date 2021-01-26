@@ -89,12 +89,12 @@ TEST(EnhanceTest, TestFindDarkFast)
 TEST(EnhanceTest, TestStereoEnhance)
 {
   std::vector<std::string> img_fnames;
-  // std::string dataset_folder = "/home/milo/datasets/seathru/D3/";
+  std::string dataset_folder = "/home/milo/datasets/seathru/D5/";
   // std::string dataset_folder = "/home/milo/datasets/caddy/CADDY_gestures_sample_dataset/biograd-A/true_positives/raw/";
-  std::string dataset_folder = "/home/milo/datasets/flying_things_3d/frames_cleanpass/TEST/A/0000/left";
+  // std::string dataset_folder = "/home/milo/datasets/flying_things_3d/frames_cleanpass/TEST/A/0000/left";
 
-  // FilenamesInDirectory(core::Join(dataset_folder, "ManualColorBalanced"), img_fnames, true);
-  FilenamesInDirectory(dataset_folder, img_fnames, true);
+  FilenamesInDirectory(core::Join(dataset_folder, "ManualColorBalanced"), img_fnames, true);
+  // FilenamesInDirectory(dataset_folder, img_fnames, true);
 
   for (int i = 0; i < img_fnames.size(); ++i) {
     const std::string& img_fname = img_fnames.at(i);
@@ -109,8 +109,18 @@ TEST(EnhanceTest, TestStereoEnhance)
 
     cv::imshow("original", I);
 
-    Image3f J = NormalizeColorIlluminant(I);
+    Image3f Ib = EnhanceContrast(I);
+    cv::imshow("contrast", Ib);
+
+    Image3f J = LinearToGamma(NormalizeColorIlluminant(I), 0.8f);
     cv::imshow("normalized", J);
+
+    Image1f gray;
+    cv::cvtColor(J, gray, CV_BGR2GRAY);
+    cv::imshow("gray", gray);
+
+    Image1f sharp = Sharpen(gray);
+    cv::imshow("sharp", sharp);
 
     cv::waitKey(0);
   }

@@ -54,7 +54,7 @@ Image3f Normalize(const Image3f& bgr)
   // NOTE(milo): Smooth out high intensity noise to get a better estimate of the min/max values.
   // The contras-boosted image will look slightly brighter as a result.
   Image1f smoothed_value;
-  cv::resize(channels[2], smoothed_value, hsv.size() / 8);
+  cv::resize(channels[2], smoothed_value, hsv.size() / 16);
 
   double vmin, vmax;
   cv::minMaxLoc(smoothed_value, &vmin, &vmax, &pmin, &pmax);
@@ -168,6 +168,25 @@ Image3f NormalizeColorIlluminant(const Image3f bgr)
   return Normalize(bgr / Il);
 }
 
+
+Image1f Sharpen(const Image1f& gray)
+{
+  Image1f blurred;
+  double sigma = 1.0;
+  double threshold = 0.01;
+  double amount = 0.5;
+
+  cv::GaussianBlur(gray, blurred, cv::Size(3, 3), sigma, sigma);
+
+  Image1b low_contrast_mask = cv::abs(gray - blurred) < threshold;
+  Image1f sharpened = gray*(1 + amount) - blurred*amount;
+
+  cv::imshow("msak", low_contrast_mask);
+
+  gray.copyTo(sharpened, low_contrast_mask);
+
+  return sharpened;
+}
 
 }
 }

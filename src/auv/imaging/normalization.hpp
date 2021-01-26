@@ -39,5 +39,8 @@ Image3f CorrectColorRatio(const Image3f& bgr);
 Image3f NormalizeColorIlluminant(const Image3f bgr);
 
 
+Image1f Sharpen(const Image1f& gray);
+
+
 }
 }
