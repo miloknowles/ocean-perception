@@ -9,7 +9,8 @@ set(TEST_SOURCES
   vo/line_detector_test.cpp
   vo/optimization_test.cpp
   vo/vo_test.cpp
-  imaging/enhance_test.cpp)
+  imaging/enhance_test.cpp
+  stereo_matching/sgbm_test.cpp)
 
 # Add one big executable with all of the tests. Filter for specific tests with:
 # --gtest_filter=TestModuleName.UnitTestName.
@@ -23,6 +24,7 @@ target_link_libraries(${PROJECT_NAME}_test
   ${PROJECT_NAME}_vo
   ${PROJECT_NAME}_dataset
   ${PROJECT_NAME}_imaging
+  ${PROJECT_NAME}_stereo_matching
   ${OpenCV_LIBRARIES}
   ${OpenCV_LIBS})
 
