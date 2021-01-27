@@ -5,7 +5,7 @@ namespace stereo_matching {
 
 
 static const int kNumDisp = 64;
-static const int kBlockSize = 11;
+static const int kBlockSize = 3;
 
 
 Image1f EstimateDisparity(const Image1b& il, const Image1b& ir)
