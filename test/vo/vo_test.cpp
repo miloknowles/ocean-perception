@@ -29,16 +29,13 @@ TEST(VOTest, TestSeq01)
   OdometryFrontend frontend(stereo_camera, opt);
 
   StereoDataset::Options dopt;
-  // dopt.toplevel_path = "/home/milo/datasets/Unity3D/farmsim/03_forward_only";
-  dopt.toplevel_path = "/home/milo/datasets/Unity3D/farmsim/01_rotate_lr";
+  // dopt.toplevel_path = "/home/milo/datasets/Unity3D/farmsim/11_seafloor";
+  dopt.toplevel_path = "/home/milo/datasets/Unity3D/farmsim/10_rockcircle";
+  // dopt.toplevel_path = "/home/milo/datasets/Unity3D/farmsim/07_farm_lap";
   StereoDataset dataset(dopt);
-
-  // const std::string data_path = "/home/milo/datasets/Unity3D/farmsim/03_forward_only";
-  // const std::string data_path = "/home/milo/datasets/Unity3D/farmsim/06_seafloor_easy";
-  // const std::string data_path = "/home/milo/datasets/Unity3D/farmsim/05_forward_side";
   Matrix4d gt_T_w_0 = dataset.LeftPose(0);
 
-  Matrix4d T_0_cam = Matrix4d::Identity();
+  Matrix4d T_w_cam = gt_T_w_0;
 
   for (int ii = 0; ii < dataset.size(); ++ii) {
     printf("\n-----------------------------------FRAME #%d-------------------------------------\n", ii);
@@ -52,9 +49,6 @@ TEST(VOTest, TestSeq01)
     Quaterniond gt_q_w_cam;
     Vector3d gt_t_w_cam;
     dataset.LeftPose(ii, gt_sec, gt_q_w_cam, gt_t_w_cam);
-    printf("GROUNDTRUTH at t=%lf sec\n", gt_sec);
-    std::cout << gt_t_w_cam << std::endl;
-    std::cout << gt_q_w_cam.coeffs() << std::endl;
 
     Timer timer(true);
     OdometryEstimate odom = frontend.TrackStereoFrame(iml, imr);
@@ -63,16 +57,26 @@ TEST(VOTest, TestSeq01)
 
     if (odom.npoints_tracked < 3) {
       odom.T_0_1 = Matrix4d::Identity();
-      std::cout << "[VO] Unreliable, setting identify transform" << std::endl;
+      std::cout << "[VO] LOST KEYPOINT TRACKING --> returning identity transform!" << std::endl;
     }
 
-    T_0_cam = T_0_cam * odom.T_0_1;
+    T_w_cam = T_w_cam * odom.T_0_1;
 
     printf("Tracked keypoints = %d\n", odom.npoints_tracked);
-    std::cout << "Odometry estimate:\n" << odom.T_0_1 << std::endl;
-    std::cout << "Avg. reproj error:\n" << odom.error << std::endl;
-    std::cout << "Pose estimate:\n" << gt_T_w_0 * T_0_cam << std::endl;
-    std::cout << "Cov. estimate:\n" << odom.C_0_1 << std::endl;
+    // std::cout << "Odometry estimate:\n" << odom.T_0_1 << std::endl;
+    std::cout << "Avg. Reprojection Error: " << odom.error << std::endl;
+    // std::cout << "Cov. estimate:\n" << odom.C_0_1 << std::endl;
+
+    std::cout << "t_world_cam ESTIMATED:\n" << T_w_cam.block<3, 1>(0, 3) << std::endl;
+    std::cout << "t_world_cam GROUNDTRUTH:\n" << gt_t_w_cam << std::endl;
+    // std::cout << "q_world_cam ESTIMATED:\n" << Quaterniond(T_w_cam.block<3, 3>(0, 0)).coeffs() << std::endl;
+    // std::cout << "q_world_cam GROUNDTRUTH:\n" << gt_q_w_cam.coeffs() << std::endl;
+
+    const double t_err_m = (T_w_cam.block<3, 1>(0, 3) - gt_t_w_cam).norm();
+    const double ang_err_deg = RadToDeg(gt_q_w_cam.angularDistance(Quaterniond(T_w_cam.block<3, 3>(0, 0))));
+
+    printf("METRICS: trans_err=%.3lf (meters) || rot_err=%.3lf (deg)\n", t_err_m, ang_err_deg);
+
     cv::waitKey(0);
   }
 }
