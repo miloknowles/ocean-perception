@@ -49,14 +49,14 @@ void OdometryFrontendRos::Run(ros::NodeHandle& nh, float rate)
 
       OdometryEstimate odom = frontend_.TrackStereoFrame(iml, imr);
 
-      if (odom.tracked_keypoints < 3) {
+      if (odom.npoints_tracked < 3) {
         odom.T_0_1 = Matrix4d::Identity();
         std::cout << "[VO] Unreliable, setting identify transform" << std::endl;
       }
 
       T_world_curr = T_world_curr * odom.T_0_1;
 
-      printf("Tracked keypoints\n", odom.tracked_keypoints);
+      printf("Tracked keypoints\n", odom.npoints_tracked);
       std::cout << "Odometry estimate:\n" << odom.T_0_1 << std::endl;
       std::cout << "Pose estimate:\n" << T_world_curr << std::endl;
       cv::waitKey(1);

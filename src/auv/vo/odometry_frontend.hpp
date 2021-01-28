@@ -13,18 +13,26 @@ namespace vo {
 using namespace core;
 
 
-struct OdometryEstimate {
+struct OdometryEstimate
+{
   Matrix4d T_0_1 = Matrix4d::Identity();
   Matrix6d C_0_1 = Matrix6d::Identity();
   double error = -1;
 
-  int tracked_keypoints = 0;
+  int npoints_detect_left = 0;
+  int npoints_detect_right = 0;
+  int npoints_matched_stereo = 0;
+  int npoints_matched_temporal = 0;
+  int npoints_tracked = 0;
 };
 
 
 class OdometryFrontend final {
  public:
-  struct Options {
+
+  // Options that control the behavior of the OdometryFrontend.
+  struct Options
+  {
     PointDetector::Options point_detector;
 
     // Feature matching.
@@ -39,14 +47,13 @@ class OdometryFrontend final {
     double opt_min_error = 1e-7;
     double opt_min_error_delta = 1e-9;
     double opt_max_error_stdevs = 2.0; // TODO
-
-    bool track_points = true;
   };
 
+  // Construct with a model of the stereo camera and options.
   OdometryFrontend(const StereoCamera& stereo_camera, const Options& opt);
 
-  OdometryEstimate TrackStereoFrame(const Image1b& iml,
-                                    const Image1b& imr);
+  // Call this method for each new incoming stereo pair.
+  OdometryEstimate TrackStereoFrame(const Image1b& iml, const Image1b& imr);
 
  private:
   Options opt_;
