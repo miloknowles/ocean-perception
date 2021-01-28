@@ -72,5 +72,14 @@ bool StereoDataset::LeftPose(int i, double& seconds, Quaterniond& q_w_cam, Vecto
   return true;
 }
 
+Matrix4d StereoDataset::LeftPose(int i)
+{
+  Matrix4d T_w_cam;
+  T_w_cam.block<3, 3>(0, 0) = q_w_cam_.at(i).toRotationMatrix();
+  T_w_cam.block<3, 1>(0, 3) = t_w_cam_.at(i);
+
+  return T_w_cam;
+}
+
 }
 }

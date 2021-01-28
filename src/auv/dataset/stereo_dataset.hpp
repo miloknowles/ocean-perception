@@ -32,7 +32,9 @@ class StereoDataset {
 
   cv::Mat Left(int i, bool gray) const;
   cv::Mat Right(int i, bool gray) const;
+
   bool LeftPose(int i, double& seconds, Quaterniond& q_w_cam, Vector3d& t_w_cam);
+  Matrix4d LeftPose(int i);
 
  private:
   Options opt_;

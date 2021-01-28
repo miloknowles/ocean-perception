@@ -36,22 +36,22 @@ TEST(VOTest, TestSeq01)
   // const std::string data_path = "/home/milo/datasets/Unity3D/farmsim/03_forward_only";
   // const std::string data_path = "/home/milo/datasets/Unity3D/farmsim/06_seafloor_easy";
   // const std::string data_path = "/home/milo/datasets/Unity3D/farmsim/05_forward_side";
+  Matrix4d gt_T_w_0 = dataset.LeftPose(0);
 
-  Matrix4d T_world_curr = Matrix4d::Identity();
+  Matrix4d T_0_cam = Matrix4d::Identity();
 
-  // for (int t = 0; t < filenames_l.size(); ++t) {
-  for (int t = 0; t < dataset.size(); ++t) {
-    printf("\n-----------------------------------FRAME #%d-------------------------------------\n", t);
-    const Image1b& iml = dataset.Left(t, true);
-    const Image1b& imr = dataset.Right(t, true);
+  for (int ii = 0; ii < dataset.size(); ++ii) {
+    printf("\n-----------------------------------FRAME #%d-------------------------------------\n", ii);
+    const Image1b& iml = dataset.Left(ii, true);
+    const Image1b& imr = dataset.Right(ii, true);
 
-    const Image3b& rgbl = dataset.Left(t, false);
-    const Image3b& rgbr = dataset.Right(t, false);
+    const Image3b& rgbl = dataset.Left(ii, false);
+    const Image3b& rgbr = dataset.Right(ii, false);
 
     double gt_sec;
     Quaterniond gt_q_w_cam;
     Vector3d gt_t_w_cam;
-    dataset.LeftPose(t, gt_sec, gt_q_w_cam, gt_t_w_cam);
+    dataset.LeftPose(ii, gt_sec, gt_q_w_cam, gt_t_w_cam);
     printf("GROUNDTRUTH at t=%lf sec\n", gt_sec);
     std::cout << gt_t_w_cam << std::endl;
     std::cout << gt_q_w_cam.coeffs() << std::endl;
@@ -66,12 +66,12 @@ TEST(VOTest, TestSeq01)
       std::cout << "[VO] Unreliable, setting identify transform" << std::endl;
     }
 
-    T_world_curr = T_world_curr * odom.T_0_1;
+    T_0_cam = T_0_cam * odom.T_0_1;
 
     printf("Tracked keypoints = %d\n", odom.npoints_tracked);
     std::cout << "Odometry estimate:\n" << odom.T_0_1 << std::endl;
     std::cout << "Avg. reproj error:\n" << odom.error << std::endl;
-    std::cout << "Pose estimate:\n" << T_world_curr << std::endl;
+    std::cout << "Pose estimate:\n" << gt_T_w_0 * T_0_cam << std::endl;
     std::cout << "Cov. estimate:\n" << odom.C_0_1 << std::endl;
     cv::waitKey(0);
   }
