@@ -30,7 +30,7 @@ TEST(VOTest, TestSeq01)
 
   StereoDataset::Options dopt;
   // dopt.toplevel_path = "/home/milo/datasets/Unity3D/farmsim/03_forward_only";
-  dopt.toplevel_path = "/home/milo/datasets/Unity3D/farmsim/01";
+  dopt.toplevel_path = "/home/milo/datasets/Unity3D/farmsim/01_rotate_lr";
   StereoDataset dataset(dopt);
 
   // const std::string data_path = "/home/milo/datasets/Unity3D/farmsim/03_forward_only";
@@ -53,14 +53,14 @@ TEST(VOTest, TestSeq01)
     const double ms = timer.Elapsed().milliseconds();
     printf("Took %lf ms (%lf hz) to process frame\n", ms, 1000.0 / ms);
 
-    if (odom.tracked_keylines < 3 && odom.tracked_keypoints < 3) {
+    if (odom.tracked_keypoints < 3) {
       odom.T_0_1 = Matrix4d::Identity();
       std::cout << "[VO] Unreliable, setting identify transform" << std::endl;
     }
 
     T_world_curr = T_world_curr * odom.T_0_1;
 
-    printf("Tracked keypoints = %d | Tracked keylines = %d\n", odom.tracked_keypoints, odom.tracked_keylines);
+    printf("Tracked keypoints = %d\n", odom.tracked_keypoints);
     std::cout << "Odometry estimate:\n" << odom.T_0_1 << std::endl;
     std::cout << "Avg. reproj error:\n" << odom.error << std::endl;
     std::cout << "Pose estimate:\n" << T_world_curr << std::endl;
