@@ -145,8 +145,7 @@ int OptimizePoseLevenbergMarquardtP(const std::vector<Vector3d>& P0_list,
 
   LinearizePointProjection(P0_list, p1_obs_list, p1_sigma_list, stereo_cam, T_10, H, g, err);
 
-  const double H_max = MaxDiagonal(H);
-  double lambda  = 1e-5 * H_max;
+  double lambda = 1e-5 * MaxDiagonal(H);
 
   H.diagonal() += Vector6d::Constant(lambda);
   Eigen::ColPivHouseholderQR<Matrix6d> solver(H);
@@ -219,7 +218,7 @@ void LinearizePointProjection(const std::vector<Vector3d>& P0_list,
     // Project P1 to a pixel location in Camera_1.
     const Vector2d p1 = cam.Project(P1);
     const Vector2d err = (p1 - p1_obs_list.at(i));
-    const double err_norm = err.norm();
+    const double err_l2 = err.norm();
 
     // NOTE(milo): See page 54 for derivation of the Jacobian below.
     // https://jinyongjeong.github.io/Download/SE3/jlblanco2010geometry3d_techrep.pdf
@@ -240,18 +239,18 @@ void LinearizePointProjection(const std::vector<Vector3d>& P0_list,
          + fx_Pz_sq * (Px*Px*ex + Pz*Pz*ex + Px*Py*ey),
          + fx_Pz_sq * (Px*Pz*ey - Py*Pz*ex);
 
-    J = J / std::max(1e-7, err_norm);
+    J = J / std::max(1e-7, err_l2);
     const double p1_sigma = p1_sigma_list.at(i);
-    const double residual = err_norm / p1_sigma;
+    const double residual = err_l2 / p1_sigma;
     const double weight = RobustWeightCauchy(residual);
 
     // Update Hessian, Gradient, and Error.
     H += J * J.transpose() * weight;
     g += J * residual * weight;
-    // error += residual * residual * weight;
-    error += std::fabs(residual);
+    error += err_l2;
   }
 
+  // Compute the AVERAGE error across all points.
   error /= static_cast<double>(P0_list.size());
 }
 

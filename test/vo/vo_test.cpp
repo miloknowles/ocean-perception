@@ -48,6 +48,14 @@ TEST(VOTest, TestSeq01)
     const Image3b& rgbl = dataset.Left(t, false);
     const Image3b& rgbr = dataset.Right(t, false);
 
+    double gt_sec;
+    Quaterniond gt_q_w_cam;
+    Vector3d gt_t_w_cam;
+    dataset.LeftPose(t, gt_sec, gt_q_w_cam, gt_t_w_cam);
+    printf("GROUNDTRUTH at t=%lf sec\n", gt_sec);
+    std::cout << gt_t_w_cam << std::endl;
+    std::cout << gt_q_w_cam.coeffs() << std::endl;
+
     Timer timer(true);
     OdometryEstimate odom = frontend.TrackStereoFrame(iml, imr);
     const double ms = timer.Elapsed().milliseconds();

@@ -43,7 +43,7 @@ class OdometryFrontend final {
     double min_feature_disp = 1.0;             // max_depth = fx * B / min_feature_disp
 
     // Pose optimization.
-    int opt_max_iters = 10;
+    int opt_max_iters = 20;
     double opt_min_error = 1e-7;
     double opt_min_error_delta = 1e-9;
     double opt_max_error_stdevs = 2.0; // TODO
