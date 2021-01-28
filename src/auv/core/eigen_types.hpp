@@ -41,6 +41,8 @@ typedef Eigen::AffineCompact3f Transform3f;
 typedef Eigen::AffineCompact3d Transform3d;
 typedef Eigen::AngleAxisf AngleAxisf;
 typedef Eigen::AngleAxisd AngleAxisd;
+typedef Eigen::Quaternionf Quaternionf;
+typedef Eigen::Quaterniond Quaterniond;
 
 // Bounding boxes.
 typedef Eigen::AlignedBox2f Box2f;

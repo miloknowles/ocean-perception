@@ -30,5 +30,12 @@ inline std::string Join(const std::string& a, const std::string& b)
   return (fs::path(a) / fs::path(b)).string();
 }
 
+
+inline bool Exists(const std::string& fname)
+{
+  return fs::exists(fname);
+}
+
+
 }
 }

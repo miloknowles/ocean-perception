@@ -85,7 +85,7 @@ TEST(EnhanceTest, TestSeathruDataset)
 {
   std::vector<std::string> img_fnames;
   std::vector<std::string> rng_fnames;
-  std::string dataset_folder = "/home/milo/datasets/seathru/D5/";
+  std::string dataset_folder = "/home/milo/datasets/seathru/D3/";
   std::string output_folder = "/home/milo/Desktop/seathru_output/";
 
   FilenamesInDirectory(core::Join(dataset_folder, "ManualColorBalanced"), img_fnames, true);
@@ -112,7 +112,7 @@ TEST(EnhanceTest, TestSeathruDataset)
   // };
 
   float good_atten_coeff_err = std::numeric_limits<float>::max();
-  Vector12f good_atten_coeff = BetaInitialGuess2();
+  Vector12f good_atten_coeff = BetaInitialGuess1();
 
   for (int i = 0; i < img_fnames.size(); ++i) {
     const std::string& img_fname = img_fnames.at(i);
