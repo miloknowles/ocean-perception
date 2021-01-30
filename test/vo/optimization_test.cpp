@@ -177,7 +177,7 @@ TEST(OptimizationTest, TestLM_02)
   // Groundtruth poses of the 0th and 1th cameras.
   Matrix4d T_w_0 = Matrix4d::Identity();
   Matrix4d T_w_1 = Matrix4d::Identity();
-  T_w_1(2, 3) = 5.0;
+  T_w_1(2, 3) = 1.0;
 
   std::vector<Vector3d> P_w;
   for (double x = -1; x <= 1; ++x) {
@@ -194,7 +194,7 @@ TEST(OptimizationTest, TestLM_02)
   std::vector<Vector3d> P0_list;
   SimulatePoints(T_w_0, T_w_1, P_w, stereo_cam, p1_sigma_list, P0_list, p1_list);
 
-  const int max_iters = 2;
+  const int max_iters = 10;
   const double min_error = 1e-7;
   const double min_error_delta = 1e-9;
 

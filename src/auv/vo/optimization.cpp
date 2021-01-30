@@ -192,6 +192,41 @@ static double MaxDiagonal(const Matrix6d& H)
 //   return iters;
 // }
 
+static double ComputeProjectionError(const std::vector<Vector3d>& P0_list,
+                                    const std::vector<Vector2d>& p1_obs_list,
+                                    const std::vector<double>& p1_sigma_list,
+                                    const StereoCamera& stereo_cam,
+                                    Matrix4d& T_10)
+{
+  assert(P0_list.size() == p1_obs_list.size());
+  assert(p1_obs_list.size() == p1_sigma_list.size());
+
+  const int M = P0_list.size();
+
+  double error = 0.0;
+
+  const PinholeCamera& cam = stereo_cam.LeftIntrinsics();
+
+  // Add up projection errors from all associated points.
+  for (int i = 0; i < P0_list.size(); ++i) {
+    const Vector3d P1 = T_10.block<3, 3>(0, 0)*P0_list.at(i) + T_10.col(3).head(3);
+
+    // Project P1 to a pixel location in Camera_1.
+    const Vector2d p = cam.Project(P1);
+    const Vector2d p_hat = p1_obs_list.at(i);
+    const double rx = p_hat.x() - p.x();
+    const double ry = p_hat.y() - p.y();
+    const double r2 = rx*rx + ry*ry;
+    const double r = std::sqrt(r2);
+    const double sigma = p1_sigma_list.at(i);
+    const double r_sigma = r / sigma;
+
+    error += r_sigma;
+  }
+
+  return error / static_cast<double>(M);
+}
+
 
 int OptimizePoseLevenbergMarquardtP(const std::vector<Vector3d>& P0_list,
                                   const std::vector<Vector2d>& p1_obs_list,
@@ -212,77 +247,53 @@ int OptimizePoseLevenbergMarquardtP(const std::vector<Vector3d>& P0_list,
   Matrix6d H;       // Current estimated Hessian of error w.r.t T_eps.
   Vector6d g;       // Current estimated gradient of error w.r.t T_eps.
   Vector6d T_eps;   // An incremental update to T_10.
-  double err_prev = std::numeric_limits<double>::max();
-  double err = err_prev - 1;
+  double err_prev = 123;
+  double err = 123;
 
   const double lambda_k_increase = 2.0;
   const double lambda_k_decrease = 3.0;
 
   LinearizePointProjection2(P0_list, p1_obs_list, p1_sigma_list, stereo_cam, T_10, H, g, err);
+  err_prev = err + 1;
 
-  std::cout << "H and g:" << std::endl;
-  std::cout << H << std::endl;
-  std::cout << g << std::endl;
-
-  double lambda = 1e-3 * MaxDiagonal(H);
-
-  H.diagonal() += Vector6d::Constant(lambda);
-  Eigen::ColPivHouseholderQR<Matrix6d> solver(H);
-  T_eps = solver.solve(g);
-
-  // std::cout << "T_eps:\n" << T_eps << std::endl;
-
-  // T_10 << T_10 * inverse_se3(expmap_se3(T_eps));
-  std::cout << "Updating pose:" << std::endl;
-  std::cout << "Current:\n" << T_10 << std::endl;
-  T_10 << expmap_se3(T_eps) * T_10;
-  std::cout << "EPS:\n" << expmap_se3(T_eps) << std::endl;
-  std::cout << "Updated:\n" << T_10 << std::endl;
-
-  err_prev = err;
+  // https://arxiv.org/pdf/1201.5885.pdf
+  // double lambda = 1e-3 * MaxDiagonal(H);
+  double lambda = 8e-2;
 
   int iters;
-  for (iters = 1; iters < max_iters; ++iters) {
-    LinearizePointProjection2(P0_list, p1_obs_list, p1_sigma_list, stereo_cam, T_10, H, g, err);
+  for (iters = 0; iters < max_iters; ++iters) {
+    H.diagonal() += lambda * H.diagonal();// Vector6d::Constant(lambda);
 
-    std::cout << "H and g:" << std::endl;
-    std::cout << H << std::endl;
-    std::cout << g << std::endl;
+    Eigen::ColPivHouseholderQR<Matrix6d> solver(H);
+    T_eps = solver.solve(g);
+
+    err = ComputeProjectionError(P0_list, p1_obs_list, p1_sigma_list, stereo_cam, T_10);
 
     if (err < min_error) {
       break;
     }
 
-    H.diagonal() += Vector6d::Constant(lambda);
-
-    Eigen::ColPivHouseholderQR<Matrix6d> solver(H);
-    T_eps = solver.solve(g);
-
     // If error gets worse, want to increase the damping factor (more like gradient descent).
     // See: https://en.wikipedia.org/wiki/Levenberg%E2%80%93Marquardt_algorithm
     if (err > err_prev) {
       lambda *= lambda_k_increase;
-      printf("Error increased, increasing lambda (err=%lf, lambda=%lf)\n", err, lambda);
+      printf("Error increased, increasing lambda (prev=%lf, err=%lf, lambda=%lf)\n", err_prev, err, lambda);
 
     // If error improves, decrease the damping factor (more like Gauss-Newton).
     // See: https://en.wikipedia.org/wiki/Levenberg%E2%80%93Marquardt_algorithm
     } else {
       lambda /= lambda_k_decrease;
-      // T_10 << T_10 * inverse_se3(expmap_se3(T_eps));
-      std::cout << "Updating pose:" << std::endl;
-      std::cout << "Current:\n" << T_10 << std::endl;
+      printf("Error decreased, decreasing lambda (prev=%lf, err=%lf, lambda=%lf)\n", err_prev, err, lambda);
+      err_prev = err;
+      // std::cout << "Updating pose:" << std::endl;
+      // std::cout << "Current:\n" << T_10 << std::endl;
       T_10 << expmap_se3(T_eps) * T_10;
-      std::cout << "EPS:\n" << expmap_se3(T_eps) << std::endl;
-      std::cout << "Updated:\n" << T_10 << std::endl;
-      printf("Error decreased, decreasing lambda (err=%lf, lambda=%lf)\n", err, lambda);
+      // std::cout << "EPS:\n" << expmap_se3(T_eps) << std::endl;
+      // std::cout << "Updated:\n" << T_10 << std::endl;
+
+      // Need to re-linearize because we updated T_10.
+      LinearizePointProjection2(P0_list, p1_obs_list, p1_sigma_list, stereo_cam, T_10, H, g, err);
     }
-
-    // Stop if the pose solution hasn't changed much.
-    // if (T_eps.head(3).norm() < min_error_delta && T_eps.tail(3).norm() < min_error_delta) {
-    //   break;
-    // }
-
-    err_prev = err;
   }
 
   error = err;
@@ -363,6 +374,7 @@ void LinearizePointProjection2(const std::vector<Vector3d>& P0_list,
                               Vector6d& g,
                               double& error)
 {
+  // std::cout << "-------------------------------------------- LINEARIZING -------------------------------------------------" << std::endl;
   assert(P0_list.size() == p1_obs_list.size());
   assert(p1_obs_list.size() == p1_sigma_list.size());
 
@@ -382,6 +394,7 @@ void LinearizePointProjection2(const std::vector<Vector3d>& P0_list,
 
   // Add up projection errors from all associated points.
   for (int i = 0; i < P0_list.size(); ++i) {
+    // std::cout << "------------------------------------------------" << std::endl;
     const Vector3d P1 = T_10.block<3, 3>(0, 0)*P0_list.at(i) + T_10.col(3).head(3);
 
     // TODO: filter out points that project behind the camera...
@@ -397,12 +410,15 @@ void LinearizePointProjection2(const std::vector<Vector3d>& P0_list,
     const double r_sigma = r / sigma;
     const double weight = RobustWeightCauchy(r_sigma);
 
+    // printf("rx=%lf ry=%lf r2=%lf r=%lf sigma=%lf r_sigma=%lf weight=%lf\n", rx, ry, r2, r, sigma, r_sigma, weight);
+
     // std::cout << "----------------" << std::endl;
     // std::cout << p << std::endl;
     // std::cout << p_hat << std::endl;
     // printf("r=%lf weight=%lf\n", r, weight);
 
     const double chain_rule_terms = -weight / std::max(1e-5, sigma*r);
+    // printf("chain rule terms = %lf\n", chain_rule_terms);
 
     // NOTE(milo): See page 54 for derivation of the Jacobian below.
     // https://jinyongjeong.github.io/Download/SE3/jlblanco2010geometry3d_techrep.pdf
@@ -412,6 +428,7 @@ void LinearizePointProjection2(const std::vector<Vector3d>& P0_list,
     const double gz2 = gz*gz;
     const double fx = stereo_cam.fx();
     const double fy = stereo_cam.fy();
+    // printf("gx=%lf gy=%lf gz=%lf gz2=%lf fx=%lf fy=%lf\n", gx, gy, gz, gz2, fx, fy);
 
     Vector6d Ji;
     Ji << + rx*fx / gz,
@@ -419,15 +436,18 @@ void LinearizePointProjection2(const std::vector<Vector3d>& P0_list,
           - (rx*fx*gx + ry*fy*gy) / gz2,
           - rx*fx*gx*gy/gz2 - ry*fy*(1.0 + gy*gy/gz2),
           + rx*fx*(1.0 + gx*gx/gz2) + ry*fy*gx*gy/gz2,
-          - rx*fx*gy/gz + ry*gy*gx/gz;
+          - rx*fx*gy/gz + ry*fy*gx/gz;
+
+    // std::cout << Ji.transpose() << std::endl;
 
     J.row(i) = chain_rule_terms * Ji;
     R(i) = weight * r_sigma;
     error += r_sigma;
   }
 
-  std::cout << "J:\n" << J << std::endl;
-  std::cout << "R:\n" << R << std::endl;
+  // std::cout << "SUMMARY" << std::endl;
+  // std::cout << "J:\n" << J << std::endl;
+  // std::cout << "R:\n" << R << std::endl;
 
   H = J.transpose() * J;
   g = -J.transpose() * R;
