@@ -132,15 +132,22 @@ TEST(OptimizationTest, TestLM_01)
     Vector3d(-1, 0.1, 3),
     Vector3d(0, 0.2, 2),
     Vector3d(1, 0.3, 6),
+    Vector3d(-2.0, 2.0, 2),
+    Vector3d(-3.0, 3.0, 2.5),
+    Vector3d(2.0, 0.0, 1.4),
+    Vector3d(9.0, 3.0, 2.7),
+    Vector3d(-5.0, 4.0, 2.3),
+    Vector3d(2.0, 7.0, 2.7),
+    Vector3d(-1.0, -8.0, 2.8)
   };
 
   // Standard deviation of 1px on observed points.
-  const std::vector<double> p1_sigma_list = { 1.0, 1.0, 1.0 };
+  const std::vector<double> p1_sigma_list = { 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 };
   std::vector<Vector2d> p1_list;
   std::vector<Vector3d> P0_list;
   SimulatePoints(T_w_0, T_w_1, P_w, stereo_cam, p1_sigma_list, P0_list, p1_list);
 
-  const int max_iters = 20;
+  const int max_iters = 30;
   const double min_error = 1e-7;
   const double min_error_delta = 1e-9;
 

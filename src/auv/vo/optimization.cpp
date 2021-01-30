@@ -196,7 +196,7 @@ static double ComputeProjectionError(const std::vector<Vector3d>& P0_list,
                                     const std::vector<Vector2d>& p1_obs_list,
                                     const std::vector<double>& p1_sigma_list,
                                     const StereoCamera& stereo_cam,
-                                    Matrix4d& T_10)
+                                    const Matrix4d& T_10)
 {
   assert(P0_list.size() == p1_obs_list.size());
   assert(p1_obs_list.size() == p1_sigma_list.size());
@@ -262,12 +262,15 @@ int OptimizePoseLevenbergMarquardtP(const std::vector<Vector3d>& P0_list,
 
   int iters;
   for (iters = 0; iters < max_iters; ++iters) {
-    H.diagonal() += lambda * H.diagonal();// Vector6d::Constant(lambda);
-
-    Eigen::ColPivHouseholderQR<Matrix6d> solver(H);
+    // H.diagonal() += lambda * H.diagonal();// Vector6d::Constant(lambda);
+    Matrix6d H_lm = H;
+    H_lm.diagonal() += lambda*H.diagonal();
+    Eigen::ColPivHouseholderQR<Matrix6d> solver(H_lm);
     T_eps = solver.solve(g);
 
-    err = ComputeProjectionError(P0_list, p1_obs_list, p1_sigma_list, stereo_cam, T_10);
+    // Check if applying T_eps would improve error.
+    const Matrix4d T_10_test = expmap_se3(T_eps) * T_10;
+    err = ComputeProjectionError(P0_list, p1_obs_list, p1_sigma_list, stereo_cam, T_10_test);
 
     if (err < min_error) {
       break;
@@ -275,7 +278,7 @@ int OptimizePoseLevenbergMarquardtP(const std::vector<Vector3d>& P0_list,
 
     // If error gets worse, want to increase the damping factor (more like gradient descent).
     // See: https://en.wikipedia.org/wiki/Levenberg%E2%80%93Marquardt_algorithm
-    if (err > err_prev) {
+    if (err >= err_prev) {
       lambda *= lambda_k_increase;
       printf("Error increased, increasing lambda (prev=%lf, err=%lf, lambda=%lf)\n", err_prev, err, lambda);
 
@@ -285,11 +288,8 @@ int OptimizePoseLevenbergMarquardtP(const std::vector<Vector3d>& P0_list,
       lambda /= lambda_k_decrease;
       printf("Error decreased, decreasing lambda (prev=%lf, err=%lf, lambda=%lf)\n", err_prev, err, lambda);
       err_prev = err;
-      // std::cout << "Updating pose:" << std::endl;
-      // std::cout << "Current:\n" << T_10 << std::endl;
-      T_10 << expmap_se3(T_eps) * T_10;
-      // std::cout << "EPS:\n" << expmap_se3(T_eps) << std::endl;
-      // std::cout << "Updated:\n" << T_10 << std::endl;
+
+      T_10 = T_10_test;
 
       // Need to re-linearize because we updated T_10.
       LinearizePointProjection2(P0_list, p1_obs_list, p1_sigma_list, stereo_cam, T_10, H, g, err);
