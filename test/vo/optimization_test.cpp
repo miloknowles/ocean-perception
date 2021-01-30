@@ -180,8 +180,8 @@ TEST(OptimizationTest, TestLM_02)
   T_w_1(2, 3) = 5.0;
 
   std::vector<Vector3d> P_w;
-  for (double x = -5; x <= 5; ++x) {
-    for (double y = -5; y <= 5; ++y) {
+  for (double x = -1; x <= 1; ++x) {
+    for (double y = -1; y <= 1; ++y) {
       P_w.emplace_back(Vector3d(x, y, 10));
     }
   }
@@ -194,7 +194,7 @@ TEST(OptimizationTest, TestLM_02)
   std::vector<Vector3d> P0_list;
   SimulatePoints(T_w_0, T_w_1, P_w, stereo_cam, p1_sigma_list, P0_list, p1_list);
 
-  const int max_iters = 10;
+  const int max_iters = 2;
   const double min_error = 1e-7;
   const double min_error_delta = 1e-9;
 
@@ -211,7 +211,7 @@ TEST(OptimizationTest, TestLM_02)
       P0_list, p1_list, p1_sigma_list, stereo_cam, T_10, C_01, error,
       max_iters, min_error, min_error_delta);
 
-  printf("iters=%d | error=%lf\n", iters, error);
+  printf("--------------------iters=%d | error=%lf\n", iters, error);
   std::cout << "Optimized pose T_10:" << std::endl;
   std::cout << T_10 << std::endl;
   std::cout << "Covariance matrix:" << std::endl;

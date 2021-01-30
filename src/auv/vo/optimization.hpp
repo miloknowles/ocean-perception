@@ -89,6 +89,16 @@ void LinearizePointProjection(const std::vector<Vector3d>& P0_list,
                               double& error);
 
 
+void LinearizePointProjection2(const std::vector<Vector3d>& P0_list,
+                              const std::vector<Vector2d>& p1_obs_list,
+                              const std::vector<double>& p1_sigma_list,
+                              const StereoCamera& stereo_cam,
+                              const Matrix4d& T_10,
+                              Matrix6d& H,
+                              Vector6d& g,
+                              double& error);
+
+
 int RemovePointOutliers(const Matrix4d& T_10,
                         const std::vector<Vector3d>& P0_list,
                         const std::vector<Vector2d>& p1_obs_list,

@@ -40,7 +40,7 @@ class StereoCamera final {
   int Width() const { return cam_left_.Width(); }
   double Baseline() const { return baseline_; }
   double fx() const { return cam_left_.fx(); }
-  double fy() const { return cam_right_.fy(); }
+  double fy() const { return cam_left_.fy(); }
   Transform3d Extrinsics() const { return T_left_right_; }
 
  private:
