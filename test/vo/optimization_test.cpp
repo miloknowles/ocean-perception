@@ -59,61 +59,6 @@ static double ComputeRotationError(const Matrix4d& T_w_0, const Matrix4d& T_w_1,
 }
 
 
-TEST(OptimizationTest, TestGN_01)
-{
-  const StereoCamera& stereo_cam = MakeStereoCamera();
-
-  // Groundtruth poses of the 0th and 1th cameras.
-  const Matrix4d T_w_0 = Matrix4d::Identity();
-
-  // Translate the 1th camera to the right.
-  Matrix4d T_w_1 = T_w_0;
-  T_w_1(0, 3) = 4.0;
-
-  // Groundtruth location of 3D landmarks in the world.
-  const std::vector<Vector3d> P_w = {
-    Vector3d(-1, 0.1, 2),
-    Vector3d(0, 0.2, 2),
-    Vector3d(1, 0.3, 2),
-  };
-
-  // Standard deviation of 1px on observed points.
-  const std::vector<double> p1_sigma_list = { 1.0, 1.0, 1.0 };
-  std::vector<Vector2d> p1_list;
-  std::vector<Vector3d> P0_list;
-  SimulatePoints(T_w_0, T_w_1, P_w, stereo_cam, p1_sigma_list, P0_list, p1_list);
-
-  const int max_iters = 10;
-  const double min_error = 1e-7;
-  const double min_error_delta = 1e-7;
-
-  // Outputs from the optimization.
-  double error;
-  Matrix4d T_10 = Matrix4d::Identity();
-  T_10.col(3) = Vector4d(-0.1, 0.0, 0.0, 1);
-
-  std::cout << "Starting pose T_10:\n" << T_10 << std::endl;
-
-  Matrix6d C_01;
-
-  const int iters = OptimizePoseGaussNewtonP(
-      P0_list, p1_list, p1_sigma_list, stereo_cam, T_10, C_01, error,
-      max_iters, min_error, min_error_delta);
-
-  printf("iters=%d | error=%lf\n", iters, error);
-  std::cout << "Optimized pose T_10:" << std::endl;
-  std::cout << T_10 << std::endl;
-  std::cout << "Covariance matrix:" << std::endl;
-  std::cout << C_01 << std::endl;
-
-  const double t_err = ComputeTranslationError(T_w_0, T_w_1, T_10);
-  const double r_err = ComputeRotationError(T_w_0, T_w_1, T_10);
-  printf("ERROR: t=%lf (m) r=%lf (deg)\n", t_err, RadToDeg(r_err));
-  ASSERT_LE(t_err, 0.05);
-  ASSERT_LE(r_err, DegToRad(1));
-}
-
-
 TEST(OptimizationTest, TestLM_01)
 {
   const StereoCamera& stereo_cam = MakeStereoCamera();
@@ -132,15 +77,22 @@ TEST(OptimizationTest, TestLM_01)
     Vector3d(-1, 0.1, 3),
     Vector3d(0, 0.2, 2),
     Vector3d(1, 0.3, 6),
+    Vector3d(-2.0, 2.0, 2),
+    Vector3d(-3.0, 3.0, 2.5),
+    Vector3d(2.0, 0.0, 1.4),
+    Vector3d(9.0, 3.0, 2.7),
+    Vector3d(-5.0, 4.0, 2.3),
+    Vector3d(2.0, 7.0, 2.7),
+    Vector3d(-1.0, -8.0, 2.8)
   };
 
   // Standard deviation of 1px on observed points.
-  const std::vector<double> p1_sigma_list = { 1.0, 1.0, 1.0 };
+  const std::vector<double> p1_sigma_list = { 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 };
   std::vector<Vector2d> p1_list;
   std::vector<Vector3d> P0_list;
   SimulatePoints(T_w_0, T_w_1, P_w, stereo_cam, p1_sigma_list, P0_list, p1_list);
 
-  const int max_iters = 20;
+  const int max_iters = 30;
   const double min_error = 1e-7;
   const double min_error_delta = 1e-9;
 
@@ -152,7 +104,7 @@ TEST(OptimizationTest, TestLM_01)
 
   Matrix6d C_01;
 
-  const int iters = OptimizePoseLevenbergMarquardtP(
+  const int iters = OptimizeOdometryLM(
       P0_list, p1_list, p1_sigma_list, stereo_cam, T_10, C_01, error,
       max_iters, min_error, min_error_delta);
 
@@ -177,11 +129,11 @@ TEST(OptimizationTest, TestLM_02)
   // Groundtruth poses of the 0th and 1th cameras.
   Matrix4d T_w_0 = Matrix4d::Identity();
   Matrix4d T_w_1 = Matrix4d::Identity();
-  T_w_1(2, 3) = 5.0;
+  T_w_1(2, 3) = 1.0;
 
   std::vector<Vector3d> P_w;
-  for (double x = -5; x <= 5; ++x) {
-    for (double y = -5; y <= 5; ++y) {
+  for (double x = -1; x <= 1; ++x) {
+    for (double y = -1; y <= 1; ++y) {
       P_w.emplace_back(Vector3d(x, y, 10));
     }
   }
@@ -207,11 +159,11 @@ TEST(OptimizationTest, TestLM_02)
 
   Matrix6d C_01;
 
-  const int iters = OptimizePoseLevenbergMarquardtP(
+  const int iters = OptimizeOdometryLM(
       P0_list, p1_list, p1_sigma_list, stereo_cam, T_10, C_01, error,
       max_iters, min_error, min_error_delta);
 
-  printf("iters=%d | error=%lf\n", iters, error);
+  printf("--------------------iters=%d | error=%lf\n", iters, error);
   std::cout << "Optimized pose T_10:" << std::endl;
   std::cout << T_10 << std::endl;
   std::cout << "Covariance matrix:" << std::endl;

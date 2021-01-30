@@ -92,7 +92,7 @@ OdometryEstimate OdometryFrontend::TrackStereoFrame(const Image1b& iml, const Im
     }
 
     // Optimize relative pose w/ all points, then remove outliers, then optimize again.
-    OptimizePoseIterativeP(
+    OptimizeOdometryIterative(
         P0_list, p1_obs_list, p1_sigma_list, stereo_camera_, T_10, C_10, error, point_inlier_indices,
         opt_.opt_max_iters, opt_.opt_min_error,
         opt_.opt_min_error_delta, opt_.opt_max_error_stdevs);

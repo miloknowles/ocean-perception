@@ -25,42 +25,30 @@ inline double RobustWeightCauchy(double residual)
  *
  * @param[out] inlier_indices : The indices of inlier features in P0_list and p1_obs_list.
  */
-int OptimizePoseIterativeP(const std::vector<Vector3d>& P0_list,
-                          const std::vector<Vector2d>& p1_obs_list,
-                          const std::vector<double>& p1_sigma_list,
-                          const StereoCamera& stereo_cam,
-                          Matrix4d& T_10,
-                          Matrix6d& C_10,
-                          double& error,
-                          std::vector<int>& inlier_indices,
-                          int max_iters,
-                          double min_error,
-                          double min_error_delta,
-                          double max_error_stdevs);
+int OptimizeOdometryIterative(const std::vector<Vector3d>& P0_list,
+                              const std::vector<Vector2d>& p1_obs_list,
+                              const std::vector<double>& p1_sigma_list,
+                              const StereoCamera& stereo_cam,
+                              Matrix4d& T_10,
+                              Matrix6d& C_10,
+                              double& error,
+                              std::vector<int>& inlier_indices,
+                              int max_iters,
+                              double min_error,
+                              double min_error_delta,
+                              double max_error_stdevs);
 
 
-int OptimizePoseGaussNewtonP(const std::vector<Vector3d>& P0_list,
-                            const std::vector<Vector2d>& p1_obs_list,
-                            const std::vector<double>& p1_sigma_list,
-                            const StereoCamera& stereo_cam,
-                            Matrix4d& T_10,
-                            Matrix6d& C_10,
-                            double& error,
-                            int max_iters,
-                            double min_error,
-                            double min_error_delta);
-
-
-int OptimizePoseLevenbergMarquardtP(const std::vector<Vector3d>& P0_list,
-                            const std::vector<Vector2d>& p1_obs_list,
-                            const std::vector<double>& p1_sigma_list,
-                            const StereoCamera& stereo_cam,
-                            Matrix4d& T_10,
-                            Matrix6d& C_10,
-                            double& error,
-                            int max_iters,
-                            double min_error,
-                            double min_error_delta);
+int OptimizeOdometryLM(const std::vector<Vector3d>& P0_list,
+                      const std::vector<Vector2d>& p1_obs_list,
+                      const std::vector<double>& p1_sigma_list,
+                      const StereoCamera& stereo_cam,
+                      Matrix4d& T_10,
+                      Matrix6d& C_10,
+                      double& error,
+                      int max_iters,
+                      double min_error,
+                      double min_error_delta);
 
 /**
  * Linearize image projection error around the SE3 manifold at the current pose.
@@ -79,14 +67,14 @@ int OptimizePoseLevenbergMarquardtP(const std::vector<Vector3d>& P0_list,
  * @param g (output) : The gradient at this linearization point.
  * @param error (output) : The (weighted) sum of squared projection error.
  */
-void LinearizePointProjection(const std::vector<Vector3d>& P0_list,
-                              const std::vector<Vector2d>& p1_obs_list,
-                              const std::vector<double>& p1_sigma_list,
-                              const StereoCamera& stereo_cam,
-                              const Matrix4d& T_10,
-                              Matrix6d& H,
-                              Vector6d& g,
-                              double& error);
+void LinearizeProjection(const std::vector<Vector3d>& P0_list,
+                        const std::vector<Vector2d>& p1_obs_list,
+                        const std::vector<double>& p1_sigma_list,
+                        const StereoCamera& stereo_cam,
+                        const Matrix4d& T_10,
+                        Matrix6d& H,
+                        Vector6d& g,
+                        double& error);
 
 
 int RemovePointOutliers(const Matrix4d& T_10,
