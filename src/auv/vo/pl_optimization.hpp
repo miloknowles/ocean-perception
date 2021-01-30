@@ -12,7 +12,7 @@ namespace vo {
 using namespace core;
 
 
-int OptimizePoseIterativePL(const std::vector<Vector3d>& P0_list,
+int OptimizeOdometryIterativeL(const std::vector<Vector3d>& P0_list,
                             const std::vector<Vector2d>& p1_obs_list,
                             const std::vector<double>& p1_sigma_list,
                             const std::vector<LineFeature3D>& L0_list,
@@ -30,7 +30,7 @@ int OptimizePoseIterativePL(const std::vector<Vector3d>& P0_list,
                             double max_error_stdevs);
 
 
-int OptimizePoseLevenbergMarquardtPL(const std::vector<Vector3d>& P0_list,
+int OptimizeOdometryLML(const std::vector<Vector3d>& P0_list,
                                     const std::vector<Vector2d>& p1_obs_list,
                                     const std::vector<double>& p1_sigma_list,
                                     const std::vector<LineFeature3D>& L0_list,

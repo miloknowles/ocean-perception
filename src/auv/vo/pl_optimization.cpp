@@ -9,7 +9,7 @@ namespace bm {
 namespace vo {
 
 
-int OptimizePoseIterativePL(const std::vector<Vector3d>& P0_list,
+int OptimizeOdometryIterativeL(const std::vector<Vector3d>& P0_list,
                             const std::vector<Vector2d>& p1_obs_list,
                             const std::vector<double>& p1_sigma_list,
                             const std::vector<LineFeature3D>& L0_list,
@@ -27,7 +27,7 @@ int OptimizePoseIterativePL(const std::vector<Vector3d>& P0_list,
                             double max_error_stdevs)
 {
   // Do the initial pose optimization.
-  const int N1 = OptimizePoseLevenbergMarquardtPL(
+  const int N1 = OptimizeOdometryLML(
       P0_list, p1_obs_list, p1_sigma_list,              // Point inputs.
       L0_list, l1_obs_list, l1_sigma_list, stereo_cam,  // Line inputs.
       T_10, C_10, error,                                // Outputs.
@@ -48,7 +48,7 @@ int OptimizePoseIterativePL(const std::vector<Vector3d>& P0_list,
   const std::vector<double>& l1_sigma_list_refined = Subset<double>(l1_sigma_list, line_inlier_indices);
 
   // Do a second pose optimization with only inlier features.
-  const int N2 = OptimizePoseLevenbergMarquardtPL(
+  const int N2 = OptimizeOdometryLML(
       P0_list_refined, p1_obs_list_refined, p1_sigma_list_refined,
       L0_list_refined, l1_obs_list_refined, l1_sigma_list_refined,
       stereo_cam, T_10, C_10, error,
@@ -58,7 +58,7 @@ int OptimizePoseIterativePL(const std::vector<Vector3d>& P0_list,
 }
 
 
-int OptimizePoseLevenbergMarquardtPL(const std::vector<Vector3d>& P0_list,
+int OptimizeOdometryLML(const std::vector<Vector3d>& P0_list,
                                     const std::vector<Vector2d>& p1_obs_list,
                                     const std::vector<double>& p1_sigma_list,
                                     const std::vector<LineFeature3D>& L0_list,
@@ -86,7 +86,7 @@ int OptimizePoseLevenbergMarquardtPL(const std::vector<Vector3d>& P0_list,
   const double lambda_k_increase = 2.0;
   const double lambda_k_decrease = 3.0;
 
-  LinearizePointProjection(P0_list, p1_obs_list, p1_sigma_list, stereo_cam, T_10, H_p, g_p, err_p);
+  LinearizeProjection(P0_list, p1_obs_list, p1_sigma_list, stereo_cam, T_10, H_p, g_p, err_p);
   LinearizeLineProjection(L0_list, l1_obs_list, l1_sigma_list, stereo_cam, T_10, H_l, g_l, err_l);
 
   Matrix6d H = H_p + H_l;
@@ -104,7 +104,7 @@ int OptimizePoseLevenbergMarquardtPL(const std::vector<Vector3d>& P0_list,
 
   int iters;
   for (iters = 1; iters < max_iters; ++iters) {
-    LinearizePointProjection(P0_list, p1_obs_list, p1_sigma_list, stereo_cam, T_10, H_p, g_p, err_p);
+    LinearizeProjection(P0_list, p1_obs_list, p1_sigma_list, stereo_cam, T_10, H_p, g_p, err_p);
     LinearizeLineProjection(L0_list, l1_obs_list, l1_sigma_list, stereo_cam, T_10, H_l, g_l, err_l);
 
     H = H_p + H_l;
