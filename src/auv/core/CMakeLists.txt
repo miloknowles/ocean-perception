@@ -14,7 +14,10 @@ SET(LIBRARY_SRC
   line_feature.hpp
   line_segment.hpp
   timedelta.hpp
-  timer.hpp)
+  timer.hpp
+  timestamp.hpp
+  imu_measurement.hpp
+  stereo_image.hpp)
 
 # NOTE(milo): This is how to debug the INCLUDE_DIRECTORIES if needed.
 # message("===================================================")

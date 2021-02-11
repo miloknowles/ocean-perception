@@ -12,6 +12,7 @@ class Timedelta {
   double seconds() const { return sec_; }
   double milliseconds() const { return sec_ * 1e3; }
   double microseconds() const { return sec_ * 1e6; }
+  double nanoseconds() const { return sec_ * 1e9; }
 
   Timedelta& operator=(const Timedelta& rhs) {
     sec_ = rhs.seconds();

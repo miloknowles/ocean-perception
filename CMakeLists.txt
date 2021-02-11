@@ -22,9 +22,10 @@ find_package(catkin REQUIRED COMPONENTS
 # Find non-catkin pacakges.
 find_package(OpenCV 3.2.0 EXACT REQUIRED)
 find_package(Boost        REQUIRED COMPONENTS filesystem)
-find_package(g2o          REQUIRED)
+# find_package(g2o          REQUIRED)
 find_package(Eigen3       REQUIRED)
 find_package(yaml-cpp     REQUIRED CONFIG PATHS ${YAML_PATHS}) # YAML library
+find_package(Glog 0.3.5 REQUIRED)
 
 include_directories(
   /usr/include/
