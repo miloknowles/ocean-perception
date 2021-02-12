@@ -3,14 +3,14 @@
 
 #include <glog/logging.h>
 
-#include "dataset/euroc_provider.hpp"
+#include "dataset/euroc_dataset.hpp"
 #include "core/file_utils.hpp"
 
 namespace bm {
 namespace dataset {
 
 
-EurocProvider::EurocProvider(const std::string& toplevel_path)
+EurocDataset::EurocDataset(const std::string& toplevel_path)
 {
   const std::string mav0_path = Join(toplevel_path, "mav0");
   const std::string cam0_path = Join(mav0_path, "cam0");
@@ -23,7 +23,7 @@ EurocProvider::EurocProvider(const std::string& toplevel_path)
 
 
 // NOTE(milo): Adapted from KIMERA-VIO
-void EurocProvider::ParseImu(const std::string& data_csv_path)
+void EurocDataset::ParseImu(const std::string& data_csv_path)
 {
   // NOTE(milo): EuRoC IMU lines follow this format:
   // timestamp [ns],w_RS_S_x [rad s^-1],w_RS_S_y [rad s^-1],w_RS_S_z [rad s^-1],
@@ -78,7 +78,7 @@ void EurocProvider::ParseImu(const std::string& data_csv_path)
 }
 
 
-void EurocProvider::ParseStereo(const std::string& cam0_path, const std::string& cam1_path)
+void EurocDataset::ParseStereo(const std::string& cam0_path, const std::string& cam1_path)
 {
   std::vector<timestamp_t> left_stamps, right_stamps;
   std::vector<std::string> lf, rf;
@@ -101,7 +101,7 @@ void EurocProvider::ParseStereo(const std::string& cam0_path, const std::string&
 
 
 // NOTE(milo): Adapted from KIMERA-VIO
-void EurocProvider::ParseImageFolder(const std::string& cam_folder,
+void EurocDataset::ParseImageFolder(const std::string& cam_folder,
                                     std::vector<timestamp_t>& output_timestamps,
                                     std::vector<std::string>& output_filenames)
 {

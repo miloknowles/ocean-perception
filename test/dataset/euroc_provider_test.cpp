@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include <glog/logging.h>
 
-#include "dataset/euroc_provider.hpp"
+#include "dataset/euroc_dataset.hpp"
 
 using namespace bm;
 using namespace core;
@@ -12,7 +12,7 @@ TEST(DatasetTest, TestEurocProvider)
 {
   // const std::string toplevel_folder = "/home/milo/datasets/euroc/V1_01_EASY";
   const std::string toplevel_folder = "/home/milo/datasets/Unity3D/farmsim/euroc_test1";
-  EurocProvider dataset(toplevel_folder);
+  EurocDataset dataset(toplevel_folder);
 
   StereoCallback stereo_cb = [](const StereoImage& stereo_data) {};
   ImuCallback imu_cb = [](const ImuMeasurement& imu_data) {};

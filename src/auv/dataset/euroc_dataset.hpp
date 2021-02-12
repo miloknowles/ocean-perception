@@ -6,10 +6,10 @@ namespace bm {
 namespace dataset {
 
 
-class EurocProvider : public DataProvider {
+class EurocDataset : public DataProvider {
  public:
   // Construct with a toplevel_path, which should contain the "mav0" folder inside of it.
-  EurocProvider(const std::string& toplevel_path);
+  EurocDataset(const std::string& toplevel_path);
 
  private:
   void ParseStereo(const std::string& cam0_path, const std::string& cam1_path);
