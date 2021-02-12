@@ -103,17 +103,28 @@ void DataProvider::PlaybackWorker(float speed, bool verbose)
 {
   while (Step(verbose)) {
     const timestamp_t next_time = NextTimestamp().first;
-    const timestamp_t ns_until_next = (next_time - last_data_timestamp_);
-    LOG(INFO) << "Sleeping for " << ns_until_next << std::endl;
-    std::this_thread::sleep_for(std::chrono::nanoseconds(ns_until_next));
+
+    if (next_time == kMaximumTimestamp) {
+      break;
+    }
+
+    const float ns_until_next = static_cast<float>(next_time - last_data_timestamp_) / speed;
+
+    if (verbose) {
+      LOG(INFO) << "Sleeping for " << ns_until_next << std::endl;
+    }
+
+    std::this_thread::sleep_for(std::chrono::nanoseconds((timestamp_t)ns_until_next));
   }
 }
 
 
 void DataProvider::Playback(float speed, bool verbose)
 {
-  playback_thread_ = make_unique<std::thread>(&DataProvider::PlaybackWorker, speed, verbose);
-  playback_thread_->join();
+  CHECK_GT(speed, 0.01f) << "Cannot go slower than 1% speed" << std::endl;
+
+  std::thread worker(&DataProvider::PlaybackWorker, this, speed, verbose);
+  worker.join();
 }
 
 
@@ -122,7 +133,6 @@ void DataProvider::Reset()
   last_data_timestamp_ = 0;
   next_stereo_idx_ = 0;
   next_imu_idx_ = 0;
-  playback_thread_ = nullptr;
 }
 
 

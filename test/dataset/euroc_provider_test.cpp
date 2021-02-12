@@ -21,12 +21,14 @@ TEST(DatasetTest, TestEurocProvider)
   dataset.RegisterImuCallback(imu_cb);
 
   // Step in "verbose" mode.
+  LOG(INFO) << "Stepping through one-by-one" << std::endl;
   while (dataset.Step(true)) {}
-
   LOG(INFO) << "DONE" << std::endl;
 
+  LOG(INFO) << "Playback back at high speed" << std::endl;
   dataset.Reset();
-  dataset.Playback(4.0f, true);
+  dataset.Playback(10.0f, true);
+  LOG(INFO) << "DONE" << std::endl;
 }
 
 

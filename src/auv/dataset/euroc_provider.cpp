@@ -95,7 +95,7 @@ void EurocProvider::ParseStereo(const std::string& cam0_path, const std::string&
     CHECK(Exists(lf.at(i)));
     CHECK(Exists(rf.at(i)));
 
-    stereo_data.emplace_back(SavedStereoData(left_stamps.at(i), lf.at(i), rf.at(i)));
+    stereo_data.emplace_back(StereoDatasetItem(left_stamps.at(i), lf.at(i), rf.at(i)));
   }
 }
 

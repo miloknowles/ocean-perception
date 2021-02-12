@@ -17,20 +17,19 @@
 namespace bm {
 namespace dataset {
 
+using namespace core;
 
 // Any type of data that the dataset could contain.
 enum DataSource { STEREO, IMU };
-
-
-using namespace core;
 
 // Callback function signatures.
 typedef std::function<void(StereoImage)> StereoCallback;
 typedef std::function<void(ImuMeasurement)> ImuCallback;
 
 
-struct SavedStereoData{
-  SavedStereoData(timestamp_t timestamp,
+// Represents a stereo image pair stored on disk.
+struct StereoDatasetItem{
+  StereoDatasetItem(timestamp_t timestamp,
                   const std::string& path_left,
                   const std::string& path_right)
       : timestamp(timestamp), path_left(path_left), path_right(path_right) {}
@@ -65,6 +64,7 @@ class DataProvider {
   // Does sanity-checking on input data. Should be called before playback.
   void Validate() const;
 
+  // Playback() runs this member function in its own thread.
   void PlaybackWorker(float speed, bool verbose);
 
   std::vector<StereoCallback> stereo_callbacks_;
@@ -77,10 +77,8 @@ class DataProvider {
   size_t next_stereo_idx_ = 0;
   size_t next_imu_idx_ = 0;
 
-  std::unique_ptr<std::thread> playback_thread_ = nullptr;
-
  public:
-  std::vector<SavedStereoData> stereo_data;
+  std::vector<StereoDatasetItem> stereo_data;
   std::vector<ImuMeasurement> imu_data;
 };
 
