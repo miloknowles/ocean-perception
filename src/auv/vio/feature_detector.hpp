@@ -50,6 +50,7 @@ class FeatureDetector final {
     float subpix_epsilon = 0.01;
   };
 
+  // Construct with options.
   explicit FeatureDetector(const Options& opt);
 
   void Detect(const Image1b& img, const VecPoint2f& tracked_kp, VecPoint2f& new_kp);

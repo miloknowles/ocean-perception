@@ -24,13 +24,14 @@ class StereoMatcher final {
   };
 
   // Construct with options.
-  StereoMatcher(const Options& opt) : opt_(opt) {}
+  explicit StereoMatcher(const Options& opt) : opt_(opt) {}
 
   // Uses template-matching to find a left_keypoint in the right image (horizontal search).
   double MatchRectified(const Image1b& left_rectified,
                         const Image1b& right_rectified,
                         const cv::Point2f& left_keypoint);
 
+  // Match a set of keypoints in the left image (calls member function above).
   std::vector<double> MatchRectified(const Image1b& left_rectified,
                                      const Image1b& right_rectified,
                                      const VecPoint2f& left_keypoints);

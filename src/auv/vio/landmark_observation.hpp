@@ -11,7 +11,7 @@ using namespace core;
 
 
 // A 2D observation of a landmark in an image.
-struct LandmarkObservation {
+struct LandmarkObservation final {
   explicit LandmarkObservation(uid_t landmark_id,
                                const Vector2d& pixel_location,
                                double disparity,

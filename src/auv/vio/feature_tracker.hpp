@@ -15,6 +15,7 @@ class FeatureTracker final {
  public:
   struct Options final {
     Options() = default;
+
     int klt_maxiters = 30;
     float klt_epsilon = 0.1;
     int klt_winsize = 24;

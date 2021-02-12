@@ -3,7 +3,6 @@ SET(LIBRARY_NAME ${PROJECT_NAME}_vio)
 
 SET(LIBRARY_SRC
   landmark_observation.hpp
-  stereo_tracking_result.hpp
   feature_detector.cpp
   feature_detector.hpp
   feature_tracker.cpp
@@ -11,7 +10,9 @@ SET(LIBRARY_SRC
   stereo_matcher.cpp
   stereo_matcher.hpp
   visualization_2d.cpp
-  visualization_2d.hpp)
+  visualization_2d.hpp
+  stereo_frontend.cpp
+  stereo_frontend.hpp)
 
 add_library(${LIBRARY_NAME} SHARED ${LIBRARY_SRC})
 set_target_properties(${LIBRARY_NAME} PROPERTIES LINKER_LANGUAGE CXX)
