@@ -1,3 +1,6 @@
+#include <algorithm>
+#include <iostream>
+
 #include <glog/logging.h>
 
 #include <opencv2/highgui.hpp>
@@ -65,19 +68,43 @@ Image3b DrawStereoMatches(const Image1b& left,
   cv::cvtColor(right, right_bgr, cv::COLOR_GRAY2BGR);
   cv::hconcat(left_bgr, right_bgr, pair_bgr);
 
+  if (disp_left.empty()) {
+    LOG(WARNING) << "No disparities passed to DrawStereoMatches!" << std::endl;
+    return pair_bgr;
+  }
+
+  const auto result = std::minmax_element(disp_left.begin(), disp_left.end());
+  const double disp_value_min = 0.0;
+  const double disp_value_max = *result.second;
+  const double disp_value_range = disp_value_max - disp_value_min;
+
+  // Color-map based on disparity.
+  cv::Mat1d disp1d = cv::Mat1d(disp_left).reshape(0, disp_left.size());
+  std::cout << disp1d << std::endl;
+  cv::Mat1b disp1b;
+  disp1d.convertTo(disp1b, CV_8UC1, 255.0 / disp_value_range, disp_value_min);
+
+  std::cout << disp1b << std::endl;
+
+  cv::Mat3b disp3b;
+  cv::applyColorMap(disp1b, disp3b, cv::COLORMAP_PARULA);
+
   for (size_t i = 0; i < keypoints_left.size(); ++i) {
     const double disp = disp_left.at(i);
     const cv::Point2f& kpl = keypoints_left.at(i);
 
     const bool has_valid_disp = (disp >= 0);
     if (has_valid_disp) {
+      const cv::Vec3b bgr = disp3b(0, i);
+
       // Keypoint is offset to the LEFT in the right image.
       cv::Point2f kpr = cv::Point2f(left.cols + kpl.x - disp, kpl.y);
-      cv::circle(pair_bgr, kpr, 4, cv::viz::Color::green(), 1);
-      cv::line(pair_bgr, kpl, kpr, cv::viz::Color::green());
+      cv::circle(pair_bgr, kpr, 4, bgr, 1);
+      cv::circle(pair_bgr, kpl, 4, bgr, 1);
+      cv::line(pair_bgr, kpl, kpr, bgr, 1);
+    } else {
+      cv::circle(pair_bgr, kpl, 4, cv::viz::Color::gray(), 1);
     }
-
-    cv::circle(pair_bgr, kpl, 4, has_valid_disp ? cv::viz::Color::green() : cv::viz::Color::red(), 1);
   }
 
   return pair_bgr;

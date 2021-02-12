@@ -19,8 +19,8 @@ TEST(VioTest, TestStereoMatcher)
   FeatureDetector::Options dopt;
   FeatureDetector detector(dopt);
 
-  const Image1b iml = cv::imread("./resources/caddy_32_left.jpg", cv::IMREAD_GRAYSCALE);
-  const Image1b imr = cv::imread("./resources/caddy_32_right.jpg", cv::IMREAD_GRAYSCALE);
+  const Image1b iml = cv::imread("./resources/farmsim_01_left.png", cv::IMREAD_GRAYSCALE);
+  const Image1b imr = cv::imread("./resources/farmsim_01_right.png", cv::IMREAD_GRAYSCALE);
 
   VecPoint2f empty_kp, left_keypoints;
   detector.Detect(iml, empty_kp, left_keypoints);
