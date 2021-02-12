@@ -80,11 +80,8 @@ Image3b DrawStereoMatches(const Image1b& left,
 
   // Color-map based on disparity.
   cv::Mat1d disp1d = cv::Mat1d(disp_left).reshape(0, disp_left.size());
-  std::cout << disp1d << std::endl;
   cv::Mat1b disp1b;
   disp1d.convertTo(disp1b, CV_8UC1, 255.0 / disp_value_range, disp_value_min);
-
-  std::cout << disp1b << std::endl;
 
   cv::Mat3b disp3b;
   cv::applyColorMap(disp1b, disp3b, cv::COLORMAP_PARULA);
