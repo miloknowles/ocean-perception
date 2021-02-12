@@ -24,5 +24,13 @@ Image3b DrawFeatureTracks(const Image1b& cur_img,
                           const VecPoint2f& untracked_cur);
 
 
+// Draws matched keypoints in green, and unmatched ones in red.
+// Draws lines between corrspondences in the left/right images.
+Image3b DrawStereoMatches(const Image1b& left,
+                          const Image1b& right,
+                          const VecPoint2f& keypoints_left,
+                          const std::vector<double>& disp_left);
+
+
 }
 }

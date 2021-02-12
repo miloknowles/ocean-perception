@@ -8,6 +8,8 @@ SET(LIBRARY_SRC
   feature_detector.hpp
   feature_tracker.cpp
   feature_tracker.hpp
+  stereo_matcher.cpp
+  stereo_matcher.hpp
   visualization_2d.cpp
   visualization_2d.hpp)
 

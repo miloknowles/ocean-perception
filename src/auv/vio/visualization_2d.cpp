@@ -1,3 +1,5 @@
+#include <glog/logging.h>
+
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/viz/types.hpp>
@@ -45,6 +47,40 @@ Image3b DrawFeatureTracks(const Image1b& cur_img,
   }
 
   return img_bgr;
+}
+
+
+Image3b DrawStereoMatches(const Image1b& left,
+                          const Image1b& right,
+                          const VecPoint2f& keypoints_left,
+                          const std::vector<double>& disp_left)
+{
+  LOG_IF(FATAL, disp_left.size() != keypoints_left.size())
+      << "Size of keypoints_left and disp_left should match!" << std::endl;
+
+  // Horizontally concat images to make 2*width x height shaped image.
+  Image3b pair_bgr;
+  Image3b left_bgr, right_bgr;
+  cv::cvtColor(left, left_bgr, cv::COLOR_GRAY2BGR);
+  cv::cvtColor(right, right_bgr, cv::COLOR_GRAY2BGR);
+  cv::hconcat(left_bgr, right_bgr, pair_bgr);
+
+  for (size_t i = 0; i < keypoints_left.size(); ++i) {
+    const double disp = disp_left.at(i);
+    const cv::Point2f& kpl = keypoints_left.at(i);
+
+    const bool has_valid_disp = (disp >= 0);
+    if (has_valid_disp) {
+      // Keypoint is offset to the LEFT in the right image.
+      cv::Point2f kpr = cv::Point2f(left.cols + kpl.x - disp, kpl.y);
+      cv::circle(pair_bgr, kpr, 4, cv::viz::Color::green(), 1);
+      cv::line(pair_bgr, kpl, kpr, cv::viz::Color::green());
+    }
+
+    cv::circle(pair_bgr, kpl, 4, has_valid_disp ? cv::viz::Color::green() : cv::viz::Color::red(), 1);
+  }
+
+  return pair_bgr;
 }
 
 
