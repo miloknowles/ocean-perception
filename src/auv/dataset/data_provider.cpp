@@ -1,4 +1,5 @@
 #include <stdexcept>
+#include <utility>
 
 #include <glog/logging.h>
 
@@ -6,12 +7,34 @@
 
 #include "core/file_utils.hpp"
 #include "core/image_util.hpp"
+#include "core/make_unique.hpp"
 
 namespace bm {
 namespace dataset {
 
 
 static const timestamp_t kMaximumTimestamp = std::numeric_limits<timestamp_t>::max();
+
+
+std::pair<timestamp_t, DataSource> DataProvider::NextTimestamp() const
+{
+  timestamp_t next_stereo_time = kMaximumTimestamp;
+  timestamp_t next_imu_time = kMaximumTimestamp;
+
+  if (next_stereo_idx_ < stereo_data.size()) {
+    next_stereo_time = stereo_data.at(next_stereo_idx_).timestamp;
+  }
+  if (next_imu_idx_ < imu_data.size()) {
+    next_imu_time = imu_data.at(next_imu_idx_).timestamp;
+  }
+
+  const bool imu_is_next = next_imu_time <= next_stereo_time;
+
+  return std::make_pair(
+    std::min(next_imu_time, next_stereo_time),
+    imu_is_next ? DataSource::IMU : DataSource::STEREO
+  );
+}
 
 
 bool DataProvider::Step(bool verbose)
@@ -33,8 +56,12 @@ bool DataProvider::Step(bool verbose)
 
   const bool imu_is_next = next_imu_time <= next_stereo_time;
 
+  const auto next_time_and_source = NextTimestamp();
+  const timestamp_t next_time = next_time_and_source.first;
+  const DataSource next_source = next_time_and_source.second;
+
   if (verbose) {
-    LOG(INFO) << "Step() t=" << std::min(next_stereo_time, next_imu_time) << " source=" << (imu_is_next ? "IMU" : "STEREO");
+    LOG(INFO) << "Step() t=" << next_time << " source=" << (next_source == DataSource::IMU ? "IMU" : "STEREO");
   }
 
   // Prioritize IMU measurements first (since we need them integrated before adding new keyframes).
@@ -46,6 +73,7 @@ bool DataProvider::Step(bool verbose)
   } else {
     // Load the images and convert to grayscale if needed.
     timestamp_t timestamp = stereo_data.at(next_stereo_idx_).timestamp;
+
     const std::string path_left = stereo_data.at(next_stereo_idx_).path_left;
     const std::string path_right = stereo_data.at(next_stereo_idx_).path_right;
 
@@ -65,8 +93,38 @@ bool DataProvider::Step(bool verbose)
     ++next_stereo_idx_;
   }
 
+  last_data_timestamp_ = next_time;
+
   return true;
 }
+
+
+void DataProvider::PlaybackWorker(float speed, bool verbose)
+{
+  while (Step(verbose)) {
+    const timestamp_t next_time = NextTimestamp().first;
+    const timestamp_t ns_until_next = (next_time - last_data_timestamp_);
+    LOG(INFO) << "Sleeping for " << ns_until_next << std::endl;
+    std::this_thread::sleep_for(std::chrono::nanoseconds(ns_until_next));
+  }
+}
+
+
+void DataProvider::Playback(float speed, bool verbose)
+{
+  playback_thread_ = make_unique<std::thread>(&DataProvider::PlaybackWorker, speed, verbose);
+  playback_thread_->join();
+}
+
+
+void DataProvider::Reset()
+{
+  last_data_timestamp_ = 0;
+  next_stereo_idx_ = 0;
+  next_imu_idx_ = 0;
+  playback_thread_ = nullptr;
+}
+
 
 }
 }

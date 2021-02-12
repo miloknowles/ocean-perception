@@ -3,6 +3,9 @@
 #include <string>
 #include <functional>
 #include <vector>
+#include <memory>
+#include <thread>
+#include <utility>
 
 #include "core/cv_types.hpp"
 #include "core/stereo_image.hpp"
@@ -13,6 +16,11 @@
 
 namespace bm {
 namespace dataset {
+
+
+// Any type of data that the dataset could contain.
+enum DataSource { STEREO, IMU };
+
 
 using namespace core;
 
@@ -46,11 +54,18 @@ class DataProvider {
 
   // Plays back all available data in real time, chronologically. Optionally changes the speed of
   // playback based on the factor "speed". If speed is < 0, returns data as fast as possible.
-  void Playback(float speed, bool verbose = false);
+  void Playback(float speed = 1.0f, bool verbose = false);
+
+  // Start the dataset back over at the beginning.
+  void Reset();
 
  private:
+  std::pair<timestamp_t, DataSource> NextTimestamp() const;
+
   // Does sanity-checking on input data. Should be called before playback.
   void Validate() const;
+
+  void PlaybackWorker(float speed, bool verbose);
 
   std::vector<StereoCallback> stereo_callbacks_;
   std::vector<ImuCallback> imu_callbacks_;
@@ -61,6 +76,8 @@ class DataProvider {
   // Stores current indices into the various data sources.
   size_t next_stereo_idx_ = 0;
   size_t next_imu_idx_ = 0;
+
+  std::unique_ptr<std::thread> playback_thread_ = nullptr;
 
  public:
   std::vector<SavedStereoData> stereo_data;

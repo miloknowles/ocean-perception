@@ -24,4 +24,9 @@ TEST(DatasetTest, TestEurocProvider)
   while (dataset.Step(true)) {}
 
   LOG(INFO) << "DONE" << std::endl;
+
+  dataset.Reset();
+  dataset.Playback(4.0f, true);
 }
+
+
