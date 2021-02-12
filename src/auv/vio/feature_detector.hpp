@@ -20,9 +20,8 @@ class FeatureDetector final {
  public:
   // Parameters to control feature detection (avoids passing them all to Detect()).
   struct Options final {
-    FeatureAlgorithm algorithm;
+    FeatureAlgorithm algorithm = FeatureAlgorithm::GFTT;
 
-    int num_features_initial = 400;
     int max_features_per_frame = 200;
 
     //============================ ORB ====================================
@@ -31,14 +30,14 @@ class FeatureDetector final {
     int orb_edge_thresh = 10;       // Kimera-VIO uses 10 here
     int orb_wta_k = 0;              // Kimeria-VIO uses 0
     int orb_patch_size = 2;        // Kimera-VIO uses 2 here
-    int orb_fast_thresh = 20;
+    int orb_fast_thresh = 10;
 
     //============================ GFTT ===================================
     int min_distance_btw_tracked_and_detected_features = 10;
-    double quality_level = 0.001;
-    int block_size = 3;
-    bool use_harris_corner_detector = false;
-    double k = 0.04;
+    double gftt_quality_level = 0.001;
+    int gftt_block_size = 5;
+    bool gftt_use_harris_corner_detector = false;
+    double gftt_k = 0.04;
 
     //==================== SUBPIXEL CORNER ESTIMATION =====================
     // NOTE(milo): Subpixel refinement makes feature detection take ~20ms vs 2-5ms without.

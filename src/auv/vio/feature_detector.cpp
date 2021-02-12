@@ -32,32 +32,35 @@ static std::vector<cv::KeyPoint> CvPointToKeyPoint(const std::vector<cv::Point2f
 
 FeatureDetector::FeatureDetector(const Options& opt) : opt_(opt)
 {
-  feature_detector_ = cv::ORB::create(
-      opt_.num_features_initial,
-      opt_.orb_scale_factor,
-      opt_.orb_num_lvl,
-      opt_.orb_edge_thresh,
-      kOrbFirstLevel,
-      opt_.orb_wta_k,
-      cv::ORB::HARRIS_SCORE,
-      opt_.orb_patch_size,
-      opt_.orb_fast_thresh);
-
-  // feature_detector_ = cv::GFTTDetector::create(
-  //   opt.max_features_per_frame,
-  //   opt.quality_level,
-  //   opt.min_distance_btw_tracked_and_detected_features,
-  //   opt.block_size,
-  //   opt.use_harris_corner_detector,
-  //   opt.k);
-  // }
+  if (opt_.algorithm == FeatureAlgorithm::ORB) {
+    feature_detector_ = cv::ORB::create(
+        opt_.max_features_per_frame,
+        opt_.orb_scale_factor,
+        opt_.orb_num_lvl,
+        opt_.orb_edge_thresh,
+        kOrbFirstLevel,
+        opt_.orb_wta_k,
+        cv::ORB::HARRIS_SCORE,
+        opt_.orb_patch_size,
+        opt_.orb_fast_thresh);
+  } else if (opt_.algorithm == FeatureAlgorithm::GFTT) {
+    feature_detector_ = cv::GFTTDetector::create(
+      opt.max_features_per_frame,
+      opt.gftt_quality_level,
+      opt.min_distance_btw_tracked_and_detected_features,
+      opt.gftt_block_size,
+      opt.gftt_use_harris_corner_detector,
+      opt.gftt_k);
+  } else {
+    throw std::runtime_error("Unsupported feature detection algorithm!");
+  }
 }
 
 
 // https://answers.opencv.org/question/93317/orb-keypoints-distribution-over-an-image/
 static void AdaptiveNonMaximalSuppresion(std::vector<cv::KeyPoint>& keypoints, const int num_to_keep )
 {
-  if (keypoints.size() < num_to_keep) { return; }
+  if ((int)keypoints.size() < num_to_keep) { return; }
 
   // Sort by response
   std::sort(
@@ -73,7 +76,7 @@ static void AdaptiveNonMaximalSuppresion(std::vector<cv::KeyPoint>& keypoints, c
 
   const float robustCoeff = 1.11; // see paper
 
-  for (int i = 0; i < keypoints.size(); ++i) {
+  for (int i = 0; i < (int)keypoints.size(); ++i) {
     const float response = keypoints[i].response * robustCoeff;
     double radius = std::numeric_limits<double>::max();
     for (int j = 0; j < i && keypoints[j].response > response; ++j) {
@@ -87,7 +90,7 @@ static void AdaptiveNonMaximalSuppresion(std::vector<cv::KeyPoint>& keypoints, c
             [&](const double& lhs, const double& rhs) { return lhs > rhs ;});
 
   const double decisionRadius = radiiSorted[num_to_keep];
-  for (int i = 0; i < radii.size(); ++i) {
+  for (int i = 0; i < (int)radii.size(); ++i) {
     if (radii[i] >= decisionRadius) {
       anmsPts.push_back( keypoints[i] );
     }
