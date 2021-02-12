@@ -11,7 +11,7 @@ using namespace core;
 
 
 // Draws detected keypoints in a single image (no tracks).
-Image3b DrawFeatures(const Image1b& cur_img, const std::vector<cv::KeyPoint>& cur_keypoints);
+Image3b DrawFeatures(const Image1b& cur_img, const std::vector<cv::Point2f>& cur_keypoints);
 
 
 // Draws tracked keypoints with green arrows.
@@ -19,10 +19,10 @@ Image3b DrawFeatures(const Image1b& cur_img, const std::vector<cv::KeyPoint>& cu
 // Draws newly initialized keypoints in the current frame in blue.
 Image3b DrawFeatureTracks(const Image1b& ref_img,
                           const Image1b& cur_img,
-                          const std::vector<cv::KeyPoint>& ref_keypoints,
-                          const std::vector<cv::KeyPoint>& cur_keypoints,
-                          const std::vector<cv::KeyPoint>& untracked_ref,
-                          const std::vector<cv::KeyPoint>& untracked_cur);
+                          const std::vector<cv::Point2f>& ref_keypoints,
+                          const std::vector<cv::Point2f>& cur_keypoints,
+                          const std::vector<cv::Point2f>& untracked_ref,
+                          const std::vector<cv::Point2f>& untracked_cur);
 
 
 }

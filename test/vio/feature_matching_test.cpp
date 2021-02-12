@@ -21,7 +21,7 @@ TEST(VioTest, TestDetect)
   FeatureDetector::Options opt;
   FeatureDetector detector(opt);
 
-  std::vector<cv::KeyPoint> tracked_kp, new_kp, new_kp2;
+  std::vector<cv::Point2f> tracked_kp, new_kp, new_kp2;
   detector.Detect(iml, tracked_kp, new_kp);
 
   LOG(INFO) << "Detected " << new_kp.size() << " new keypoints in image" << std::endl;
@@ -41,9 +41,9 @@ TEST(VioTest, TestDetect)
 
   Timer timer(true);
   for (int iter = 0; iter < 100; ++iter) {
-    std::vector<cv::KeyPoint> tmp;
-    detector.Detect(iml, std::vector<cv::KeyPoint>(), tmp);
-    detector.Detect(imr, std::vector<cv::KeyPoint>(), tmp);
+    std::vector<cv::Point2f> tmp;
+    detector.Detect(iml, std::vector<cv::Point2f>(), tmp);
+    detector.Detect(imr, std::vector<cv::Point2f>(), tmp);
   }
   printf("Averaged %lf ms to detect keypoints in left/right pair\n", timer.Elapsed().milliseconds() / 100.0);
 }
