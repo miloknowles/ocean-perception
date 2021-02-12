@@ -65,7 +65,7 @@ bool DataProvider::Step(bool verbose)
     ++next_stereo_idx_;
   }
 
-  stereo_data.at(next_stereo_idx_);
+  return true;
 }
 
 }

@@ -9958,5 +9958,10 @@ const char* TypedTestCasePState::VerifyRegisteredTestNames(
 GTEST_API_ int main(int argc, char **argv) {
   testing::InitGoogleTest(&argc, argv);
   google::InitGoogleLogging(argv[0]);
+
+  // NOTE(milo): Things won't be printed without this.
+  // http://rpg.ifi.uzh.ch/docs/glog.html
+  FLAGS_logtostderr = 1;
+
   return RUN_ALL_TESTS();
 }
