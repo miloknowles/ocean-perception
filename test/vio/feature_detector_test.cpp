@@ -22,11 +22,11 @@ TEST(VioTest, TestDetectSingle)
   FeatureDetector::Options opt;
   FeatureDetector detector(opt);
 
-  std::vector<cv::Point2f> tracked_kp, new_kp, new_kp2;
+  VecPoint2f tracked_kp, new_kp, new_kp2;
   detector.Detect(iml, tracked_kp, new_kp);
 
   LOG(INFO) << "Detected " << new_kp.size() << " new keypoints in image" << std::endl;
-  EXPECT_GT(new_kp.size(), 0);
+  EXPECT_GT(new_kp.size(), 0u);
 
   Image3b viz1 = DrawFeatures(iml, new_kp);
   cv::imshow("detected features 1", viz1);
@@ -42,9 +42,9 @@ TEST(VioTest, TestDetectSingle)
 
   Timer timer(true);
   for (int iter = 0; iter < 100; ++iter) {
-    std::vector<cv::Point2f> tmp;
-    detector.Detect(iml, std::vector<cv::Point2f>(), tmp);
-    detector.Detect(imr, std::vector<cv::Point2f>(), tmp);
+    VecPoint2f tmp;
+    detector.Detect(iml, VecPoint2f(), tmp);
+    detector.Detect(imr, VecPoint2f(), tmp);
   }
   printf("Averaged %lf ms to detect keypoints in left/right pair\n", timer.Elapsed().milliseconds() / 100.0);
 }
@@ -63,7 +63,7 @@ TEST(VioTest, TestDetectSequence)
 
   dataset::StereoCallback stereo_cb = [&detector](const StereoImage& stereo_data)
   {
-    std::vector<cv::Point2f> tracked_kp, new_kp;
+    VecPoint2f tracked_kp, new_kp;
     detector.Detect(stereo_data.left_image, tracked_kp, new_kp);
     Image3b viz = DrawFeatures(stereo_data.left_image, new_kp);
     cv::imshow("FeatureDetector", viz);

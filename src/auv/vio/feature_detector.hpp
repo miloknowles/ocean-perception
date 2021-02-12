@@ -20,6 +20,8 @@ class FeatureDetector final {
  public:
   // Parameters to control feature detection (avoids passing them all to Detect()).
   struct Options final {
+    Options() = default;
+
     FeatureAlgorithm algorithm = FeatureAlgorithm::GFTT;
 
     int max_features_per_frame = 200;
@@ -48,9 +50,9 @@ class FeatureDetector final {
     float subpix_epsilon = 0.01;
   };
 
-  FeatureDetector(const Options& opt);
+  explicit FeatureDetector(const Options& opt);
 
-  void Detect(const Image1b& img, const std::vector<cv::Point2f>& tracked_kp, std::vector<cv::Point2f>& new_kp);
+  void Detect(const Image1b& img, const VecPoint2f& tracked_kp, VecPoint2f& new_kp);
 
  private:
   Options opt_;

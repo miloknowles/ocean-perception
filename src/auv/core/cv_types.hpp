@@ -17,5 +17,10 @@ typedef cv::Mat3f Image3f;
 typedef cv::Mat1d Image1d;
 typedef cv::Mat3d Image3d;
 
+// Convenience typedefs for vectors of points.
+typedef std::vector<cv::Point2f> VecPoint2f;
+typedef std::vector<cv::Point2d> VecPoint2d;
+typedef std::vector<cv::Point2i> VecPoint2i;
+
 }
 }

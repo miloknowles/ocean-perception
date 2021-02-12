@@ -8,21 +8,20 @@ namespace bm {
 namespace vio {
 
 
-Image3b DrawFeatures(const Image1b& cur_img, const std::vector<cv::Point2f>& cur_keypoints)
+Image3b DrawFeatures(const Image1b& cur_img, const VecPoint2f& cur_keypoints)
 {
   // Make some placeholder arguments so that we can use DrawFeatureTracks() on a single image.
   Image1b empty1;
-  std::vector<cv::Point2f> empty2;
-  return DrawFeatureTracks(empty1, cur_img, empty2, empty2, empty2, cur_keypoints);
+  VecPoint2f empty2;
+  return DrawFeatureTracks(cur_img, empty2, empty2, empty2, cur_keypoints);
 }
 
 
-Image3b DrawFeatureTracks(const Image1b& ref_img,
-                          const Image1b& cur_img,
-                          const std::vector<cv::Point2f>& ref_keypoints,
-                          const std::vector<cv::Point2f>& cur_keypoints,
-                          const std::vector<cv::Point2f>& untracked_ref,
-                          const std::vector<cv::Point2f>& untracked_cur)
+Image3b DrawFeatureTracks(const Image1b& cur_img,
+                          const VecPoint2f& ref_keypoints,
+                          const VecPoint2f& cur_keypoints,
+                          const VecPoint2f& untracked_ref,
+                          const VecPoint2f& untracked_cur)
 {
   Image3b img_bgr(cur_img.size(), CV_8U);
 

@@ -10,9 +10,9 @@ namespace vio {
 static const int kOrbFirstLevel = 0;
 
 
-static std::vector<cv::Point2f> CvKeyPointToPoint(const std::vector<cv::KeyPoint>& input)
+static VecPoint2f CvKeyPointToPoint(const std::vector<cv::KeyPoint>& input)
 {
-  std::vector<cv::Point2f> out(input.size());
+  VecPoint2f out(input.size());
   for (size_t i = 0; i < input.size(); ++i) {
     out.at(i) = input.at(i).pt;
   }
@@ -20,7 +20,7 @@ static std::vector<cv::Point2f> CvKeyPointToPoint(const std::vector<cv::KeyPoint
 }
 
 
-static std::vector<cv::KeyPoint> CvPointToKeyPoint(const std::vector<cv::Point2f>& input)
+static std::vector<cv::KeyPoint> CvPointToKeyPoint(const VecPoint2f& input)
 {
   std::vector<cv::KeyPoint> out(input.size());
   for (size_t i = 0; i < input.size(); ++i) {
@@ -101,8 +101,8 @@ static void AdaptiveNonMaximalSuppresion(std::vector<cv::KeyPoint>& keypoints, c
 
 
 void FeatureDetector::Detect(const Image1b& img,
-                             const std::vector<cv::Point2f>& tracked_kp,
-                             std::vector<cv::Point2f>& new_kp)
+                             const VecPoint2f& tracked_kp,
+                             VecPoint2f& new_kp)
 {
   new_kp.clear();
 

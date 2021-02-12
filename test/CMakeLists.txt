@@ -12,7 +12,8 @@ set(TEST_SOURCES
   vo/vo_test.cpp
   imaging/enhance_test.cpp
   stereo_matching/sgbm_test.cpp
-  vio/feature_matching_test.cpp)
+  vio/feature_detector_test.cpp
+  vio/feature_tracker_test.cpp)
 
 # Add one big executable with all of the tests. Filter for specific tests with:
 # --gtest_filter=TestModuleName.UnitTestName.
