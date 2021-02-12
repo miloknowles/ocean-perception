@@ -26,9 +26,9 @@ class FeatureDetector final {
     //============================ ORB =============================
     float orb_scale_factor = 1.2;
     int orb_num_lvl = 2;            // NOTE(milo): Reducing this from 4 to 2 sped things up.
-    int orb_edge_thresh = 19;       // Kimera-VIO uses 10 here
-    int orb_wta_k = 2;              // Kimeria-VIO uses 0
-    int orb_patch_size = 31;        // Kimera-VIO uses 2 here
+    int orb_edge_thresh = 10;       // Kimera-VIO uses 10 here
+    int orb_wta_k = 0;              // Kimeria-VIO uses 0
+    int orb_patch_size = 2;        // Kimera-VIO uses 2 here
     int orb_fast_thresh = 20;
 
     //============================ GFTT ============================
