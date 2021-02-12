@@ -109,6 +109,8 @@
 #ifndef GTEST_INCLUDE_GTEST_GTEST_SPI_H_
 #define GTEST_INCLUDE_GTEST_GTEST_SPI_H_
 
+// NOTE(milo): Adding this so that we can init logging in the main() function.
+#include <glog/logging.h>
 
 namespace testing {
 
@@ -9955,5 +9957,6 @@ const char* TypedTestCasePState::VerifyRegisteredTestNames(
 
 GTEST_API_ int main(int argc, char **argv) {
   testing::InitGoogleTest(&argc, argv);
+  google::InitGoogleLogging(argv[0]);
   return RUN_ALL_TESTS();
 }

@@ -38,7 +38,7 @@ void EurocProvider::ParseImu(const std::string& data_csv_path)
   size_t count = 0;
   double max_norm_acc = 0;
   double max_norm_rot_rate = 0;
-  timestamp_t previous_timestamp = -1;
+  timestamp_t previous_timestamp = 0;
 
   // Read/store imu measurements, line by line.
   while (std::getline(fin, line)) {
@@ -64,14 +64,15 @@ void EurocProvider::ParseImu(const std::string& data_csv_path)
     imu_data.emplace_back(ImuMeasurement(timestamp, gyr_acc_data.head(3), gyr_acc_data.tail(3)));
 
     previous_timestamp = timestamp;
+    ++count;
   }
 
   fin.close();
 
-  timestamp_t total_time = imu_data.front().timestamp - imu_data.back().timestamp;
+  const timestamp_t total_time = imu_data.back().timestamp - imu_data.front().timestamp;
 
   LOG(INFO) << "IMU average (hz): "
-           << (static_cast<double>(count) / static_cast<double>(total_time)) << '\n'
+           << (1e9 * static_cast<double>(count) / static_cast<double>(total_time)) << '\n'
            << "Maximum measured rotation rate (rad/s):" << max_norm_rot_rate << '\n'
            << "Maximum measured acceleration (m/s^2): " << max_norm_acc;
 }
@@ -100,9 +101,9 @@ void EurocProvider::ParseStereo(const std::string& cam0_path, const std::string&
 
 
 // NOTE(milo): Adapted from KIMERA-VIO
-void ParseImageFolder(const std::string& cam_folder,
-                      std::vector<timestamp_t>& output_timestamps,
-                      std::vector<std::string>& output_filenames)
+void EurocProvider::ParseImageFolder(const std::string& cam_folder,
+                                    std::vector<timestamp_t>& output_timestamps,
+                                    std::vector<std::string>& output_filenames)
 {
   CHECK(!cam_folder.empty());
 
