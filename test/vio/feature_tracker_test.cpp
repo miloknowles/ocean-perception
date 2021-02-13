@@ -30,7 +30,9 @@ TEST(VioTest, TestTrackLR)
 
   // Track them into the right image.
   VecPoint2f right_kp;
-  tracker.Track(iml, imr, left_kp, Matrix3d::Identity(), right_kp);
+  std::vector<uchar> status;
+  std::vector<float> error;
+  tracker.Track(iml, imr, left_kp, right_kp, status, error);
 
   const Image3b viz = DrawFeatureTracks(imr, left_kp, right_kp, VecPoint2f(), VecPoint2f());
   cv::imshow("Tracker", viz);

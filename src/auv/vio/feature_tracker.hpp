@@ -29,8 +29,9 @@ class FeatureTracker final {
   void Track(const Image1b& ref_img,
              const Image1b& cur_img,
              const VecPoint2f& px_ref,
-             const Matrix3d& R_ref_cur,
-             VecPoint2f& px_cur);
+             VecPoint2f& px_cur,
+             std::vector<uchar>& status,
+             std::vector<float>& error);
 
  private:
   Options opt_;

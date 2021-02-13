@@ -12,18 +12,21 @@ namespace vio {
 void FeatureTracker::Track(const Image1b& ref_img,
                           const Image1b& cur_img,
                           const VecPoint2f& px_ref,
-                          const Matrix3d& R_ref_cur,
-                          VecPoint2f& px_cur)
+                          VecPoint2f& px_cur,
+                          std::vector<uchar>& status,
+                          std::vector<float>& error)
 {
   px_cur.clear();
+  status.clear();
+  error.clear();
 
   if (px_ref.empty()) {
     LOG(WARNING) << "No keypoints in reference frame!" << std::endl;
     return;
   }
 
-  std::vector<uchar> status;
-  std::vector<float> error;
+  // std::vector<uchar> status;
+  // std::vector<float> error;
 
   // Setup termination criteria for optical flow.
   const cv::TermCriteria kTerminationCriteria(

@@ -1,8 +1,11 @@
+#include <numeric>
+
 #include <opencv2/imgproc.hpp>
 
 #include <glog/logging.h>
 
 #include "vio/feature_detector.hpp"
+#include "anms/anms.h"
 
 namespace bm {
 namespace vio {
@@ -58,7 +61,7 @@ FeatureDetector::FeatureDetector(const Options& opt) : opt_(opt)
 
 
 // https://answers.opencv.org/question/93317/orb-keypoints-distribution-over-an-image/
-static void AdaptiveNonMaximalSuppresion(std::vector<cv::KeyPoint>& keypoints, const int num_to_keep )
+static void AdaptiveNonMaximalSuppresion(std::vector<cv::KeyPoint>& keypoints, const int num_to_keep)
 {
   if ((int)keypoints.size() < num_to_keep) { return; }
 
@@ -100,6 +103,35 @@ static void AdaptiveNonMaximalSuppresion(std::vector<cv::KeyPoint>& keypoints, c
 }
 
 
+// Adapted from Kimera-VIO
+static std::vector<cv::KeyPoint> ANMSRangeTree(std::vector<cv::KeyPoint>& keypoints,
+                                              int num_to_keep,
+                                              float tolerance,
+                                              int cols,
+                                              int rows)
+{
+  if (keypoints.size() <= num_to_keep) {
+    return keypoints;
+  }
+
+  // Sorting keypoints by deacreasing order of strength.
+  std::vector<int> responses;
+  for (size_t i = 0; i < keypoints.size(); i++) {
+    responses.emplace_back(keypoints[i].response);
+  }
+  std::vector<int> idx(responses.size());
+  std::iota(std::begin(idx), std::end(idx), 0);
+  cv::sortIdx(responses, idx, cv::SortFlags::SORT_DESCENDING);
+  std::vector<cv::KeyPoint> keypoints_sorted;
+
+  for (unsigned int i = 0; i < keypoints.size(); i++) {
+    keypoints_sorted.push_back(keypoints[idx[i]]);
+  }
+
+  return anms::RangeTree(keypoints_sorted, num_to_keep, tolerance, cols, rows);
+}
+
+
 void FeatureDetector::Detect(const Image1b& img,
                              const VecPoint2f& tracked_kp,
                              VecPoint2f& new_kp)
@@ -118,8 +150,10 @@ void FeatureDetector::Detect(const Image1b& img,
   // Apply non-maximal suppression to limit the number of new points that are detected.
   // Supposedly, this function will achieve a more "even distribution" of features across the image.
   const int num_to_keep = std::max(0, opt_.max_features_per_frame - (int)tracked_kp.size());
-  AdaptiveNonMaximalSuppresion(new_kp_cv, num_to_keep);
+  LOG(INFO) << "Has " << tracked_kp.size() << " features, need " << opt_.max_features_per_frame << " features, keeping " << num_to_keep << std::endl;
+  // AdaptiveNonMaximalSuppresion(new_kp_cv, num_to_keep);
 
+  new_kp_cv = ANMSRangeTree(new_kp_cv, num_to_keep, 0.1f, img.cols, img.rows);
   new_kp = CvKeyPointToPoint(new_kp_cv);
 
   // Optionally do sub-pixel refinement on keypoint locations.

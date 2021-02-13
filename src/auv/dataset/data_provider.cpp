@@ -88,7 +88,7 @@ bool DataProvider::Step(bool verbose)
     const Image1b& imgr = ReadAndConvertToGrayScale(path_right, false);
 
     for (const StereoCallback& function : stereo_callbacks_) {
-      function(StereoImage(timestamp, imgl, imgr));
+      function(StereoImage(timestamp, next_stereo_idx_, imgl, imgr));
     }
     ++next_stereo_idx_;
   }

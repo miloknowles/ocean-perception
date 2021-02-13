@@ -18,7 +18,7 @@ namespace std {
 
 namespace AprilTags {
 
-TagDetection::TagDetection()
+TagDetection::TagDetection() 
   : good(false), obsCode(), code(), id(), hammingDistance(), rotation(), p(),
     cxy(), observedPerimeter(), homography(), hxy() {
   homography.setZero();
@@ -103,7 +103,7 @@ Eigen::Matrix4d TagDetection::getRelativeTransform(double tag_size, double fx, d
   Eigen::Matrix3d wRo;
   wRo << r(0,0), r(0,1), r(0,2), r(1,0), r(1,1), r(1,2), r(2,0), r(2,1), r(2,2);
 
-  Eigen::Matrix4d T;
+  Eigen::Matrix4d T; 
   T.topLeftCorner(3,3) = wRo;
   T.col(3).head(3) << tvec.at<double>(0), tvec.at<double>(1), tvec.at<double>(2);
   T.row(3) << 0,0,0,1;
