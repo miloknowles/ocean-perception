@@ -53,7 +53,7 @@ StereoFrontend::Result StereoFrontend::Track(const StereoImage& stereo_pair,
   VecPoint2f live_lmk_pts_prev;
 
   for (const auto& item : live_tracks_) {
-    const uid_t landmark_id = item.first;
+    const uid_t lmk_id = item.first;
 
     // NOTE(milo): Observations are sorted in order of INCREASING camera_id, so the last
     // observation is the most recent.
@@ -67,7 +67,7 @@ StereoFrontend::Result StereoFrontend::Track(const StereoImage& stereo_pair,
     }
 
     // TODO(milo): Could do image space velocity prediction here.
-    live_lmk_ids.emplace_back(landmark_id);
+    live_lmk_ids.emplace_back(lmk_id);
     live_cam_ids.emplace_back(observations.back().camera_id);
     live_lmk_pts_prev.emplace_back(observations.back().pixel_location);
   }
@@ -129,11 +129,11 @@ StereoFrontend::Result StereoFrontend::Track(const StereoImage& stereo_pair,
     LOG(INFO) << "Detected " << new_lmk_ids.size() << " new keypoints in keyframe" << std::endl;
 
     all_lmk_ids.insert(all_lmk_ids.end(), new_lmk_ids.begin(), new_lmk_ids.end());
-    all_lmk_pts.insert(all_lmk_pts.begin(), new_left_kps.begin(), new_left_kps.end());
+    all_lmk_pts.insert(all_lmk_pts.end(), new_left_kps.begin(), new_left_kps.end());
   }
 
   all_lmk_ids.insert(all_lmk_ids.end(), goodtrack_lmk_ids2.begin(), goodtrack_lmk_ids2.end());
-  all_lmk_pts.insert(all_lmk_pts.begin(), goodtrack_lmk_pts2.begin(), goodtrack_lmk_pts2.end());
+  all_lmk_pts.insert(all_lmk_pts.end(), goodtrack_lmk_pts2.begin(), goodtrack_lmk_pts2.end());
 
   const std::vector<double>& all_lmk_disps = matcher_.MatchRectified(stereo_pair.left_image, stereo_pair.right_image, all_lmk_pts);
 
@@ -203,7 +203,7 @@ Image3b StereoFrontend::VisualizeFeatureTracks()
       } else {
         CHECK_GE(lmk_obs.size(), 2);
         cur_keypoints.emplace_back(lmk_last_obs.pixel_location);
-        const LandmarkObservation& lmk_lastlast_obs = lmk_obs.at(lmk_obs.size() - 1);
+        const LandmarkObservation& lmk_lastlast_obs = lmk_obs.at(lmk_obs.size() - 2);
         ref_keypoints.emplace_back(lmk_lastlast_obs.pixel_location);
       }
 
