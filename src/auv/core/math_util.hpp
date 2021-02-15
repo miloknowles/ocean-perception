@@ -3,6 +3,8 @@
 #include <cmath>
 #include <numeric>
 
+#include <glog/logging.h>
+
 #include <opencv2/line_descriptor/descriptor.hpp>
 
 #include "core/eigen_types.hpp"
@@ -42,7 +44,7 @@ inline Vector2d NormalizedDirection(const ld::KeyLine& kl)
 inline std::vector<Vector2d> NormalizedDirection(const std::vector<ld::KeyLine>& kls)
 {
   std::vector<Vector2d> out(kls.size());
-  for (int i = 0; i < kls.size(); ++i) {
+  for (size_t i = 0; i < kls.size(); ++i) {
     out.at(i) = NormalizedDirection(kls.at(i));
   }
   return out;
@@ -66,6 +68,40 @@ inline std::vector<T> Subset(const std::vector<T>& v, const std::vector<int>& in
   for (int i : indices) {
     out.emplace_back(v.at(i));
   }
+  return out;
+}
+
+
+// Grabs the items from v based on a mask m.
+template <typename T>
+inline std::vector<T> SubsetFromMask(const std::vector<T>& v, const std::vector<bool>& m, bool invert = false)
+{
+  CHECK_EQ(v.size(), m.size()) << "Vector and mask must be the same size!" << std::endl;
+
+  std::vector<T> out;
+  for (size_t i = 0; i < m.size(); ++i) {
+    if (m.at(i) && !invert) {
+      out.emplace_back(v.at(i));
+    }
+  }
+
+  return out;
+}
+
+
+// Grabs the items from v based on a mask m.
+template <typename T>
+inline std::vector<T> SubsetFromMaskCv(const std::vector<T>& v, const std::vector<uchar>& m, bool invert = false)
+{
+  CHECK_EQ(v.size(), m.size()) << "Vector and mask must be the same size!" << std::endl;
+
+  std::vector<T> out;
+  for (size_t i = 0; i < m.size(); ++i) {
+    if ((m.at(i) == (uchar)1) && !invert) {
+      out.emplace_back(v.at(i));
+    }
+  }
+
   return out;
 }
 

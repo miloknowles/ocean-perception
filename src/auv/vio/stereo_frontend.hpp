@@ -8,6 +8,7 @@
 #include "core/uid.hpp"
 #include "core/timestamp.hpp"
 #include "core/stereo_image.hpp"
+#include "core/stereo_camera.hpp"
 
 #include "vio/landmark_observation.hpp"
 #include "vio/feature_detector.hpp"
@@ -66,7 +67,7 @@ class StereoFrontend final {
   };
 
   // Construct with options.
-  explicit StereoFrontend(const Options& opt);
+  explicit StereoFrontend(const Options& opt, const StereoCamera& stereo_rig);
 
   // Track known visual landmarks into the current stereo pair, possibly initializing new ones.
   // T_prev_cur_prior could be an initial guess on the odometry from IMU.
@@ -90,6 +91,8 @@ class StereoFrontend final {
 
  private:
   Options opt_;
+  StereoCamera stereo_rig_;
+
   uid_t next_landmark_id_ = 0;
 
   FeatureDetector detector_;

@@ -1,5 +1,8 @@
 #include <glog/logging.h>
 
+#include <opencv2/calib3d.hpp>
+
+#include "core/math_util.hpp"
 #include "vio/stereo_frontend.hpp"
 #include "vio/visualization_2d.hpp"
 
@@ -7,8 +10,9 @@ namespace bm {
 namespace vio {
 
 
-StereoFrontend::StereoFrontend(const Options& opt)
+StereoFrontend::StereoFrontend(const Options& opt, const StereoCamera& stereo_rig)
     : opt_(opt),
+      stereo_rig_(stereo_rig),
       detector_(opt.detector_options),
       tracker_(opt.tracker_options),
       matcher_(opt.matcher_options)
@@ -84,25 +88,17 @@ StereoFrontend::Result StereoFrontend::Track(const StereoImage& stereo_pair,
   CHECK_EQ(live_lmk_pts_prev.size(), live_lmk_pts_cur.size());
 
   // Filter out unsuccessful KLT tracks.
-  std::vector<uid_t> goodtrack_lmk_ids1;
-  VecPoint2f goodtrack_lmk_pts1;
-  for (size_t i = 0; i < live_lmk_pts_cur.size(); ++i) {
-    if (status.at(i) == 1) {
-      goodtrack_lmk_ids1.emplace_back(live_lmk_ids.at(i));
-      goodtrack_lmk_pts1.emplace_back(live_lmk_pts_cur.at(i));
-    }
-  }
+  std::vector<uid_t> good_lmk_ids = SubsetFromMaskCv<uid_t>(live_lmk_ids, status);
+  VecPoint2f good_lmk_pts = SubsetFromMaskCv<cv::Point2f>(live_lmk_pts_cur, status);
+  VecPoint2f good_lmk_pts_prev = SubsetFromMaskCv<cv::Point2f>(live_lmk_pts_prev, status);
+  CHECK_EQ(good_lmk_pts.size(), good_lmk_pts_prev.size());
 
-  // LOG(INFO) << "Successfully tracked " << goodtrack_lmk_pts1.size() << " out of " << live_lmk_pts_prev.size() << " points" << std::endl;
-
-  // TODO: Filter out bad/moving tracks with geometric RANSAC check.
-  std::vector<uid_t> goodtrack_lmk_ids2 = goodtrack_lmk_ids1;
-  VecPoint2f goodtrack_lmk_pts2 = goodtrack_lmk_pts1;
+  // LOG(INFO) << "Successfully tracked " << good_lmk_pts1.size() << " out of " << live_lmk_pts_prev.size() << " points" << std::endl;
 
   // Decide if a new keyframe should be initialized.
   // NOTE(milo): If this is the first image, we will have no tracks, triggering a keyframe,
   // causing new keypoints to be detected as desired.
-  const bool is_keyframe = ((int)goodtrack_lmk_ids2.size() < opt_.trigger_keyframe_min_lmks) ||
+  const bool is_keyframe = ((int)good_lmk_ids.size() < opt_.trigger_keyframe_min_lmks) ||
                            (int)(stereo_pair.camera_id - prev_keyframe_id_) >= opt_.trigger_keyframe_k;
 
   // LOG_IF(INFO, is_keyframe) << "KEYFRAME TRIGGERED for camera_id: " << stereo_pair.camera_id << std::endl;
@@ -115,10 +111,33 @@ StereoFrontend::Result StereoFrontend::Track(const StereoImage& stereo_pair,
   if (is_keyframe) {
     prev_keyframe_id_ = stereo_pair.camera_id;
 
+    // If at least 5 tracked points are available, do geometric outlier rejection with 5-point RANSAC.
+    if (good_lmk_pts_prev.size() >= 5) {
+      // NOTE(milo): OpenCV throws exceptions is a vector<bool> or vector<uchar> is used as the mask.
+      cv::Mat inlier_mask;
+      const cv::Point2d pp(stereo_rig_.cx(), stereo_rig_.cy());
+
+      // TODO(milo): Find essential mat using points at last keyframe ...
+      const cv::Mat E = cv::findEssentialMat(good_lmk_pts_prev,
+                                            good_lmk_pts,
+                                            stereo_rig_.fx(), pp,
+                                            cv::RANSAC, 0.995, 10,
+                                            inlier_mask);
+      cv::Mat R_prev_cur, t_prev_cur;
+      cv::recoverPose(E, good_lmk_pts_prev, good_lmk_pts, R_prev_cur, t_prev_cur, stereo_rig_.fx(), pp, inlier_mask);
+      LOG(INFO) << "Computed relative pose T_prev_cur:\n" << R_prev_cur << "\n" << t_prev_cur << std::endl;
+
+      if (cv::sum(inlier_mask)(0) > 0.0) {
+        good_lmk_ids = SubsetFromMaskCv<uid_t>(good_lmk_ids, inlier_mask);
+        good_lmk_pts = SubsetFromMaskCv<cv::Point2f>(good_lmk_pts, inlier_mask);
+      } else {
+        LOG(WARNING) << "No RANSAC inliers found!" << std::endl;
+      }
+    }
     // Detect some new keypoints.
     VecPoint2f new_left_kps;
-    // LOG(INFO) << "Will avoid " << goodtrack_lmk_pts2.size() << " existing keypoints" << std::endl;
-    detector_.Detect(stereo_pair.left_image, goodtrack_lmk_pts2, new_left_kps);
+    // LOG(INFO) << "Will avoid " << good_lmk_pts2.size() << " existing keypoints" << std::endl;
+    detector_.Detect(stereo_pair.left_image, good_lmk_pts, new_left_kps);
 
     // Assign new landmark IDs to the initialized keypoints.
     std::vector<uid_t> new_lmk_ids(new_left_kps.size());
@@ -127,13 +146,12 @@ StereoFrontend::Result StereoFrontend::Track(const StereoImage& stereo_pair,
     }
 
     // LOG(INFO) << "Detected " << new_lmk_ids.size() << " new keypoints in keyframe" << std::endl;
-
     all_lmk_ids.insert(all_lmk_ids.end(), new_lmk_ids.begin(), new_lmk_ids.end());
     all_lmk_pts.insert(all_lmk_pts.end(), new_left_kps.begin(), new_left_kps.end());
   }
 
-  all_lmk_ids.insert(all_lmk_ids.end(), goodtrack_lmk_ids2.begin(), goodtrack_lmk_ids2.end());
-  all_lmk_pts.insert(all_lmk_pts.end(), goodtrack_lmk_pts2.begin(), goodtrack_lmk_pts2.end());
+  all_lmk_ids.insert(all_lmk_ids.end(), good_lmk_ids.begin(), good_lmk_ids.end());
+  all_lmk_pts.insert(all_lmk_pts.end(), good_lmk_pts.begin(), good_lmk_pts.end());
 
   const std::vector<double>& all_lmk_disps = matcher_.MatchRectified(stereo_pair.left_image, stereo_pair.right_image, all_lmk_pts);
 

@@ -4,6 +4,8 @@
 #include <opencv2/highgui.hpp>
 
 #include "dataset/euroc_dataset.hpp"
+#include "core/pinhole_camera.hpp"
+#include "core/stereo_camera.hpp"
 #include "vio/stereo_frontend.hpp"
 #include "vio/visualization_2d.hpp"
 
@@ -19,7 +21,10 @@ TEST(VioTest, TestStereoFrontendSequence)
   dataset::EurocDataset dataset(toplevel_folder);
 
   StereoFrontend::Options opt;
-  StereoFrontend stereo_frontend(opt);
+
+  const PinholeCamera camera_model(415.876509, 415.876509, 375.5, 239.5, 480, 752);
+  const StereoCamera stereo_rig(camera_model, 0.2);
+  StereoFrontend stereo_frontend(opt, stereo_rig);
 
   cv::namedWindow("StereoTracking", cv::WINDOW_AUTOSIZE);
 

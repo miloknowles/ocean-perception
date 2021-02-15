@@ -43,7 +43,7 @@ class FeatureDetector final {
 
     //==================== SUBPIXEL CORNER ESTIMATION =====================
     // NOTE(milo): Subpixel refinement makes feature detection take ~20ms vs 2-5ms without.
-    bool subpixel_corners = false;
+    bool subpixel_corners = true;
     int subpix_winsize = 10;
     int subpix_zerozone = -1;
     int subpix_maxiters = 10;
