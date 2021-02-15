@@ -22,10 +22,14 @@ class FeatureTracker final {
     int klt_max_level = 4;
   };
 
+  FeatureTracker() = delete;
+
   // Construct with options.
   explicit FeatureTracker(const Options& opt) : opt_(opt) {}
 
   // Track points from ref_img to cur_img using Lucas-Kanade optical flow.
+  // If px_cur is provided, these locations are used as an initial guess for the flow.
+  // Otherwise, points are tracked from their reference locations.
   void Track(const Image1b& ref_img,
              const Image1b& cur_img,
              const VecPoint2f& px_ref,

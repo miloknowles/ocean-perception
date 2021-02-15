@@ -72,7 +72,7 @@ StereoFrontend::Result StereoFrontend::Track(const StereoImage& stereo_pair,
     live_lmk_pts_prev.emplace_back(observations.back().pixel_location);
   }
 
-  LOG(INFO) << "Tracking " << live_lmk_pts_prev.size() << " live landmarks from previous image" << std::endl;
+  // LOG(INFO) << "Tracking " << live_lmk_pts_prev.size() << " live landmarks from previous image" << std::endl;
 
   VecPoint2f live_lmk_pts_cur;
   std::vector<uchar> status;
@@ -93,7 +93,7 @@ StereoFrontend::Result StereoFrontend::Track(const StereoImage& stereo_pair,
     }
   }
 
-  LOG(INFO) << "Successfully tracked " << goodtrack_lmk_pts1.size() << " out of " << live_lmk_pts_prev.size() << " points" << std::endl;
+  // LOG(INFO) << "Successfully tracked " << goodtrack_lmk_pts1.size() << " out of " << live_lmk_pts_prev.size() << " points" << std::endl;
 
   // TODO: Filter out bad/moving tracks with geometric RANSAC check.
   std::vector<uid_t> goodtrack_lmk_ids2 = goodtrack_lmk_ids1;
@@ -105,7 +105,7 @@ StereoFrontend::Result StereoFrontend::Track(const StereoImage& stereo_pair,
   const bool is_keyframe = ((int)goodtrack_lmk_ids2.size() < opt_.trigger_keyframe_min_lmks) ||
                            (int)(stereo_pair.camera_id - prev_keyframe_id_) >= opt_.trigger_keyframe_k;
 
-  LOG_IF(INFO, is_keyframe) << "KEYFRAME TRIGGERED for camera_id: " << stereo_pair.camera_id << std::endl;
+  // LOG_IF(INFO, is_keyframe) << "KEYFRAME TRIGGERED for camera_id: " << stereo_pair.camera_id << std::endl;
 
   // Do stereo matching for live tracks AND newly detection keypoints.
   std::vector<uid_t> all_lmk_ids;
@@ -117,7 +117,7 @@ StereoFrontend::Result StereoFrontend::Track(const StereoImage& stereo_pair,
 
     // Detect some new keypoints.
     VecPoint2f new_left_kps;
-    LOG(INFO) << "Will avoid " << goodtrack_lmk_pts2.size() << " existing keypoints" << std::endl;
+    // LOG(INFO) << "Will avoid " << goodtrack_lmk_pts2.size() << " existing keypoints" << std::endl;
     detector_.Detect(stereo_pair.left_image, goodtrack_lmk_pts2, new_left_kps);
 
     // Assign new landmark IDs to the initialized keypoints.
@@ -126,7 +126,7 @@ StereoFrontend::Result StereoFrontend::Track(const StereoImage& stereo_pair,
       new_lmk_ids.at(i) = AllocateLandmarkId();
     }
 
-    LOG(INFO) << "Detected " << new_lmk_ids.size() << " new keypoints in keyframe" << std::endl;
+    // LOG(INFO) << "Detected " << new_lmk_ids.size() << " new keypoints in keyframe" << std::endl;
 
     all_lmk_ids.insert(all_lmk_ids.end(), new_lmk_ids.begin(), new_lmk_ids.end());
     all_lmk_pts.insert(all_lmk_pts.end(), new_left_kps.begin(), new_left_kps.end());

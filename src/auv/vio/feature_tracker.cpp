@@ -16,7 +16,6 @@ void FeatureTracker::Track(const Image1b& ref_img,
                           std::vector<uchar>& status,
                           std::vector<float>& error)
 {
-  px_cur.clear();
   status.clear();
   error.clear();
 
@@ -24,9 +23,6 @@ void FeatureTracker::Track(const Image1b& ref_img,
     LOG(WARNING) << "No keypoints in reference frame!" << std::endl;
     return;
   }
-
-  // std::vector<uchar> status;
-  // std::vector<float> error;
 
   // Setup termination criteria for optical flow.
   const cv::TermCriteria kTerminationCriteria(
@@ -36,9 +32,10 @@ void FeatureTracker::Track(const Image1b& ref_img,
 
   const cv::Size2i klt_window_size(opt_.klt_winsize, opt_.klt_winsize);
 
-  // Initialize px_cur to their previous locations.
-  // TODO(milo): Use motion to predict keypoint locations.
-  px_cur = px_ref;
+  // If no initial guesses are provided for the optical flow, nitialize px_cur to previous locations.
+  if (px_cur.empty()) {
+    px_cur = px_ref;
+  }
 
   cv::calcOpticalFlowPyrLK(ref_img,
                            cur_img,
