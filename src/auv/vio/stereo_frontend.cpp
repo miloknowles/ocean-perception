@@ -149,10 +149,10 @@ StereoFrontend::Result StereoFrontend::Track(const StereoImage& stereo_pair,
   }
 
   if (good_lmk_pts.size() >= 5) {
-    std::vector<bool> ransac_inlier_mask;
-    Timer timer(true);
-    GeometricOutlierCheck(good_lmk_pts_prev_kf, good_lmk_pts, ransac_inlier_mask, R_cur_lkf, t_cur_lkf);
-    LOG(INFO) << "GeometricOutlierCheck took: " << timer.Elapsed().milliseconds() << " ms" << std::endl;
+    // std::vector<bool> ransac_inlier_mask;
+    // Timer timer(true);
+    // GeometricOutlierCheck(good_lmk_pts_prev_kf, good_lmk_pts, ransac_inlier_mask, R_cur_lkf, t_cur_lkf);
+    // LOG(INFO) << "GeometricOutlierCheck took: " << timer.Elapsed().milliseconds() << " ms" << std::endl;
 
     // good_lmk_pts_prev_kf = SubsetFromMask<cv::Point2f>(good_lmk_pts_prev_kf, ransac_inlier_mask);
     // good_lmk_ids = SubsetFromMask<uid_t>(good_lmk_ids, ransac_inlier_mask);
@@ -234,8 +234,8 @@ StereoFrontend::Result StereoFrontend::Track(const StereoImage& stereo_pair,
   CHECK_EQ(good_lmk_pts_prev_kf.size(), good_lmk_ids.size());
 
   // Update landmark observations for the current image.
-  std::vector<Vector2d> p_cur_2d_list(good_lmk_pts.size());
-  std::vector<Vector3d> p_prev_3d_list(good_lmk_pts.size());
+  std::vector<Vector2d> p_cur_2d_list;//(good_lmk_pts.size());
+  std::vector<Vector3d> p_prev_3d_list;//(good_lmk_pts.size());
 
   for (size_t i = 0; i < good_lmk_ids.size(); ++i) {
     const uid_t lmk_id = good_lmk_ids.at(i);
@@ -261,9 +261,8 @@ StereoFrontend::Result StereoFrontend::Track(const StereoImage& stereo_pair,
     // Get the backprojected 3D location of this point in the left camera frame.
     const Vector2d p_prev_2d = Vector2d(good_lmk_pts_prev_kf.at(i).x, good_lmk_pts_prev_kf.at(i).y);
     const double depth = stereo_rig_.DispToDepth(disp);
-    p_prev_3d_list.at(i) = stereo_rig_.LeftCamera().Backproject(p_prev_2d, depth);
-
-    p_cur_2d_list.at(i) = Vector2d(good_lmk_pts.at(i).x, good_lmk_pts.at(i).y);
+    p_prev_3d_list.emplace_back(stereo_rig_.LeftCamera().Backproject(p_prev_2d, depth));
+    p_cur_2d_list.emplace_back(Vector2d(good_lmk_pts.at(i).x, good_lmk_pts.at(i).y));
   }
 
   //========================== GARBAGE COLLECTION ==============================
@@ -278,7 +277,7 @@ StereoFrontend::Result StereoFrontend::Track(const StereoImage& stereo_pair,
   prev_camera_id_ = stereo_pair.camera_id;
 
   // FAILURE: If too few points for effective odometry estimate, return.
-  if (good_lmk_pts.size() < 5) {
+  if (good_lmk_pts.size() < 12) {
     return result;
   }
 
@@ -286,26 +285,48 @@ StereoFrontend::Result StereoFrontend::Track(const StereoImage& stereo_pair,
   // Using the essential matrix rotation and (unscaled) translation as an initial
   // guess, do a least-squares optimization to refine the pose estimate and recover
   // absolute scale.
-  Matrix4d T_cur_lkf;
-  T_cur_lkf.block<3, 3>(0, 0) = R_cur_lkf;
-  T_cur_lkf.block<3, 1>(0, 3) = t_cur_lkf;
+  // Matrix4d T_cur_lkf = Matrix4d::Identity();
+  // T_cur_lkf.block<3, 3>(0, 0) = R_cur_lkf;
+  // T_cur_lkf.block<3, 1>(0, 3) = t_cur_lkf;
 
   Matrix6d C_cur_lkf = Matrix6d::Identity();
   double opt_error;
-  std::vector<double> p_cur_sigma_list(good_lmk_pts.size(), 2.0); // TODO: stdev
+  std::vector<double> p_cur_sigma_list(p_cur_2d_list.size(), 5.0); // TODO: stdev
 
   vo::OptimizeOdometryLM(p_prev_3d_list,
                         p_cur_2d_list,
                         p_cur_sigma_list,
                         stereo_rig_,
-                        T_cur_lkf,
+                        T_cur_lkf_,
                         C_cur_lkf,
                         opt_error,
                         20,
                         1e-3,
                         1e-6);
 
-  result.T_prev_cur = T_cur_lkf.inverse();
+  std::vector<int> lm_inlier_indices;
+
+  // const int iters = vo::OptimizeOdometryIterative(p_prev_3d_list,
+  //                       p_cur_2d_list,
+  //                       p_cur_sigma_list,
+  //                       stereo_rig_,
+  //                       T_cur_lkf_,
+  //                       C_cur_lkf,
+  //                       opt_error,
+  //                       lm_inlier_indices,
+  //                       20,
+  //                       1e-3,
+  //                       1e-6,
+  //                       3.0);
+
+  result.T_prev_cur = T_cur_lkf_.inverse();
+
+  // std::cout << iters << std::endl;
+  std::cout << result.T_prev_cur << std::endl;
+
+  if (is_keyframe) {
+    T_cur_lkf_ = Matrix4d::Identity();
+  }
 
   return result;
 }

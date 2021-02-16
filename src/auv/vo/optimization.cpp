@@ -30,6 +30,12 @@ int OptimizeOdometryIterative(const std::vector<Vector3d>& P0_list,
   RemovePointOutliers(T_10, P0_list, p1_obs_list, p1_sigma_list,
                       stereo_cam, max_error_stdevs, inlier_indices);
 
+  if (inlier_indices.size() < 6) {
+    T_10 = Matrix4d::Identity();
+    C_10 = Matrix6d::Identity();
+    return -1;
+  }
+
   const std::vector<Vector3d>& P0_list_refined = Subset<Vector3d>(P0_list, inlier_indices);
   const std::vector<Vector2d>& p1_obs_list_refined = Subset<Vector2d>(p1_obs_list, inlier_indices);
   const std::vector<double>& p1_sigma_list_refined = Subset<double>(p1_sigma_list, inlier_indices);

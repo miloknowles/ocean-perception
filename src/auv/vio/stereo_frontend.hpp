@@ -133,6 +133,8 @@ class StereoFrontend final {
   uid_t prev_camera_id_ = 0;
   Image1b prev_left_image_;
   FeatureTracks live_tracks_;
+
+  Matrix4d T_cur_lkf_ = Matrix4d::Identity();
 };
 
 
