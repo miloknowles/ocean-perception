@@ -24,7 +24,7 @@ class FeatureDetector final {
 
     FeatureAlgorithm algorithm = FeatureAlgorithm::GFTT;
 
-    int max_features_per_frame = 200;
+    int max_features_per_frame = 100;
 
     //============================ ORB ====================================
     float orb_scale_factor = 1.2;
@@ -43,7 +43,7 @@ class FeatureDetector final {
 
     //==================== SUBPIXEL CORNER ESTIMATION =====================
     // NOTE(milo): Subpixel refinement makes feature detection take ~20ms vs 2-5ms without.
-    bool subpixel_corners = true;
+    bool subpixel_corners = false;
     int subpix_winsize = 10;
     int subpix_zerozone = -1;
     int subpix_maxiters = 10;
