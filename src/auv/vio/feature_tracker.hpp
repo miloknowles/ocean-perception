@@ -17,9 +17,9 @@ class FeatureTracker final {
     Options() = default;
 
     int klt_maxiters = 30;
-    float klt_epsilon = 0.01;
+    float klt_epsilon = 0.001;
     int klt_winsize = 21;
-    int klt_max_level = 3;
+    int klt_max_level = 4;
   };
 
   FeatureTracker() = delete;

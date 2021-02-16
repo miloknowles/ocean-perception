@@ -24,19 +24,19 @@ class FeatureDetector final {
 
     FeatureAlgorithm algorithm = FeatureAlgorithm::GFTT;
 
-    int max_features_per_frame = 100;
+    int max_features_per_frame = 200;
 
     //============================ ORB ====================================
     float orb_scale_factor = 1.2;
     int orb_num_lvl = 2;            // NOTE(milo): Reducing this from 4 to 2 sped things up.
     int orb_edge_thresh = 10;       // Kimera-VIO uses 10 here
     int orb_wta_k = 0;              // Kimeria-VIO uses 0
-    int orb_patch_size = 2;        // Kimera-VIO uses 2 here
+    int orb_patch_size = 2;         // Kimera-VIO uses 2 here
     int orb_fast_thresh = 10;
 
     //============================ GFTT ===================================
-    int min_distance_btw_tracked_and_detected_features = 10;
-    double gftt_quality_level = 0.001;
+    int min_distance_btw_tracked_and_detected_features = 20;
+    double gftt_quality_level = 0.01;
     int gftt_block_size = 5;
     bool gftt_use_harris_corner_detector = false;
     double gftt_k = 0.04;

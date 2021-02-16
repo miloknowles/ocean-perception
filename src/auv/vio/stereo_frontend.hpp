@@ -22,6 +22,7 @@ using namespace core;
 
 typedef std::unordered_map<uid_t, VecLandmarkObservation> FeatureTracks;
 
+
 class StereoFrontend final {
  public:
   // Parameters that control the frontend.
@@ -33,41 +34,55 @@ class StereoFrontend final {
     FeatureTracker::Options tracker_options;
     StereoMatcher::Options matcher_options;
 
+    double stereo_max_depth = 100.0;
+    double stereo_min_depth = 0.5;
+
     // Kill off a tracked landmark if it hasn't been observed in this many frames.
     // If set to zero, this means that a track dies as soon as it isn't observed in the current frame.
     int lost_point_lifespan = 0;
 
     // Kill off a tracked landmark if its more than this many observations.
     // This prevents a landmark from gathering an unbounded number of observations.
-    int tracked_point_lifespan = 100;
+    int tracked_point_lifespan = 300;
 
     // Trigger a keyframe if we only have 0% of maximum keypoints.
     int trigger_keyframe_min_lmks = 10;
 
     // Trigger a keyframe at least every k frames.
-    int trigger_keyframe_k = 5;
+    int trigger_keyframe_k = 10;
+  };
+
+  // https://stackoverflow.com/questions/3643681/how-do-flags-work-in-c
+  enum Status
+  {
+    FEW_DETECTED_FEATURES =    1 << 0,   // Last keyframe had very few detected keypoints.
+    FEW_TRACKED_FEATURES =     1 << 1,   // Couldn't track >= 5 points from last keyframe.
+    STEREO_MATCHING_FAILED =   1 << 2,   // Tracking OK, but unable to triangulate points.
   };
 
   // Result from tracking points from previous stereo frames into the current one.
   struct Result final {
-    Result() = delete;
+    Result() = default;
 
     explicit Result(bool is_keyframe,
+                    int status,
                     timestamp_t timestamp,
                     uid_t camera_id,
                     const VecLandmarkObservation& observations,
                     const Matrix4d& T_prev_cur)
         : is_keyframe(is_keyframe),
+          status(status),
           timestamp(timestamp),
           camera_id(camera_id),
           observations(observations),
           T_prev_cur(T_prev_cur) {}
 
     bool is_keyframe;
+    int status;
     timestamp_t timestamp;
     uid_t camera_id;
     std::vector<LandmarkObservation> observations;
-    Matrix4d T_prev_cur;
+    Matrix4d T_prev_cur = Matrix4d::Identity();
   };
 
   // Construct with options.
@@ -76,7 +91,8 @@ class StereoFrontend final {
   // Track known visual landmarks into the current stereo pair, possibly initializing new ones.
   // T_prev_cur_prior could be an initial guess on the odometry from IMU.
   Result Track(const StereoImage& stereo_pair,
-               const Matrix4d& T_prev_cur_prior);
+               const Matrix4d& T_prev_cur_prior,
+               bool force_keyframe = false);
 
   // Draws current feature tracks:
   // BLUE = Newly detected feature

@@ -60,49 +60,6 @@ FeatureDetector::FeatureDetector(const Options& opt) : opt_(opt)
 }
 
 
-// https://answers.opencv.org/question/93317/orb-keypoints-distribution-over-an-image/
-static void AdaptiveNonMaximalSuppresion(std::vector<cv::KeyPoint>& keypoints, const int num_to_keep)
-{
-  if ((int)keypoints.size() < num_to_keep) { return; }
-
-  // Sort by response
-  std::sort(
-      keypoints.begin(), keypoints.end(),
-      [&](const cv::KeyPoint& lhs, const cv::KeyPoint& rhs) { return lhs.response > rhs.response; });
-
-  std::vector<cv::KeyPoint> anmsPts;
-
-  std::vector<double> radii;
-  radii.resize( keypoints.size() );
-  std::vector<double> radiiSorted;
-  radiiSorted.resize( keypoints.size() );
-
-  const float robustCoeff = 1.11; // see paper
-
-  for (int i = 0; i < (int)keypoints.size(); ++i) {
-    const float response = keypoints[i].response * robustCoeff;
-    double radius = std::numeric_limits<double>::max();
-    for (int j = 0; j < i && keypoints[j].response > response; ++j) {
-      radius = std::min( radius, cv::norm( keypoints[i].pt - keypoints[j].pt ) );
-    }
-    radii[i]       = radius;
-    radiiSorted[i] = radius;
-  }
-
-  std::sort(radiiSorted.begin(), radiiSorted.end(),
-            [&](const double& lhs, const double& rhs) { return lhs > rhs ;});
-
-  const double decisionRadius = radiiSorted[num_to_keep];
-  for (int i = 0; i < (int)radii.size(); ++i) {
-    if (radii[i] >= decisionRadius) {
-      anmsPts.push_back( keypoints[i] );
-    }
-  }
-
-  anmsPts.swap(keypoints);
-}
-
-
 // Adapted from Kimera-VIO
 static std::vector<cv::KeyPoint> ANMSRangeTree(std::vector<cv::KeyPoint>& keypoints,
                                               int num_to_keep,

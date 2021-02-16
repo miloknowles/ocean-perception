@@ -57,7 +57,7 @@ static double ComputeProjectionError(const std::vector<Vector3d>& P0_list,
 
   double error = 0.0;
 
-  const PinholeCamera& cam = stereo_cam.LeftIntrinsics();
+  const PinholeCamera& cam = stereo_cam.LeftCamera();
 
   // Add up projection errors from all associated points.
   for (int i = 0; i < P0_list.size(); ++i) {
@@ -175,7 +175,7 @@ void LinearizeProjection(const std::vector<Vector3d>& P0_list,
 
   error = 0.0;             // Line projection error.
 
-  const PinholeCamera& cam = stereo_cam.LeftIntrinsics();
+  const PinholeCamera& cam = stereo_cam.LeftCamera();
 
   // Add up projection errors from all associated points.
   for (int i = 0; i < P0_list.size(); ++i) {
@@ -237,7 +237,7 @@ int RemovePointOutliers(const Matrix4d& T_10,
   assert(p1_obs_list.size() == p1_sigma_list.size());
 
   inlier_indices.clear();
-  const PinholeCamera& cam = stereo_cam.LeftIntrinsics();
+  const PinholeCamera& cam = stereo_cam.LeftCamera();
 
   for (int i = 0; i < P0_list.size(); ++i) {
     const Vector3d P1 = T_10.block<3, 3>(0, 0) * P0_list.at(i) + T_10.col(3).head(3);
