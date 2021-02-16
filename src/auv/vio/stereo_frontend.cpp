@@ -113,30 +113,19 @@ StereoFrontend::Result StereoFrontend::Track(const StereoImage& stereo_pair,
 
     // If at least 5 tracked points are available, do geometric outlier rejection with 5-point RANSAC.
     if (good_lmk_pts_prev.size() >= 5) {
-      // NOTE(milo): OpenCV throws exceptions is a vector<bool> or vector<uchar> is used as the mask.
-      cv::Mat inlier_mask;
-      const cv::Point2d pp(stereo_rig_.cx(), stereo_rig_.cy());
+      Matrix3d R_prev_cur;
+      Vector3d t_prev_cur;
+      std::vector<bool> ransac_inlier_mask;
+      GeometricOutlierCheck(good_lmk_pts_prev, good_lmk_pts, ransac_inlier_mask, R_prev_cur, t_prev_cur);
 
-      // TODO(milo): Find essential mat using points at last keyframe ...
-      const cv::Mat E = cv::findEssentialMat(good_lmk_pts_prev,
-                                            good_lmk_pts,
-                                            stereo_rig_.fx(), pp,
-                                            cv::RANSAC, 0.995, 10,
-                                            inlier_mask);
-      cv::Mat R_prev_cur, t_prev_cur;
-      cv::recoverPose(E, good_lmk_pts_prev, good_lmk_pts, R_prev_cur, t_prev_cur, stereo_rig_.fx(), pp, inlier_mask);
-      LOG(INFO) << "Computed relative pose T_prev_cur:\n" << R_prev_cur << "\n" << t_prev_cur << std::endl;
+      std::cout << R_prev_cur << std::endl;
+      std::cout << t_prev_cur << std::endl;
 
-      if (cv::sum(inlier_mask)(0) > 0.0) {
-        good_lmk_ids = SubsetFromMaskCv<uid_t>(good_lmk_ids, inlier_mask);
-        good_lmk_pts = SubsetFromMaskCv<cv::Point2f>(good_lmk_pts, inlier_mask);
-      } else {
-        LOG(WARNING) << "No RANSAC inliers found!" << std::endl;
-      }
+      good_lmk_ids = SubsetFromMask<uid_t>(good_lmk_ids, ransac_inlier_mask);
+      good_lmk_pts = SubsetFromMask<cv::Point2f>(good_lmk_pts, ransac_inlier_mask);
     }
     // Detect some new keypoints.
     VecPoint2f new_left_kps;
-    // LOG(INFO) << "Will avoid " << good_lmk_pts2.size() << " existing keypoints" << std::endl;
     detector_.Detect(stereo_pair.left_image, good_lmk_pts, new_left_kps);
 
     // Assign new landmark IDs to the initialized keypoints.
@@ -145,7 +134,6 @@ StereoFrontend::Result StereoFrontend::Track(const StereoImage& stereo_pair,
       new_lmk_ids.at(i) = AllocateLandmarkId();
     }
 
-    // LOG(INFO) << "Detected " << new_lmk_ids.size() << " new keypoints in keyframe" << std::endl;
     all_lmk_ids.insert(all_lmk_ids.end(), new_lmk_ids.begin(), new_lmk_ids.end());
     all_lmk_pts.insert(all_lmk_pts.end(), new_left_kps.begin(), new_left_kps.end());
   }
@@ -234,6 +222,67 @@ Image3b StereoFrontend::VisualizeFeatureTracks()
   return DrawFeatureTracks(prev_left_image_, ref_keypoints, cur_keypoints, untracked_ref, untracked_cur);
 }
 
+
+static std::vector<bool> ConvertToBoolMask(const std::vector<uchar>& m)
+{
+  std::vector<bool> out(m.size());
+  for (size_t i = 0; i < m.size(); ++i) {
+    out.at(i) = m.at(i) > 0;
+  }
+
+  return out;
+}
+
+
+void StereoFrontend::GeometricOutlierCheck(const VecPoint2f& lmk_pts_prev,
+                                          const VecPoint2f& lmk_pts_cur,
+                                          std::vector<bool>& inlier_mask,
+                                          Matrix3d& R_prev_cur,
+                                          Vector3d& t_prev_cur)
+{
+  // NOTE(milo): OpenCV throws exceptions is a vector<bool> or vector<uchar> is used as the mask.
+  cv::Mat inlier_mask_cv;
+  const cv::Point2d pp(stereo_rig_.cx(), stereo_rig_.cy());
+
+  // TODO(milo): Find essential mat using points at last keyframe ...
+  const cv::Mat E = cv::findEssentialMat(lmk_pts_prev,
+                                         lmk_pts_cur,
+                                         stereo_rig_.fx(), pp,
+                                         cv::RANSAC, 0.995, 3.0,
+                                         inlier_mask_cv);
+
+  const cv::Mat inlier_mask_pre_cheirality_cv = inlier_mask_cv.clone();
+  const double num_inliers_pre_cheirality = cv::sum(inlier_mask_pre_cheirality_cv)(0);
+
+  // NOTE(milo): t has 3 rows and 1 col.
+  cv::Mat _R_prev_cur, _t_prev_cur;
+  cv::recoverPose(E, lmk_pts_prev, lmk_pts_cur, _R_prev_cur, _t_prev_cur, stereo_rig_.fx(), pp, inlier_mask_cv);
+
+  const double num_inliers_post_cheirality = cv::sum(inlier_mask_cv)(0);
+  const bool recover_pose_failed = (num_inliers_pre_cheirality > 0 && num_inliers_post_cheirality <= 0);
+
+  // NOTE(milo): cv::recoverPose will fail if the camera is perfectly stationary and
+  // lmk_pts_prev == lmk_pts_cur. This is some kind of degenerate case where a strange R and t are
+  // returned. We can catch this when there are inliers from findEssentialMat() but none from
+  // recoverPose().
+  if (recover_pose_failed) {
+    LOG(WARNING) << "cv::recoverPose likely failed due to stationary case!" << std::endl;
+    LOG(WARNING) << "R:\n" << _R_prev_cur << "\nt:\n" << _t_prev_cur << std::endl;
+    R_prev_cur = Matrix3d::Identity();
+    t_prev_cur = Vector3d::Zero();
+    inlier_mask = ConvertToBoolMask(inlier_mask_pre_cheirality_cv);
+    return;
+  }
+
+  for (int i = 0; i < 3; ++i) {
+    t_prev_cur(i) = _t_prev_cur.at<double>(i, 0);
+    for (int j = 0; j < 3; ++j) {
+      R_prev_cur(i, j) = _R_prev_cur.at<double>(i, j);
+    }
+  }
+
+  inlier_mask = ConvertToBoolMask(inlier_mask_cv);
+}
 
 }
 }

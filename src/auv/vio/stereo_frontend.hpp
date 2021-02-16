@@ -89,6 +89,13 @@ class StereoFrontend final {
   // observations are available.
   void KillOffLostLandmarks(uid_t cur_camera_id);
 
+  // Use RANSAC 5-point algorithm to select only points that agree on an Essential Matrix.
+  void GeometricOutlierCheck(const VecPoint2f& lmk_pts_prev,
+                             const VecPoint2f& lmk_pts_cur,
+                             std::vector<bool>& inlier_mask,
+                             Matrix3d& R_prev_cur,
+                             Vector3d& t_prev_cur);
+
  private:
   Options opt_;
   StereoCamera stereo_rig_;

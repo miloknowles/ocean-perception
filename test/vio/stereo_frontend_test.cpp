@@ -2,6 +2,7 @@
 #include <glog/logging.h>
 
 #include <opencv2/highgui.hpp>
+#include <opencv2/calib3d.hpp>
 
 #include "dataset/euroc_dataset.hpp"
 #include "core/pinhole_camera.hpp"
@@ -40,4 +41,32 @@ TEST(VioTest, TestStereoFrontendSequence)
   dataset.RegisterStereoCallback(callback);
   dataset.Playback(5.0f, false);
   LOG(INFO) << "DONE" << std::endl;
+}
+
+
+TEST(VioTest, TestDebugEssentialMat)
+{
+  VecPoint2f image_pts1;
+
+  for (int x = 5; x < 752; x += 20) {
+    for (int y = 5; y < 480; y += 20) {
+      image_pts1.emplace_back(x, y);
+    }
+  }
+
+  VecPoint2f image_pts2 = image_pts1;
+
+  cv::Mat inlier_mask;
+  const cv::Point2d pp(375.5, 239.5);
+
+  const cv::Mat E = cv::findEssentialMat(image_pts1, image_pts2,
+                                         415.8, pp,
+                                        cv::RANSAC, 0.995, 10,
+                                        inlier_mask);
+
+  LOG(INFO) << "Inlier mask:\n" << inlier_mask << std::endl;
+
+  cv::Mat R_prev_cur, t_prev_cur;
+  cv::recoverPose(E, image_pts1, image_pts2, R_prev_cur, t_prev_cur, 415.8, pp, inlier_mask);
+  LOG(INFO) << "Computed relative pose T_prev_cur:\n" << R_prev_cur << "\n" << t_prev_cur << std::endl;
 }
