@@ -49,6 +49,21 @@ void StereoFrontend::KillOffLostLandmarks(uid_t cur_camera_id)
 }
 
 
+// Helper function to grab an observation that was observed from query_camera_id.
+// Returns whether or not the query was successful.
+static bool FindObservationFromCameraId(const VecLandmarkObservation& lmk_obs, uid_t query_camera_id, cv::Point2f& query_lmk_obs)
+{
+  for (const LandmarkObservation& obs : lmk_obs) {
+    if (obs.camera_id == query_camera_id) {
+      query_lmk_obs = obs.pixel_location;
+      return true;
+    }
+  }
+
+  return true;
+}
+
+
 StereoFrontend::Result StereoFrontend::Track(const StereoImage& stereo_pair,
                                              const Matrix4d& T_prev_cur_prior)
 {
@@ -93,30 +108,32 @@ StereoFrontend::Result StereoFrontend::Track(const StereoImage& stereo_pair,
   VecPoint2f good_lmk_pts_prev = SubsetFromMaskCv<cv::Point2f>(live_lmk_pts_prev, status);
   CHECK_EQ(good_lmk_pts.size(), good_lmk_pts_prev.size());
 
-  // LOG(INFO) << "Successfully tracked " << good_lmk_pts1.size() << " out of " << live_lmk_pts_prev.size() << " points" << std::endl;
-
   // Decide if a new keyframe should be initialized.
   // NOTE(milo): If this is the first image, we will have no tracks, triggering a keyframe,
   // causing new keypoints to be detected as desired.
   const bool is_keyframe = ((int)good_lmk_ids.size() < opt_.trigger_keyframe_min_lmks) ||
                            (int)(stereo_pair.camera_id - prev_keyframe_id_) >= opt_.trigger_keyframe_k;
 
-  // LOG_IF(INFO, is_keyframe) << "KEYFRAME TRIGGERED for camera_id: " << stereo_pair.camera_id << std::endl;
-
   // Do stereo matching for live tracks AND newly detection keypoints.
   std::vector<uid_t> all_lmk_ids;
   VecPoint2f all_lmk_pts;
 
-  // If this is a new keyframe, detect new keypoints in the image.
+  // If this is a new keyframe, (maybe) detect new keypoints in the image.
   if (is_keyframe) {
-    prev_keyframe_id_ = stereo_pair.camera_id;
-
     // If at least 5 tracked points are available, do geometric outlier rejection with 5-point RANSAC.
-    if (good_lmk_pts_prev.size() >= 5) {
+    if (good_lmk_pts.size() >= 5) {
+      VecPoint2f good_lmk_pts_prev_kf(good_lmk_pts.size());
+      for (size_t i = 0; i < good_lmk_ids.size(); ++i) {
+        const uid_t lmk_id = good_lmk_ids.at(i);
+        const VecLandmarkObservation& lmk_obs = live_tracks_.at(lmk_id);
+        CHECK(FindObservationFromCameraId(lmk_obs, prev_keyframe_id_, good_lmk_pts_prev_kf.at(i)))
+            << "No observation of a tracked feature at the previous keyframe!" << std::endl;
+      }
+
       Matrix3d R_prev_cur;
       Vector3d t_prev_cur;
       std::vector<bool> ransac_inlier_mask;
-      GeometricOutlierCheck(good_lmk_pts_prev, good_lmk_pts, ransac_inlier_mask, R_prev_cur, t_prev_cur);
+      GeometricOutlierCheck(good_lmk_pts_prev_kf, good_lmk_pts, ransac_inlier_mask, R_prev_cur, t_prev_cur);
 
       std::cout << R_prev_cur << std::endl;
       std::cout << t_prev_cur << std::endl;
@@ -124,6 +141,7 @@ StereoFrontend::Result StereoFrontend::Track(const StereoImage& stereo_pair,
       good_lmk_ids = SubsetFromMask<uid_t>(good_lmk_ids, ransac_inlier_mask);
       good_lmk_pts = SubsetFromMask<cv::Point2f>(good_lmk_pts, ransac_inlier_mask);
     }
+
     // Detect some new keypoints.
     VecPoint2f new_left_kps;
     detector_.Detect(stereo_pair.left_image, good_lmk_pts, new_left_kps);
@@ -136,6 +154,8 @@ StereoFrontend::Result StereoFrontend::Track(const StereoImage& stereo_pair,
 
     all_lmk_ids.insert(all_lmk_ids.end(), new_lmk_ids.begin(), new_lmk_ids.end());
     all_lmk_pts.insert(all_lmk_pts.end(), new_left_kps.begin(), new_left_kps.end());
+
+    prev_keyframe_id_ = stereo_pair.camera_id;
   }
 
   all_lmk_ids.insert(all_lmk_ids.end(), good_lmk_ids.begin(), good_lmk_ids.end());
