@@ -41,8 +41,29 @@ void StereoFrontend::KillOffLostLandmarks(uid_t cur_camera_id)
     }
   }
 
-  LOG(INFO) << "Killing off " << lmk_ids_to_kill.size() << " landmarks" << std::endl;
+  // LOG(INFO) << "Killing off " << lmk_ids_to_kill.size() << " landmarks" << std::endl;
+  for (const uid_t lmk_id : lmk_ids_to_kill) {
+    live_tracks_.erase(lmk_id);
+  }
+}
 
+
+void StereoFrontend::KillOffOldLandmarks()
+{
+  std::vector<uid_t> lmk_ids_to_kill;
+
+  for (const auto& item : live_tracks_) {
+    const uid_t lmk_id = item.first;
+
+    // NOTE(milo): Observations should be sorted in order of INCREASING camera_id.
+    const VecLandmarkObservation& observations = item.second;
+
+    if (observations.size() >= opt_.tracked_point_lifespan) {
+      lmk_ids_to_kill.emplace_back(lmk_id);
+    }
+  }
+
+  // LOG(INFO) << "Killing off " << lmk_ids_to_kill.size() << " landmarks" << std::endl;
   for (const uid_t lmk_id : lmk_ids_to_kill) {
     live_tracks_.erase(lmk_id);
   }
@@ -91,8 +112,7 @@ StereoFrontend::Result StereoFrontend::Track(const StereoImage& stereo_pair,
     live_lmk_pts_prev.emplace_back(observations.back().pixel_location);
   }
 
-  // LOG(INFO) << "Tracking " << live_lmk_pts_prev.size() << " live landmarks from previous image" << std::endl;
-
+  //======================== KANADE-LUCAS OPTICAL FLOW =========================
   VecPoint2f live_lmk_pts_cur;
   std::vector<uchar> status;
   std::vector<float> error;
@@ -118,6 +138,7 @@ StereoFrontend::Result StereoFrontend::Track(const StereoImage& stereo_pair,
   std::vector<uid_t> all_lmk_ids;
   VecPoint2f all_lmk_pts;
 
+  //===================== KEYFRAME POSE ESTIMATION =============================
   // If this is a new keyframe, (maybe) detect new keypoints in the image.
   if (is_keyframe) {
     // If at least 5 tracked points are available, do geometric outlier rejection with 5-point RANSAC.
@@ -161,6 +182,7 @@ StereoFrontend::Result StereoFrontend::Track(const StereoImage& stereo_pair,
   all_lmk_ids.insert(all_lmk_ids.end(), good_lmk_ids.begin(), good_lmk_ids.end());
   all_lmk_pts.insert(all_lmk_pts.end(), good_lmk_pts.begin(), good_lmk_pts.end());
 
+  //============================ STEREO MATCHING ===============================
   const std::vector<double>& all_lmk_disps = matcher_.MatchRectified(stereo_pair.left_image, stereo_pair.right_image, all_lmk_pts);
 
   CHECK_EQ(all_lmk_disps.size(), all_lmk_ids.size());
@@ -190,8 +212,12 @@ StereoFrontend::Result StereoFrontend::Track(const StereoImage& stereo_pair,
     observations.emplace_back(lmk_obs);
   }
 
+  //========================== GARBAGE COLLECTION ==============================
   // Check for any tracks that have haven't been seen in k images and kill them off.
+  // Also kill off any landmarks that have way too many observations so that the memory needed to
+  // store them doesn't blow up.
   KillOffLostLandmarks(stereo_pair.camera_id);
+  KillOffOldLandmarks();
 
   // Housekeeping.
   prev_left_image_ = stereo_pair.left_image;
@@ -207,7 +233,6 @@ Image3b StereoFrontend::VisualizeFeatureTracks()
   VecPoint2f ref_keypoints, cur_keypoints, untracked_ref, untracked_cur;
 
   for (const auto& item : live_tracks_) {
-    // const uid_t lmk_id = item.first;
     const VecLandmarkObservation& lmk_obs = item.second;
 
     CHECK(!lmk_obs.empty()) << "Landmark should have one or more observations stored" << std::endl;

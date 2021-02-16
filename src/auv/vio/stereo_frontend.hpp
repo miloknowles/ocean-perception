@@ -37,6 +37,10 @@ class StereoFrontend final {
     // If set to zero, this means that a track dies as soon as it isn't observed in the current frame.
     int lost_point_lifespan = 0;
 
+    // Kill off a tracked landmark if its more than this many observations.
+    // This prevents a landmark from gathering an unbounded number of observations.
+    int tracked_point_lifespan = 100;
+
     // Trigger a keyframe if we only have 0% of maximum keypoints.
     int trigger_keyframe_min_lmks = 10;
 
@@ -88,6 +92,9 @@ class StereoFrontend final {
   // This should be called AFTER tracking points in to the current image so that the most recent
   // observations are available.
   void KillOffLostLandmarks(uid_t cur_camera_id);
+
+  // Kill off any landmarks that have been alive for more than tracked_point_lifespan frames.
+  void KillOffOldLandmarks();
 
   // Use RANSAC 5-point algorithm to select only points that agree on an Essential Matrix.
   void GeometricOutlierCheck(const VecPoint2f& lmk_pts_prev,
