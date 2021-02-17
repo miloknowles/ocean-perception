@@ -4,7 +4,7 @@
 
 #include "core/math_util.hpp"
 #include "core/timer.hpp"
-#include "vo/optimization.hpp"
+#include "vio/optimize_odometry.hpp"
 #include "vio/stereo_frontend.hpp"
 #include "vio/visualization_2d.hpp"
 
@@ -91,9 +91,7 @@ StereoFrontend::Result StereoFrontend::Track(const StereoImage& stereo_pair,
                                              const Matrix4d& T_prev_cur_prior,
                                              bool force_keyframe)
 {
-  StereoFrontend::Result result;
-  result.camera_id = stereo_pair.camera_id;
-  result.timestamp = stereo_pair.timestamp;
+  StereoFrontend::Result result(stereo_pair.timestamp, stereo_pair.camera_id);
 
   std::vector<uid_t> live_lmk_ids;
   std::vector<uid_t> live_cam_ids;
@@ -134,32 +132,12 @@ StereoFrontend::Result StereoFrontend::Track(const StereoImage& stereo_pair,
   std::vector<uid_t> good_lmk_ids = SubsetFromMaskCv<uid_t>(live_lmk_ids, status);
   VecPoint2f good_lmk_pts = SubsetFromMaskCv<cv::Point2f>(live_lmk_pts_cur, status);
 
-  //============================ ESTIMATE ODOMETRY =============================
-  // We estimate the odometry *since the last keyframe* for both tracking and
-  // outlier rejection.
-  Matrix3d R_cur_lkf = Matrix3d::Identity();
-  Vector3d t_cur_lkf = Vector3d::Zero();
-
   VecPoint2f good_lmk_pts_prev_kf(good_lmk_pts.size());
   for (size_t i = 0; i < good_lmk_ids.size(); ++i) {
     const uid_t lmk_id = good_lmk_ids.at(i);
     const VecLandmarkObservation& lmk_obs = live_tracks_.at(lmk_id);
     CHECK(FindObservationFromCameraId(lmk_obs, prev_keyframe_id_, good_lmk_pts_prev_kf.at(i)))
         << "No observation of a tracked feature at the previous keyframe!" << std::endl;
-  }
-
-  if (good_lmk_pts.size() >= 5) {
-    // std::vector<bool> ransac_inlier_mask;
-    // Timer timer(true);
-    // GeometricOutlierCheck(good_lmk_pts_prev_kf, good_lmk_pts, ransac_inlier_mask, R_cur_lkf, t_cur_lkf);
-    // LOG(INFO) << "GeometricOutlierCheck took: " << timer.Elapsed().milliseconds() << " ms" << std::endl;
-
-    // good_lmk_pts_prev_kf = SubsetFromMask<cv::Point2f>(good_lmk_pts_prev_kf, ransac_inlier_mask);
-    // good_lmk_ids = SubsetFromMask<uid_t>(good_lmk_ids, ransac_inlier_mask);
-    // good_lmk_pts = SubsetFromMask<cv::Point2f>(good_lmk_pts, ransac_inlier_mask);
-  } else {
-    LOG(WARNING) << "Feature tracking unreliable! Tracked features < 5" << std::endl;
-    result.status |= StereoFrontend::Status::FEW_TRACKED_FEATURES;
   }
 
   // Decide if a new keyframe should be initialized.
@@ -194,9 +172,6 @@ StereoFrontend::Result StereoFrontend::Track(const StereoImage& stereo_pair,
     const std::vector<double>& new_lmk_disps = matcher_.MatchRectified(
       stereo_pair.left_image, stereo_pair.right_image, new_left_kps);
 
-    // all_lmk_ids.insert(all_lmk_ids.end(), new_lmk_ids.begin(), new_lmk_ids.end());
-    // all_lmk_pts.insert(all_lmk_pts.end(), new_left_kps.begin(), new_left_kps.end());
-
     for (size_t i = 0; i < new_lmk_ids.size(); ++i) {
       const uid_t lmk_id = new_lmk_ids.at(i);
       const cv::Point2f& pt = new_left_kps.at(i);
@@ -223,9 +198,6 @@ StereoFrontend::Result StereoFrontend::Track(const StereoImage& stereo_pair,
     prev_keyframe_id_ = stereo_pair.camera_id;
   }
 
-  // all_lmk_ids.insert(all_lmk_ids.end(), good_lmk_ids.begin(), good_lmk_ids.end());
-  // all_lmk_pts.insert(all_lmk_pts.end(), good_lmk_pts.begin(), good_lmk_pts.end());
-
   //============================ STEREO MATCHING ===============================
   const std::vector<double>& good_lmk_disps = matcher_.MatchRectified(
       stereo_pair.left_image, stereo_pair.right_image, good_lmk_pts);
@@ -234,8 +206,9 @@ StereoFrontend::Result StereoFrontend::Track(const StereoImage& stereo_pair,
   CHECK_EQ(good_lmk_pts_prev_kf.size(), good_lmk_ids.size());
 
   // Update landmark observations for the current image.
-  std::vector<Vector2d> p_cur_2d_list;//(good_lmk_pts.size());
-  std::vector<Vector3d> p_prev_3d_list;//(good_lmk_pts.size());
+  std::vector<Vector2d> p_cur_2d_list;
+  std::vector<Vector3d> p_prev_3d_list;
+  std::vector<uid_t> p_cur_uid_list;
 
   for (size_t i = 0; i < good_lmk_ids.size(); ++i) {
     const uid_t lmk_id = good_lmk_ids.at(i);
@@ -263,6 +236,7 @@ StereoFrontend::Result StereoFrontend::Track(const StereoImage& stereo_pair,
     const double depth = stereo_rig_.DispToDepth(disp);
     p_prev_3d_list.emplace_back(stereo_rig_.LeftCamera().Backproject(p_prev_2d, depth));
     p_cur_2d_list.emplace_back(Vector2d(good_lmk_pts.at(i).x, good_lmk_pts.at(i).y));
+    p_cur_uid_list.emplace_back(lmk_id);
   }
 
   //========================== GARBAGE COLLECTION ==============================
@@ -277,55 +251,50 @@ StereoFrontend::Result StereoFrontend::Track(const StereoImage& stereo_pair,
   prev_camera_id_ = stereo_pair.camera_id;
 
   // FAILURE: If too few points for effective odometry estimate, return.
-  if (good_lmk_pts.size() < 12) {
+  if (good_lmk_pts.size() < 6) {
+    result.status |= StereoFrontend::Status::FEW_TRACKED_FEATURES;
     return result;
   }
 
   //==================== LEAST-SQUARES ODOMETRY OPTIMIZATION ===================
-  // Using the essential matrix rotation and (unscaled) translation as an initial
-  // guess, do a least-squares optimization to refine the pose estimate and recover
-  // absolute scale.
-  // Matrix4d T_cur_lkf = Matrix4d::Identity();
-  // T_cur_lkf.block<3, 3>(0, 0) = R_cur_lkf;
-  // T_cur_lkf.block<3, 1>(0, 3) = t_cur_lkf;
-
+  // Rotation and translation since the last KEYFRAME (not necessarily the last frame).
   Matrix6d C_cur_lkf = Matrix6d::Identity();
-  double opt_error;
-  std::vector<double> p_cur_sigma_list(p_cur_2d_list.size(), 5.0); // TODO: stdev
+  const std::vector<double> p_cur_sigma_list(p_cur_2d_list.size(), 5.0); // TODO: stdev
 
-  vo::OptimizeOdometryLM(p_prev_3d_list,
+  std::vector<int> lm_inlier_indices, lm_outlier_indices;
+
+  const int iters = OptimizeOdometryIterative(p_prev_3d_list,
                         p_cur_2d_list,
                         p_cur_sigma_list,
                         stereo_rig_,
                         T_cur_lkf_,
                         C_cur_lkf,
-                        opt_error,
+                        result.avg_reproj_error,
+                        lm_inlier_indices,
+                        lm_outlier_indices,
                         20,
                         1e-3,
-                        1e-6);
+                        1e-6,
+                        3.0);
 
-  std::vector<int> lm_inlier_indices;
-
-  // const int iters = vo::OptimizeOdometryIterative(p_prev_3d_list,
-  //                       p_cur_2d_list,
-  //                       p_cur_sigma_list,
-  //                       stereo_rig_,
-  //                       T_cur_lkf_,
-  //                       C_cur_lkf,
-  //                       opt_error,
-  //                       lm_inlier_indices,
-  //                       20,
-  //                       1e-3,
-  //                       1e-6,
-  //                       3.0);
-
+  // Returning -1 indicates an error in LM optimization.
+  if (iters < 0 || result.avg_reproj_error > opt_.max_avg_reprojection_error) {
+    result.status |= StereoFrontend::Status::ODOM_ESTIMATION_FAILED;
+  }
   result.T_prev_cur = T_cur_lkf_.inverse();
 
-  // std::cout << iters << std::endl;
   std::cout << result.T_prev_cur << std::endl;
+  std::cout << result.avg_reproj_error << std::endl;
 
   if (is_keyframe) {
     T_cur_lkf_ = Matrix4d::Identity();
+  }
+
+  //======================== REMOVE OUTLIER POINTS =============================
+  for (const int outlier_idx : lm_outlier_indices) {
+    const uid_t lmk_idx = p_cur_uid_list.at(outlier_idx);
+
+    live_tracks_.at(lmk_idx).erase(live_tracks_.at(lmk_idx).end());
   }
 
   return result;
@@ -372,75 +341,75 @@ Image3b StereoFrontend::VisualizeFeatureTracks()
 }
 
 
-static std::vector<bool> ConvertToBoolMask(const std::vector<uchar>& m)
-{
-  std::vector<bool> out(m.size());
-  for (size_t i = 0; i < m.size(); ++i) {
-    out.at(i) = m.at(i) > 0;
-  }
+// static std::vector<bool> ConvertToBoolMask(const std::vector<uchar>& m)
+// {
+//   std::vector<bool> out(m.size());
+//   for (size_t i = 0; i < m.size(); ++i) {
+//     out.at(i) = m.at(i) > 0;
+//   }
 
-  return out;
-}
+//   return out;
+// }
 
 
-void StereoFrontend::GeometricOutlierCheck(const VecPoint2f& lmk_pts_prev,
-                                          const VecPoint2f& lmk_pts_cur,
-                                          std::vector<bool>& inlier_mask,
-                                          Matrix3d& R_prev_cur,
-                                          Vector3d& t_prev_cur)
-{
-  R_prev_cur = Matrix3d::Identity();
-  t_prev_cur = Vector3d::Zero();
+// void StereoFrontend::GeometricOutlierCheck(const VecPoint2f& lmk_pts_prev,
+//                                           const VecPoint2f& lmk_pts_cur,
+//                                           std::vector<bool>& inlier_mask,
+//                                           Matrix3d& R_prev_cur,
+//                                           Vector3d& t_prev_cur)
+// {
+//   R_prev_cur = Matrix3d::Identity();
+//   t_prev_cur = Vector3d::Zero();
 
-  // NOTE(milo): OpenCV throws exceptions is a vector<bool> or vector<uchar> is used as the mask.
-  cv::Mat inlier_mask_cv;
-  const cv::Point2d pp(stereo_rig_.cx(), stereo_rig_.cy());
+//   // NOTE(milo): OpenCV throws exceptions is a vector<bool> or vector<uchar> is used as the mask.
+//   cv::Mat inlier_mask_cv;
+//   const cv::Point2d pp(stereo_rig_.cx(), stereo_rig_.cy());
 
-  // TODO(milo): Find essential mat using points at last keyframe ...
-  const cv::Mat E = cv::findEssentialMat(lmk_pts_prev,
-                                         lmk_pts_cur,
-                                         stereo_rig_.fx(), pp,
-                                         cv::RANSAC, 0.999, 20.0,
-                                         inlier_mask_cv);
+//   // TODO(milo): Find essential mat using points at last keyframe ...
+//   const cv::Mat E = cv::findEssentialMat(lmk_pts_prev,
+//                                          lmk_pts_cur,
+//                                          stereo_rig_.fx(), pp,
+//                                          cv::RANSAC, 0.999, 20.0,
+//                                          inlier_mask_cv);
 
-  const cv::Mat inlier_mask_pre_cheirality_cv = inlier_mask_cv.clone();
-  const double num_inliers_pre_cheirality = cv::sum(inlier_mask_pre_cheirality_cv)(0);
+//   const cv::Mat inlier_mask_pre_cheirality_cv = inlier_mask_cv.clone();
+//   const double num_inliers_pre_cheirality = cv::sum(inlier_mask_pre_cheirality_cv)(0);
 
-  if (num_inliers_pre_cheirality <= 5) {
-    LOG(WARNING) << "cv::findEssentialMat failed (<= 5 inliers found)!" << std::endl;
-    inlier_mask = ConvertToBoolMask(inlier_mask_pre_cheirality_cv);
-    return;
-  }
+//   if (num_inliers_pre_cheirality <= 5) {
+//     LOG(WARNING) << "cv::findEssentialMat failed (<= 5 inliers found)!" << std::endl;
+//     inlier_mask = ConvertToBoolMask(inlier_mask_pre_cheirality_cv);
+//     return;
+//   }
 
-  // LOG(INFO) << "num_inliers_pre_cheirality: " << num_inliers_pre_cheirality << std::endl;
+//   // LOG(INFO) << "num_inliers_pre_cheirality: " << num_inliers_pre_cheirality << std::endl;
 
-  // NOTE(milo): t has 3 rows and 1 col.
-  cv::Mat _R_prev_cur, _t_prev_cur;
-  cv::recoverPose(E, lmk_pts_prev, lmk_pts_cur, _R_prev_cur, _t_prev_cur, stereo_rig_.fx(), pp, inlier_mask_cv);
+//   // NOTE(milo): t has 3 rows and 1 col.
+//   cv::Mat _R_prev_cur, _t_prev_cur;
+//   cv::recoverPose(E, lmk_pts_prev, lmk_pts_cur, _R_prev_cur, _t_prev_cur, stereo_rig_.fx(), pp, inlier_mask_cv);
 
-  const double num_inliers_post_cheirality = cv::sum(inlier_mask_cv)(0);
-  const bool recover_pose_failed = (num_inliers_pre_cheirality > 0 && num_inliers_post_cheirality <= 0);
+//   const double num_inliers_post_cheirality = cv::sum(inlier_mask_cv)(0);
+//   const bool recover_pose_failed = (num_inliers_pre_cheirality > 0 && num_inliers_post_cheirality <= 0);
 
-  // NOTE(milo): cv::recoverPose will fail if the camera is perfectly stationary and
-  // lmk_pts_prev == lmk_pts_cur. This is some kind of degenerate case where a strange R and t are
-  // returned. We can catch this when there are inliers from findEssentialMat() but none from
-  // recoverPose().
-  if (recover_pose_failed) {
-    LOG(WARNING) << "cv::recoverPose likely failed due to stationary case!" << std::endl;
-    // LOG(WARNING) << "R:\n" << _R_prev_cur << "\nt:\n" << _t_prev_cur << std::endl;
-    inlier_mask = ConvertToBoolMask(inlier_mask_pre_cheirality_cv);
-    return;
-  }
+//   // NOTE(milo): cv::recoverPose will fail if the camera is perfectly stationary and
+//   // lmk_pts_prev == lmk_pts_cur. This is some kind of degenerate case where a strange R and t are
+//   // returned. We can catch this when there are inliers from findEssentialMat() but none from
+//   // recoverPose().
+//   if (recover_pose_failed) {
+//     LOG(WARNING) << "cv::recoverPose likely failed due to stationary case!" << std::endl;
+//     // LOG(WARNING) << "R:\n" << _R_prev_cur << "\nt:\n" << _t_prev_cur << std::endl;
+//     inlier_mask = ConvertToBoolMask(inlier_mask_pre_cheirality_cv);
+//     return;
+//   }
 
-  for (int i = 0; i < 3; ++i) {
-    t_prev_cur(i) = _t_prev_cur.at<double>(i, 0);
-    for (int j = 0; j < 3; ++j) {
-      R_prev_cur(i, j) = _R_prev_cur.at<double>(i, j);
-    }
-  }
+//   for (int i = 0; i < 3; ++i) {
+//     t_prev_cur(i) = _t_prev_cur.at<double>(i, 0);
+//     for (int j = 0; j < 3; ++j) {
+//       R_prev_cur(i, j) = _R_prev_cur.at<double>(i, j);
+//     }
+//   }
 
-  inlier_mask = ConvertToBoolMask(inlier_mask_cv);
-}
+//   inlier_mask = ConvertToBoolMask(inlier_mask_cv);
+// }
 
 }
 }

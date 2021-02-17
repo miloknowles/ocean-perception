@@ -37,6 +37,8 @@ class StereoFrontend final {
     double stereo_max_depth = 100.0;
     double stereo_min_depth = 0.5;
 
+    double max_avg_reprojection_error = 5.0;
+
     // Kill off a tracked landmark if it hasn't been observed in this many frames.
     // If set to zero, this means that a track dies as soon as it isn't observed in the current frame.
     int lost_point_lifespan = 0;
@@ -58,31 +60,23 @@ class StereoFrontend final {
     FEW_DETECTED_FEATURES =    1 << 0,   // Last keyframe had very few detected keypoints.
     FEW_TRACKED_FEATURES =     1 << 1,   // Couldn't track >= 5 points from last keyframe.
     STEREO_MATCHING_FAILED =   1 << 2,   // Tracking OK, but unable to triangulate points.
+    ODOM_ESTIMATION_FAILED =   1 << 3    // Couldn't estimate odometry since last keyframe.
   };
 
   // Result from tracking points from previous stereo frames into the current one.
   struct Result final {
-    Result() = default;
+    explicit Result(timestamp_t timestamp,
+                    uid_t camera_id)
+        : timestamp(timestamp),
+          camera_id(camera_id) {}
 
-    explicit Result(bool is_keyframe,
-                    int status,
-                    timestamp_t timestamp,
-                    uid_t camera_id,
-                    const VecLandmarkObservation& observations,
-                    const Matrix4d& T_prev_cur)
-        : is_keyframe(is_keyframe),
-          status(status),
-          timestamp(timestamp),
-          camera_id(camera_id),
-          observations(observations),
-          T_prev_cur(T_prev_cur) {}
-
-    bool is_keyframe;
-    int status;
+    bool is_keyframe = false;
+    int status = 0;
     timestamp_t timestamp;
     uid_t camera_id;
     std::vector<LandmarkObservation> observations;
     Matrix4d T_prev_cur = Matrix4d::Identity();
+    double avg_reproj_error = -1.0;
   };
 
   // Construct with options.
@@ -113,11 +107,11 @@ class StereoFrontend final {
   void KillOffOldLandmarks();
 
   // Use RANSAC 5-point algorithm to select only points that agree on an Essential Matrix.
-  void GeometricOutlierCheck(const VecPoint2f& lmk_pts_prev,
-                             const VecPoint2f& lmk_pts_cur,
-                             std::vector<bool>& inlier_mask,
-                             Matrix3d& R_prev_cur,
-                             Vector3d& t_prev_cur);
+  // void GeometricOutlierCheck(const VecPoint2f& lmk_pts_prev,
+  //                            const VecPoint2f& lmk_pts_cur,
+  //                            std::vector<bool>& inlier_mask,
+  //                            Matrix3d& R_prev_cur,
+  //                            Vector3d& t_prev_cur);
 
  private:
   Options opt_;

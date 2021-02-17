@@ -11,6 +11,8 @@ SET(LIBRARY_SRC
   stereo_matcher.hpp
   visualization_2d.cpp
   visualization_2d.hpp
+  optimize_odometry.cpp
+  optimize_odometry.hpp
   stereo_frontend.cpp
   stereo_frontend.hpp)
 
