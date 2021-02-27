@@ -159,7 +159,7 @@ int RemoveLineOutliers(const Matrix4d& T_10,
   assert(l1_obs_list.size() == l1_sigma_list.size());
 
   inlier_indices.clear();
-  const PinholeCamera& cam = stereo_cam.LeftIntrinsics();
+  const PinholeCamera& cam = stereo_cam.LeftCamera();
 
   for (int i = 0; i < L0_list.size(); ++i) {
     const LineFeature3D& L0 = L0_list.at(i);
@@ -210,7 +210,7 @@ void LinearizeLineProjection(const std::vector<LineFeature3D> L0_list,
   g = Vector6d::Zero();    // Gradient for line projection error.
   error = 0.0;             // Line projection error.
 
-  const PinholeCamera& cam = stereo_cam.LeftIntrinsics();
+  const PinholeCamera& cam = stereo_cam.LeftCamera();
 
   for (int i = 0; i < L0_list.size(); ++i) {
     const LineFeature3D& L0 = L0_list.at(i);

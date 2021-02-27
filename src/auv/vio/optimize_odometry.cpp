@@ -2,10 +2,10 @@
 
 #include "core/math_util.hpp"
 #include "core/transform_util.hpp"
-#include "vo/optimization.hpp"
+#include "vio/optimize_odometry.hpp"
 
 namespace bm {
-namespace vo {
+namespace vio {
 
 
 int OptimizeOdometryIterative(const std::vector<Vector3d>& P0_list,
@@ -16,19 +16,20 @@ int OptimizeOdometryIterative(const std::vector<Vector3d>& P0_list,
                               Matrix6d& C_10,
                               double& error,
                               std::vector<int>& inlier_indices,
+                              std::vector<int>& outlier_indices,
                               int max_iters,
                               double min_error,
                               double min_error_delta,
                               double max_error_stdevs)
 {
   // Do the initial pose optimization.
-  const int N1 = OptimizeOdometryLM(
+  OptimizeOdometryLM(
       P0_list, p1_obs_list, p1_sigma_list, stereo_cam,  // Inputs.
       T_10, C_10, error,                                // Outputs.
       max_iters, min_error, min_error_delta);           // Params.
 
-  RemovePointOutliers(T_10, P0_list, p1_obs_list, p1_sigma_list,
-                      stereo_cam, max_error_stdevs, inlier_indices);
+  RemovePointOutliers(T_10, P0_list, p1_obs_list, p1_sigma_list, stereo_cam, max_error_stdevs,
+                      inlier_indices, outlier_indices);
 
   if (inlier_indices.size() < 6) {
     T_10 = Matrix4d::Identity();
@@ -66,7 +67,7 @@ static double ComputeProjectionError(const std::vector<Vector3d>& P0_list,
   const PinholeCamera& cam = stereo_cam.LeftCamera();
 
   // Add up projection errors from all associated points.
-  for (int i = 0; i < P0_list.size(); ++i) {
+  for (size_t i = 0; i < P0_list.size(); ++i) {
     const Vector3d P1 = T_10.block<3, 3>(0, 0)*P0_list.at(i) + T_10.col(3).head(3);
 
     // Project P1 to a pixel location in Camera_1.
@@ -184,7 +185,7 @@ void LinearizeProjection(const std::vector<Vector3d>& P0_list,
   const PinholeCamera& cam = stereo_cam.LeftCamera();
 
   // Add up projection errors from all associated points.
-  for (int i = 0; i < P0_list.size(); ++i) {
+  for (size_t i = 0; i < P0_list.size(); ++i) {
     const Vector3d P1 = T_10.block<3, 3>(0, 0)*P0_list.at(i) + T_10.col(3).head(3);
 
     // TODO: filter out points that project behind the camera...
@@ -237,21 +238,28 @@ int RemovePointOutliers(const Matrix4d& T_10,
                         const std::vector<double>& p1_sigma_list,
                         const StereoCamera& stereo_cam,
                         double max_err_stdevs,
-                        std::vector<int>& inlier_indices)
+                        std::vector<int>& inlier_indices,
+                        std::vector<int>& outlier_indices)
 {
   assert(P0_list.size() == p1_obs_list.size());
   assert(p1_obs_list.size() == p1_sigma_list.size());
 
   inlier_indices.clear();
+  outlier_indices.clear();
+
   const PinholeCamera& cam = stereo_cam.LeftCamera();
 
-  for (int i = 0; i < P0_list.size(); ++i) {
+  for (size_t i = 0; i < P0_list.size(); ++i) {
     const Vector3d P1 = T_10.block<3, 3>(0, 0) * P0_list.at(i) + T_10.col(3).head(3);
     const Vector2d p1 = cam.Project(P1);
+
+    // Euclidean reprojection error.
     const double e = (p1 - p1_obs_list.at(i)).norm();
     const double sigma = p1_sigma_list.at(i);
     if (e < (sigma * max_err_stdevs)) {
       inlier_indices.emplace_back(i);
+    } else {
+      outlier_indices.emplace_back(i);
     }
   }
 

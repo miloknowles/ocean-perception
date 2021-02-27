@@ -1,6 +1,7 @@
 SET(LIBRARY_NAME ${PROJECT_NAME}_core)
 
 SET(LIBRARY_SRC
+  macros.hpp
   eigen_types.hpp
   cv_types.hpp
   image_util.hpp
@@ -14,7 +15,11 @@ SET(LIBRARY_SRC
   line_feature.hpp
   line_segment.hpp
   timedelta.hpp
-  timer.hpp)
+  timer.hpp
+  timestamp.hpp
+  imu_measurement.hpp
+  stereo_image.hpp
+  make_unique.hpp)
 
 # NOTE(milo): This is how to debug the INCLUDE_DIRECTORIES if needed.
 # message("===================================================")

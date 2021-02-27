@@ -15,8 +15,8 @@ namespace vo {
 OdometryFrontend::OdometryFrontend(const StereoCamera& stereo_camera,
                                    const Options& opt)
     : stereo_camera_(stereo_camera),
-      camera_left_(stereo_camera.LeftIntrinsics()),
-      camera_right_(stereo_camera.RightIntrinsics()),
+      camera_left_(stereo_camera.LeftCamera()),
+      camera_right_(stereo_camera.RightCamera()),
       opt_(opt),
       pdetector_(opt.point_detector)
 {

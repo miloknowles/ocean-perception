@@ -1,6 +1,12 @@
 cmake_minimum_required(VERSION 3.0.2)
 project(auv)
 
+# Make sure that custom modules like FindXXXX are found
+# Prefer to use system installation of gflags/glog
+set(GFLAGS_PREFER_EXPORTED_GFLAGS_CMAKE_CONFIGURATION TRUE)
+set(GLOG_PREFER_EXPORTED_GLOG_CMAKE_CONFIGURATION TRUE)
+list(INSERT CMAKE_MODULE_PATH 0 ${CMAKE_SOURCE_DIR}/cmake)
+
 ## Compile as C++11, supported in ROS Kinetic and newer
 add_compile_options(-std=c++11 -Wall -O3)
 
@@ -22,9 +28,10 @@ find_package(catkin REQUIRED COMPONENTS
 # Find non-catkin pacakges.
 find_package(OpenCV 3.2.0 EXACT REQUIRED)
 find_package(Boost        REQUIRED COMPONENTS filesystem)
-find_package(g2o          REQUIRED)
+# find_package(g2o          REQUIRED)
 find_package(Eigen3       REQUIRED)
 find_package(yaml-cpp     REQUIRED CONFIG PATHS ${YAML_PATHS}) # YAML library
+find_package(Glog 0.3.5 REQUIRED)
 
 include_directories(
   /usr/include/

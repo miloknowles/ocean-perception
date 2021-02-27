@@ -29,7 +29,7 @@ static void SimulatePoints(const Matrix4d& T_w_0,
   p1_list.resize(P_w.size());
   for (int i = 0; i < P_w.size(); ++i) {
     const Vector2d noise = RandomNormal2d(0, p1_sigma_list.at(i));
-    p1_list.at(i) = ProjectWorldPoint(stereo_camera.LeftIntrinsics(), T_w_1.inverse(), P_w.at(i)) + noise;
+    p1_list.at(i) = ProjectWorldPoint(stereo_camera.LeftCamera(), T_w_1.inverse(), P_w.at(i)) + noise;
   }
 }
 

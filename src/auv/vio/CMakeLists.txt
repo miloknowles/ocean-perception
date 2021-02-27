@@ -1,13 +1,20 @@
 # Each library follows the convention "auv_libraryname".
-SET(LIBRARY_NAME ${PROJECT_NAME}_dataset)
+SET(LIBRARY_NAME ${PROJECT_NAME}_vio)
 
 SET(LIBRARY_SRC
-  stereo_dataset.cpp
-  stereo_dataset.hpp
-  data_provider.cpp
-  data_provider.hpp
-  euroc_dataset.cpp
-  euroc_dataset.hpp)
+  landmark_observation.hpp
+  feature_detector.cpp
+  feature_detector.hpp
+  feature_tracker.cpp
+  feature_tracker.hpp
+  stereo_matcher.cpp
+  stereo_matcher.hpp
+  visualization_2d.cpp
+  visualization_2d.hpp
+  optimize_odometry.cpp
+  optimize_odometry.hpp
+  stereo_frontend.cpp
+  stereo_frontend.hpp)
 
 add_library(${LIBRARY_NAME} SHARED ${LIBRARY_SRC})
 set_target_properties(${LIBRARY_NAME} PROPERTIES LINKER_LANGUAGE CXX)
@@ -16,6 +23,7 @@ target_include_directories(${LIBRARY_NAME} PRIVATE
   ${PROJECT_SOURCE_DIR}/src)
 target_link_libraries(${LIBRARY_NAME}
   ${PROJECT_NAME}_core
+  ${PROJECT_NAME}_anms
   ${Boost_LIBRARIES}
   ${OpenCV_LIBRARIES}
   ${OpenCV_LIBS}

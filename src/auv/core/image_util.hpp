@@ -1,6 +1,8 @@
 #pragma once
 
 #include <opencv2/imgproc.hpp>
+#include <opencv2/highgui.hpp>
+
 #include "core/cv_types.hpp"
 
 namespace bm {
@@ -35,6 +37,19 @@ inline Image3b CastImage3fTo3b(const Image3f& im)
   im.convertTo(out, CV_8UC3, kFloatToUint8);
 
   return out;
+}
+
+
+inline Image1b ReadAndConvertToGrayScale(const std::string& img_path, bool equalize = false) {
+  cv::Mat img = cv::imread(img_path, cv::IMREAD_ANYCOLOR);
+  if (img.channels() > 1) {
+    cv::cvtColor(img, img, cv::COLOR_BGR2GRAY);
+  }
+  // TODO(milo): Could add histogram equilization here.
+  // if (equalize) {
+    // cv::equalizeHist(img, img);
+  // }
+  return img;
 }
 
 

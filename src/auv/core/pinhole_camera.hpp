@@ -51,7 +51,6 @@ class PinholeCamera final {
     return depth * K_inv_ * xy_h;
   }
 
-
  private:
   double fx_, fy_, cx_, cy_;
 
