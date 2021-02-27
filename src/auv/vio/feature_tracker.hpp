@@ -2,6 +2,7 @@
 
 #include <vector>
 
+#include "core/macros.hpp"
 #include "core/eigen_types.hpp"
 #include "core/cv_types.hpp"
 
@@ -21,6 +22,8 @@ class FeatureTracker final {
     int klt_winsize = 21;
     int klt_max_level = 4;
   };
+
+  MACRO_DELETE_COPY_CONSTRUCTORS(FeatureTracker);
 
   FeatureTracker() = delete;
 

@@ -2,6 +2,7 @@
 
 #include <vector>
 
+#include "core/macros.hpp"
 #include "core/cv_types.hpp"
 
 namespace bm {
@@ -22,6 +23,8 @@ class StereoMatcher final {
     bool bidirectional = false;
     bool subpixel_refinement = false;
   };
+
+  MACRO_DELETE_COPY_CONSTRUCTORS(StereoMatcher);
 
   // Construct with options.
   explicit StereoMatcher(const Options& opt) : opt_(opt) {}

@@ -3,6 +3,7 @@
 #include <vector>
 #include <unordered_map>
 
+#include "core/macros.hpp"
 #include "core/cv_types.hpp"
 #include "core/eigen_types.hpp"
 #include "core/uid.hpp"
@@ -78,6 +79,8 @@ class StereoFrontend final {
     Matrix4d T_prev_cur = Matrix4d::Identity();
     double avg_reproj_error = -1.0;
   };
+
+  MACRO_DELETE_COPY_CONSTRUCTORS(StereoFrontend);
 
   // Construct with options.
   explicit StereoFrontend(const Options& opt, const StereoCamera& stereo_rig);

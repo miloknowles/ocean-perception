@@ -2,6 +2,7 @@
 
 #include <opencv2/features2d.hpp>
 
+#include "core/macros.hpp"
 #include "core/cv_types.hpp"
 #include "core/eigen_types.hpp"
 
@@ -49,6 +50,8 @@ class FeatureDetector final {
     int subpix_maxiters = 10;
     float subpix_epsilon = 0.01;
   };
+
+  MACRO_DELETE_COPY_CONSTRUCTORS(FeatureDetector);
 
   // Construct with options.
   explicit FeatureDetector(const Options& opt);
