@@ -71,7 +71,10 @@ TEST(VioTest, TestViz1)
   viz.setViewerPose(cv::Affine3d::Identity().translate(cv::Vec3d(0, 0, -1)));
 
   // NOTE(milo): Q, q, E, e to exit the window.
-  viz.spin();
+  // viz.spin();
+  for (int i = 0; i < 1000; ++i) {
+    viz.spinOnce(5);
+  }
 
   LOG(INFO) << "Shutdown viz window" << std::endl;
 }
