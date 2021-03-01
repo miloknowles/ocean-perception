@@ -58,7 +58,7 @@ TEST(VioTest, TestStereoFrontendFarmsim)
       const double depth = stereo_rig.DispToDepth(disp);
       const Vector3d t_cam_lmk = camera_model.Backproject(Vector2d(lmk_obs.pixel_location.x, lmk_obs.pixel_location.y), depth);
       const Vector3d t_world_lmk = (T_world_lkf * result.T_prev_cur * MakeHomogeneous(t_cam_lmk)).head(3);
-      // viz_3d.AddOrUpdateLandmark(lmk_id, t_world_lmk);
+
       lmk_ids.at(i) = lmk_id;
       t_world_lmks.at(i) = t_world_lmk;
     }

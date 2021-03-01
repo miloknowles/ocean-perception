@@ -11,7 +11,7 @@ namespace vio {
 
 
 static const std::string kWidgetNameRealtime = "CAM_REALTIME_WIDGET";
-static const double kLandmarkSphereRadius = 0.02;
+static const double kLandmarkSphereRadius = 0.01;
 
 
 static std::string GetCameraPoseWidgetName(uid_t cam_id)
@@ -90,7 +90,7 @@ void Visualizer3D::AddOrUpdateLandmark(uid_t lmk_id, const Vector3d& t_world_lmk
 
   const cv::viz::WSphere widget_lmk(
     cv::Point3d(t_world_lmk.x(), t_world_lmk.y(), t_world_lmk.z()),
-    kLandmarkSphereRadius, 5, cv::viz::Color::white());
+    kLandmarkSphereRadius, 4, cv::viz::Color::white());
 
   viz_lock_.lock();
 
