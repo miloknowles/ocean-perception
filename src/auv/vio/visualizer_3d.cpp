@@ -84,25 +84,6 @@ void Visualizer3D::UpdateCameraPose(uid_t cam_id, const Matrix4d& T_world_cam)
 }
 
 
-void Visualizer3D::AddOrUpdateLandmark(uid_t lmk_id, const Vector3d& t_world_lmk)
-{
-  const std::string widget_name = GetLandmarkWidgetName(lmk_id);
-
-  const cv::viz::WSphere widget_lmk(
-    cv::Point3d(t_world_lmk.x(), t_world_lmk.y(), t_world_lmk.z()),
-    kLandmarkSphereRadius, 4, cv::viz::Color::white());
-
-  viz_lock_.lock();
-
-  if (widget_names_.count(widget_name) != 0) {
-    viz_.removeWidget(widget_name);
-  }
-
-  viz_.showWidget(widget_name, widget_lmk, cv::Affine3d::Identity());
-  viz_lock_.unlock();
-}
-
-
 void Visualizer3D::AddOrUpdateLandmark(const std::vector<uid_t>& lmk_ids, const std::vector<Vector3d>& t_world_lmks)
 {
   viz_lock_.lock();
@@ -116,13 +97,17 @@ void Visualizer3D::AddOrUpdateLandmark(const std::vector<uid_t>& lmk_ids, const 
     T_world_lmk.block<3, 1>(0, 3) = t_world_lmk;
     const cv::Affine3d T_world_lmk_cv = EigenMatrix4dToCvAffine3d(T_world_lmk);
 
-    if (widget_names_.count(widget_name) == 0) {
+    if (set_live_lmk_ids_.count(lmk_id) == 0) {
       const cv::viz::WSphere widget_lmk(cv::Point3d(0, 0, 0), kLandmarkSphereRadius, 5, cv::viz::Color::white());
       viz_.showWidget(widget_name, widget_lmk, T_world_lmk_cv);
+      set_live_lmk_ids_.insert(lmk_id);
+      queue_live_lmk_ids_.push(lmk_id);
     } else {
       viz_.updateWidgetPose(widget_name, T_world_lmk_cv);
     }
   }
+
+  RemoveOldLandmarks();
 
   viz_lock_.unlock();
 }
@@ -148,9 +133,19 @@ void Visualizer3D::Start()
 }
 
 
-void Visualizer3D::RedrawOnce()
+void Visualizer3D::RemoveOldLandmarks()
 {
+  // If too many landmarks, remove the oldest ones.
+  if (set_live_lmk_ids_.size() > opt_.max_stored_landmarks) {
+    const int num_to_erase = set_live_lmk_ids_.size() - opt_.max_stored_landmarks;
 
+    for (int i = 0; i < num_to_erase; ++i) {
+      const uid_t lmk_id_to_erase = queue_live_lmk_ids_.front();
+      viz_.removeWidget(GetLandmarkWidgetName(lmk_id_to_erase));
+      queue_live_lmk_ids_.pop();
+      set_live_lmk_ids_.erase(lmk_id_to_erase);
+    }
+  }
 }
 
 

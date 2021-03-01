@@ -19,7 +19,8 @@ SET(LIBRARY_SRC
   timestamp.hpp
   imu_measurement.hpp
   stereo_image.hpp
-  make_unique.hpp)
+  make_unique.hpp
+  fixed_queue.hpp)
 
 # NOTE(milo): This is how to debug the INCLUDE_DIRECTORIES if needed.
 # message("===================================================")
