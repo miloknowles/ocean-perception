@@ -10,6 +10,9 @@ namespace bm {
 namespace vio {
 
 
+static const std::string kWidgetNameRealtime = "CAM_REALTIME_WIDGET";
+
+
 static std::string GetCameraPoseWidgetName(uid_t cam_id)
 {
   return "cam_" + std::to_string(cam_id);
@@ -50,11 +53,11 @@ void Visualizer3D::AddCameraPose(uid_t cam_id, const Image1b& left_image, const 
 
   viz_lock_.lock();
 
-  if (widget_names_.count("cam_realtime") != 0) {
-    viz_.removeWidget("cam_realtime");
+  if (widget_names_.count(kWidgetNameRealtime) != 0) {
+    viz_.removeWidget(kWidgetNameRealtime);
   }
-  viz_.showWidget("cam_realtime", widget_realtime, T_world_cam_cv);
-  widget_names_.insert("cam_realtime");
+  viz_.showWidget(kWidgetNameRealtime, widget_realtime, T_world_cam_cv);
+  widget_names_.insert(kWidgetNameRealtime);
 
   // KEYFRAME CAMERA: If this is a keyframe, add a stereo camera frustum.
   if (is_keyframe) {
@@ -103,6 +106,9 @@ void Visualizer3D::Start()
   viz_.setFullScreen(true);
   viz_.setBackgroundColor(cv::viz::Color::black());
 
+  // Start the view behind the origin, with the same orientation as the first camera.
+  viz_.setViewerPose(cv::Affine3d::Identity().translate(cv::Vec3d(0, 0, -1)));
+
   redraw_thread_ = std::thread(&Visualizer3D::RedrawThread, this);
   LOG(INFO) << "Starting RedrawThread ..." << std::endl;
 }
@@ -122,7 +128,7 @@ void Visualizer3D::RedrawThread()
     viz_lock_.unlock();
 
     // NOTE(milo): Need to sleep for a bit to let other functions get the mutex.
-    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
   }
 
   LOG(INFO) << "Shutting down RedrawThread ..." << std::endl;
