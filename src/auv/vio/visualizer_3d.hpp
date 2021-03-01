@@ -1,6 +1,9 @@
 #pragma once
 
 #include <unordered_map>
+#include <unordered_set>
+#include <thread>
+#include <mutex>
 
 #include <opencv2/highgui.hpp>
 #include <opencv2/viz.hpp>
@@ -9,6 +12,8 @@
 #include "core/eigen_types.hpp"
 #include "core/cv_types.hpp"
 #include "core/uid.hpp"
+#include "core/pinhole_camera.hpp"
+#include "core/stereo_camera.hpp"
 #include "vio/landmark_observation.hpp"
 
 namespace bm {
@@ -52,6 +57,7 @@ class Visualizer3D final {
   MACRO_DELETE_COPY_CONSTRUCTORS(Visualizer3D);
 
   Visualizer3D(const Options& opt) : opt_(opt) {}
+  ~Visualizer3D();
 
   // Adds a new camera frustrum at the given pose. If the camera_id already exists, updates its
   // visualized pose. If left_image is not empty, it is shown inside of the camera frustum.
@@ -65,14 +71,28 @@ class Visualizer3D final {
   // Adds an observation of a point landmark from a camera image.
   void AddLandmarkObservation(uid_t cam_id, uid_t lmk_id, const LandmarkObservation& lmk_obs);
 
-  // Renders the 3D viewer window for a few milliseconds, during which time it responds to mouse
-  // and keyboard commands. This is a blocking call, so it should be kept short.
-  void SpinOnce(int ms, bool force_redraw);
+  // Starts thread that continuously redraws the 3D visualizer window.
+  // The thread is joined when this instance's destructor is called.
+  void Start();
+
+ private:
+  void RedrawOnce();
+  void RemoveOldWidgets();
+  void RedrawThread();
 
  private:
   Options opt_;
 
   cv::viz::Viz3d viz_;
+  std::mutex viz_lock_;
+  bool viz_needs_redraw_;
+  std::mutex lock_viz_needs_redraw_;
+  std::thread redraw_thread_;
+
+  std::unordered_set<std::string> widget_names_;
+
+  std::mutex lock_cam_data_;
+  std::mutex lock_lmk_data_;
 
   std::unordered_map<uid_t, CameraData> cam_data_;
   std::unordered_map<uid_t, LandmarkData> lmk_data_;

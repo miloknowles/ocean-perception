@@ -5,6 +5,11 @@
 #include <opencv2/highgui.hpp>
 #include <opencv2/viz.hpp>
 
+#include "vio/visualizer_3d.hpp"
+
+using namespace bm;
+using namespace vio;
+
 
 // https://answers.opencv.org/question/142473/how-can-i-register-a-keyboard-event-handier-for-opencv-viz/
 void ExampleKeyboardCallback(const cv::viz::KeyboardEvent &w, void *t)
@@ -73,8 +78,21 @@ TEST(VioTest, TestViz1)
   // NOTE(milo): Q, q, E, e to exit the window.
   // viz.spin();
   for (int i = 0; i < 1000; ++i) {
-    viz.spinOnce(5);
+    viz.spinOnce(5, false);
   }
 
   LOG(INFO) << "Shutdown viz window" << std::endl;
+}
+
+
+TEST(VioTest, TestVisualizer3D_01)
+{
+  Visualizer3D::Options opt;
+  Visualizer3D viz(opt);
+
+  viz.Start();
+
+  cv::Mat1b left_image = cv::imread("./resources/farmsim_01_left.png", cv::IMREAD_GRAYSCALE);
+
+  viz.AddCameraPose(0, left_image, Matrix4d::Identity(), true);
 }

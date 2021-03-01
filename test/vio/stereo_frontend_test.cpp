@@ -9,6 +9,7 @@
 #include "core/stereo_camera.hpp"
 #include "vio/stereo_frontend.hpp"
 #include "vio/visualization_2d.hpp"
+#include "vio/visualizer_3d.hpp"
 
 using namespace bm;
 using namespace core;
@@ -26,15 +27,25 @@ TEST(VioTest, TestStereoFrontendFarmsim)
   const StereoCamera stereo_rig(camera_model, 0.2);
   StereoFrontend stereo_frontend(opt, stereo_rig);
 
-  cv::namedWindow("StereoTracking", cv::WINDOW_AUTOSIZE);
+  // cv::namedWindow("StereoTracking", cv::WINDOW_AUTOSIZE);
+
+  Visualizer3D::Options viz_3d_opt;
+  Visualizer3D viz_3d(viz_3d_opt);
+  viz_3d.Start();
+
+  Matrix4d T_world_cam = Matrix4d::Identity();
 
   dataset::StereoCallback callback = [&](const StereoImage& stereo_data)
   {
     Matrix4d T_prev_cur_prior = Matrix4d::Identity();
     const StereoFrontend::Result& result = stereo_frontend.Track(stereo_data, T_prev_cur_prior);
     const Image3b viz = stereo_frontend.VisualizeFeatureTracks();
-    cv::imshow("StereoTracking", viz);
-    cv::waitKey(1);
+    // cv::imshow("StereoTracking", viz);
+    // cv::waitKey(1);
+
+    T_world_cam = T_world_cam * result.T_prev_cur;
+
+    viz_3d.AddCameraPose(result.camera_id, stereo_data.left_image, T_world_cam, result.is_keyframe);
   };
 
   dataset.RegisterStereoCallback(callback);
