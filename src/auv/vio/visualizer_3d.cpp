@@ -158,11 +158,11 @@ void Visualizer3D::RedrawThread()
 {
   while (!viz_.wasStopped()) {
     viz_lock_.lock();
-    viz_.spinOnce(1, true);
+    viz_.spinOnce(1, false);
     viz_lock_.unlock();
 
     // NOTE(milo): Need to sleep for a bit to let other functions get the mutex.
-    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
   }
 
   LOG(INFO) << "Shutting down RedrawThread ..." << std::endl;
