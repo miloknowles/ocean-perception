@@ -23,8 +23,8 @@ using namespace core;
 enum DataSource { STEREO, IMU };
 
 // Callback function signatures.
-typedef std::function<void(StereoImage)> StereoCallback;
-typedef std::function<void(ImuMeasurement)> ImuCallback;
+typedef std::function<void(const StereoImage&)> StereoCallback;
+typedef std::function<void(const ImuMeasurement&)> ImuCallback;
 
 
 // Represents a stereo image pair stored on disk.

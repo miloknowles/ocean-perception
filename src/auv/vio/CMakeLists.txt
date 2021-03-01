@@ -16,7 +16,9 @@ SET(LIBRARY_SRC
   stereo_frontend.cpp
   stereo_frontend.hpp
   visualizer_3d.cpp
-  visualizer_3d.hpp)
+  visualizer_3d.hpp
+  state_estimator.cpp
+  state_estimator.hpp)
 
 add_library(${LIBRARY_NAME} SHARED ${LIBRARY_SRC})
 set_target_properties(${LIBRARY_NAME} PROPERTIES LINKER_LANGUAGE CXX)

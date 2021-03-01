@@ -17,7 +17,8 @@ set(TEST_SOURCES
   vio/feature_tracker_test.cpp
   vio/stereo_matcher_test.cpp
   vio/stereo_frontend_test.cpp
-  vio/viz_test.cpp)
+  vio/viz_test.cpp
+  vio/state_estimator_test.cpp)
 
 # Add one big executable with all of the tests. Filter for specific tests with:
 # --gtest_filter=TestModuleName.UnitTestName.
