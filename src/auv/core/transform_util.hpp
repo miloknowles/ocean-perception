@@ -48,5 +48,21 @@ inline Matrix3d RelativeRotation(const Matrix3d& R_w_0, const Matrix3d& R_w_1)
 }
 
 
+inline Vector4d MakeHomogeneous(const Vector3d& vec)
+{
+  Vector4d out = Vector4d::Ones();
+  out.head(3) = vec;
+  return out;
+}
+
+
+inline Vector3d MakeHomogeneous(const Vector2d& vec)
+{
+  Vector3d out = Vector3d::Ones();
+  out.head(2) = vec;
+  return out;
+}
+
+
 }
 }

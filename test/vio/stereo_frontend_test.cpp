@@ -7,8 +7,11 @@
 #include "dataset/euroc_dataset.hpp"
 #include "core/pinhole_camera.hpp"
 #include "core/stereo_camera.hpp"
+#include "core/uid.hpp"
+#include "core/transform_util.hpp"
 #include "vio/stereo_frontend.hpp"
 #include "vio/visualization_2d.hpp"
+#include "vio/visualizer_3d.hpp"
 
 using namespace bm;
 using namespace core;
@@ -28,6 +31,12 @@ TEST(VioTest, TestStereoFrontendFarmsim)
 
   cv::namedWindow("StereoTracking", cv::WINDOW_AUTOSIZE);
 
+  Visualizer3D::Options viz_3d_opt;
+  Visualizer3D viz_3d(viz_3d_opt);
+  viz_3d.Start();
+
+  Matrix4d T_world_lkf = Matrix4d::Identity();
+
   dataset::StereoCallback callback = [&](const StereoImage& stereo_data)
   {
     Matrix4d T_prev_cur_prior = Matrix4d::Identity();
@@ -35,6 +44,30 @@ TEST(VioTest, TestStereoFrontendFarmsim)
     const Image3b viz = stereo_frontend.VisualizeFeatureTracks();
     cv::imshow("StereoTracking", viz);
     cv::waitKey(1);
+
+    // NOTE(milo): Remember that T_prev_cur is the pose of the current camera in the last keyframe!
+    viz_3d.AddCameraPose(result.camera_id, stereo_data.left_image, T_world_lkf * result.T_prev_cur, result.is_keyframe);
+
+    std::vector<core::uid_t> lmk_ids(result.observations.size());
+    std::vector<Vector3d> t_world_lmks(result.observations.size());
+
+    for (size_t i = 0; i < result.observations.size(); ++i) {
+      const LandmarkObservation& lmk_obs = result.observations.at(i);
+      const core::uid_t lmk_id = lmk_obs.landmark_id;
+      const double disp = lmk_obs.disparity;
+      const double depth = stereo_rig.DispToDepth(disp);
+      const Vector3d t_cam_lmk = camera_model.Backproject(Vector2d(lmk_obs.pixel_location.x, lmk_obs.pixel_location.y), depth);
+      const Vector3d t_world_lmk = (T_world_lkf * result.T_prev_cur * MakeHomogeneous(t_cam_lmk)).head(3);
+
+      lmk_ids.at(i) = lmk_id;
+      t_world_lmks.at(i) = t_world_lmk;
+    }
+
+    viz_3d.AddOrUpdateLandmark(lmk_ids, t_world_lmks);
+
+    if (result.is_keyframe) {
+      T_world_lkf = T_world_lkf * result.T_prev_cur;
+    }
   };
 
   dataset.RegisterStereoCallback(callback);

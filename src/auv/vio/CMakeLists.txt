@@ -14,7 +14,9 @@ SET(LIBRARY_SRC
   optimize_odometry.cpp
   optimize_odometry.hpp
   stereo_frontend.cpp
-  stereo_frontend.hpp)
+  stereo_frontend.hpp
+  visualizer_3d.cpp
+  visualizer_3d.hpp)
 
 add_library(${LIBRARY_NAME} SHARED ${LIBRARY_SRC})
 set_target_properties(${LIBRARY_NAME} PROPERTIES LINKER_LANGUAGE CXX)
