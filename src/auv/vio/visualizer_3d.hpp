@@ -31,30 +31,6 @@ class Visualizer3D final {
     double stereo_baseline = 0.2;
   };
 
-  struct CameraData final
-  {
-    CameraData(uid_t cam_id, const Image1b& left_image, const Matrix4d& T_world_cam, bool is_keyframe)
-        : camera_id(cam_id),
-          left_image(left_image),
-          T_world_cam(T_world_cam),
-          is_keyframe(is_keyframe) {}
-
-    uid_t camera_id;
-    Image1b left_image;
-    Matrix4d T_world_cam;
-    bool is_keyframe;
-  };
-
-  struct LandmarkData final
-  {
-    LandmarkData(uid_t lmk_id, const Vector3d& t_world_lmk)
-        : landmark_id(lmk_id), t_world_lmk(t_world_lmk) {}
-
-    uid_t landmark_id;
-    Vector3d t_world_lmk;
-    std::vector<uid_t> obs_cam_ids;
-  };
-
   MACRO_DELETE_COPY_CONSTRUCTORS(Visualizer3D);
 
   Visualizer3D(const Options& opt) : opt_(opt) {}
@@ -93,12 +69,6 @@ class Visualizer3D final {
   std::thread redraw_thread_;
 
   std::unordered_set<std::string> widget_names_;
-
-  // std::mutex lock_cam_data_;
-  // std::mutex lock_lmk_data_;
-
-  std::unordered_map<uid_t, CameraData> cam_data_;
-  std::unordered_map<uid_t, LandmarkData> lmk_data_;
 };
 
 }
