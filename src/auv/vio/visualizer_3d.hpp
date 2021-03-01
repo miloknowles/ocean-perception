@@ -2,9 +2,11 @@
 
 #include <unordered_map>
 #include <unordered_set>
+#include <set>
 #include <vector>
 #include <thread>
 #include <mutex>
+#include <queue>
 
 #include <opencv2/highgui.hpp>
 #include <opencv2/viz.hpp>
@@ -15,6 +17,7 @@
 #include "core/uid.hpp"
 #include "core/pinhole_camera.hpp"
 #include "core/stereo_camera.hpp"
+#include "core/fixed_queue.hpp"
 #include "vio/landmark_observation.hpp"
 
 namespace bm {
@@ -28,6 +31,7 @@ class Visualizer3D final {
     Options() = default;
 
     int store_last_k_poses = 100;
+    int max_stored_landmarks = 1000;
     double stereo_baseline = 0.2;
   };
 
@@ -41,10 +45,7 @@ class Visualizer3D final {
   void AddCameraPose(uid_t cam_id, const Image1b& left_image, const Matrix4d& T_world_cam, bool is_keyframe);
   void UpdateCameraPose(uid_t cam_id, const Matrix4d& T_world_cam);
 
-  // Adds a point landmark at a point in the world. If the lmk_id already exists, updates its
-  // visualized location.
-  // NOTE(milo): Prefer the vectorized version of this function - it will be much faster.
-  void AddOrUpdateLandmark(uid_t lmk_id, const Vector3d& t_world_lmk);
+  // Adds a 3D landmark at a point in the world. If the lmk_id already exists, updates its location.
   void AddOrUpdateLandmark(const std::vector<uid_t>& lmk_ids, const std::vector<Vector3d>& t_world_lmks);
 
   // Adds an observation of a point landmark from a camera image.
@@ -55,8 +56,7 @@ class Visualizer3D final {
   void Start();
 
  private:
-  void RedrawOnce();
-  void RemoveOldWidgets();
+  void RemoveOldLandmarks();  // Ensures that max number of landmarks isn't exceeded.
   void RedrawThread();
 
  private:
@@ -65,10 +65,13 @@ class Visualizer3D final {
   cv::viz::Viz3d viz_;
   std::mutex viz_lock_;
   bool viz_needs_redraw_;
-  // std::mutex lock_viz_needs_redraw_;
   std::thread redraw_thread_;
 
   std::unordered_set<std::string> widget_names_;
+
+  // TODO(milo): Make a more elegant solution for landmark bookkeeping.
+  std::queue<uid_t> queue_live_lmk_ids_;
+  std::unordered_set<uid_t> set_live_lmk_ids_;
 };
 
 }
