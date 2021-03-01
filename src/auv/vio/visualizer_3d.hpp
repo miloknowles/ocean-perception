@@ -68,10 +68,10 @@ class Visualizer3D final {
   std::thread redraw_thread_;
 
   std::unordered_set<std::string> widget_names_;
-  // std::set<uid_t> live_lmk_ids_;
+
+  // TODO(milo): Make a more elegant solution for landmark bookkeeping.
   std::queue<uid_t> queue_live_lmk_ids_;
   std::unordered_set<uid_t> set_live_lmk_ids_;
-  // FixedQueue<uid_t, 1000> live_lmk_ids_;
 };
 
 }

@@ -84,8 +84,12 @@ TEST(VioTest, TestFrontendHimb)
 
   StereoFrontend::Options opt;
 
-  const PinholeCamera camera_model(415.876509, 415.876509, 322.0, 257.0, 515, 645);
-  const StereoCamera stereo_rig(camera_model, 0.2);
+  // https://github.com/kskin/data/issues/2
+  // The image provided are rectified. For converting disparity to depth, I
+  // believe the focal length is 952.58 and the baseline between the cameras is
+  // 0.1939 m for both HIMB datasets.
+  const PinholeCamera camera_model(952.58, 952.58, 322.0, 257.0, 515, 645);
+  const StereoCamera stereo_rig(camera_model, 0.1939);
   StereoFrontend stereo_frontend(opt, stereo_rig);
 
   cv::namedWindow("StereoTracking", cv::WINDOW_AUTOSIZE);
@@ -130,7 +134,7 @@ TEST(VioTest, TestFrontendHimb)
   };
 
   dataset.RegisterStereoCallback(callback);
-  dataset.Playback(5.0f, false);
+  dataset.Playback(50.0f, false);
   LOG(INFO) << "DONE" << std::endl;
 }
 
