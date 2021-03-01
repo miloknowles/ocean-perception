@@ -8,7 +8,7 @@ using namespace core;
 using namespace dataset;
 
 
-TEST(DatasetTest, TestEurocProvider)
+TEST(DatasetTest, TestEurocDataset)
 {
   // const std::string toplevel_folder = "/home/milo/datasets/euroc/V1_01_EASY";
   const std::string toplevel_folder = "/home/milo/datasets/Unity3D/farmsim/euroc_test1";

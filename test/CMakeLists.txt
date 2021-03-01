@@ -4,7 +4,7 @@ set(TEST_SOURCES
   core/stereo_camera_test.cpp
   core/grid_lookup_test.cpp
   core/math_util_test.cpp
-  dataset/euroc_provider_test.cpp
+  dataset/euroc_dataset_test.cpp
   dataset/himb_dataset_test.cpp
   vo/feature_matching_test.cpp
   vo/point_detector_test.cpp
