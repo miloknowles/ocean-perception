@@ -11,6 +11,7 @@ namespace vio {
 
 
 static const std::string kWidgetNameRealtime = "CAM_REALTIME_WIDGET";
+static const double kLandmarkSphereRadius = 0.02;
 
 
 static std::string GetCameraPoseWidgetName(uid_t cam_id)
@@ -62,8 +63,10 @@ void Visualizer3D::AddCameraPose(uid_t cam_id, const Image1b& left_image, const 
   // KEYFRAME CAMERA: If this is a keyframe, add a stereo camera frustum.
   if (is_keyframe) {
     const std::string widget_name = GetCameraPoseWidgetName(cam_id);
+    CHECK(widget_names_.count(widget_name) == 0) << "Trying to add existing cam_id: " << widget_name << std::endl;
     cv::viz::WCameraPosition widget_keyframe(K, 1.0, cv::viz::Color::blue());
     viz_.showWidget(widget_name, widget_keyframe, T_world_cam_cv);
+    widget_names_.insert(widget_name);
   }
 
   viz_lock_.unlock();
@@ -88,7 +91,47 @@ void Visualizer3D::UpdateCameraPose(uid_t cam_id, const Matrix4d& T_world_cam)
 
 void Visualizer3D::AddOrUpdateLandmark(uid_t lmk_id, const Vector3d& t_world_lmk)
 {
-  lmk_data_.emplace(lmk_id, Visualizer3D::LandmarkData(lmk_id, t_world_lmk));
+  // lmk_data_.emplace(lmk_id, Visualizer3D::LandmarkData(lmk_id, t_world_lmk));
+
+  const std::string widget_name = GetLandmarkWidgetName(lmk_id);
+
+  const cv::viz::WSphere widget_lmk(
+    cv::Point3d(t_world_lmk.x(), t_world_lmk.y(), t_world_lmk.z()),
+    kLandmarkSphereRadius, 5, cv::viz::Color::white());
+
+  viz_lock_.lock();
+
+  if (widget_names_.count(widget_name) != 0) {
+    viz_.removeWidget(widget_name);
+  }
+
+  viz_.showWidget(widget_name, widget_lmk, cv::Affine3d::Identity());
+  viz_lock_.unlock();
+}
+
+
+void Visualizer3D::AddOrUpdateLandmark(const std::vector<uid_t>& lmk_ids, const std::vector<Vector3d>& t_world_lmks)
+{
+  viz_lock_.lock();
+
+  for (size_t i = 0; i < lmk_ids.size(); ++i) {
+    const uid_t lmk_id = lmk_ids.at(i);
+    const Vector3d& t_world_lmk = t_world_lmks.at(i);
+    const std::string widget_name = GetLandmarkWidgetName(lmk_id);
+
+    Matrix4d T_world_lmk = Matrix4d::Identity();
+    T_world_lmk.block<3, 1>(0, 3) = t_world_lmk;
+    const cv::Affine3d T_world_lmk_cv = EigenMatrix4dToCvAffine3d(T_world_lmk);
+
+    if (widget_names_.count(widget_name) == 0) {
+      const cv::viz::WSphere widget_lmk(cv::Point3d(0, 0, 0), kLandmarkSphereRadius, 5, cv::viz::Color::white());
+      viz_.showWidget(widget_name, widget_lmk, T_world_lmk_cv);
+    } else {
+      viz_.updateWidgetPose(widget_name, T_world_lmk_cv);
+    }
+  }
+
+  viz_lock_.unlock();
 }
 
 
@@ -103,11 +146,11 @@ void Visualizer3D::Start()
 {
   // Set up visualizer window.
   viz_.showWidget("world_origin", cv::viz::WCameraPosition());
-  viz_.setFullScreen(true);
+  viz_.setFullScreen(false);
   viz_.setBackgroundColor(cv::viz::Color::black());
 
   // Start the view behind the origin, with the same orientation as the first camera.
-  viz_.setViewerPose(cv::Affine3d::Identity().translate(cv::Vec3d(0, 0, -1)));
+  viz_.setViewerPose(cv::Affine3d::Identity().translate(cv::Vec3d(0, 0, -5)));
 
   redraw_thread_ = std::thread(&Visualizer3D::RedrawThread, this);
   LOG(INFO) << "Starting RedrawThread ..." << std::endl;
@@ -124,7 +167,7 @@ void Visualizer3D::RedrawThread()
 {
   while (!viz_.wasStopped()) {
     viz_lock_.lock();
-    viz_.spinOnce(5, true);
+    viz_.spinOnce(1, true);
     viz_lock_.unlock();
 
     // NOTE(milo): Need to sleep for a bit to let other functions get the mutex.

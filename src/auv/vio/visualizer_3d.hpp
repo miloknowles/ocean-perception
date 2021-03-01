@@ -2,6 +2,7 @@
 
 #include <unordered_map>
 #include <unordered_set>
+#include <vector>
 #include <thread>
 #include <mutex>
 
@@ -66,7 +67,9 @@ class Visualizer3D final {
 
   // Adds a point landmark at a point in the world. If the lmk_id already exists, updates its
   // visualized location.
+  // NOTE(milo): Prefer the vectorized version of this function - it will be much faster.
   void AddOrUpdateLandmark(uid_t lmk_id, const Vector3d& t_world_lmk);
+  void AddOrUpdateLandmark(const std::vector<uid_t>& lmk_ids, const std::vector<Vector3d>& t_world_lmks);
 
   // Adds an observation of a point landmark from a camera image.
   void AddLandmarkObservation(uid_t cam_id, uid_t lmk_id, const LandmarkObservation& lmk_obs);
@@ -86,13 +89,13 @@ class Visualizer3D final {
   cv::viz::Viz3d viz_;
   std::mutex viz_lock_;
   bool viz_needs_redraw_;
-  std::mutex lock_viz_needs_redraw_;
+  // std::mutex lock_viz_needs_redraw_;
   std::thread redraw_thread_;
 
   std::unordered_set<std::string> widget_names_;
 
-  std::mutex lock_cam_data_;
-  std::mutex lock_lmk_data_;
+  // std::mutex lock_cam_data_;
+  // std::mutex lock_lmk_data_;
 
   std::unordered_map<uid_t, CameraData> cam_data_;
   std::unordered_map<uid_t, LandmarkData> lmk_data_;
