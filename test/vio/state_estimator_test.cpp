@@ -26,14 +26,11 @@ TEST(VioTest, TestStateEstimator)
   const std::string toplevel_folder = "/home/milo/datasets/Unity3D/farmsim/euroc_test1";
   dataset::EurocDataset dataset(toplevel_folder);
 
-  // StereoFrontend::Options opt;
-
-  // const PinholeCamera camera_model(415.876509, 415.876509, 375.5, 239.5, 480, 752);
-  // const StereoCamera stereo_rig(camera_model, 0.2);
-  // StereoFrontend stereo_frontend(opt, stereo_rig);
+  const PinholeCamera camera_model(415.876509, 415.876509, 375.5, 239.5, 480, 752);
+  const StereoCamera stereo_rig(camera_model, 0.2);
 
   StateEstimator::Options opt;
-  StateEstimator state_estimator(opt);
+  StateEstimator state_estimator(opt, stereo_rig);
 
   Matrix4d T_world_lkf = Matrix4d::Identity();
 

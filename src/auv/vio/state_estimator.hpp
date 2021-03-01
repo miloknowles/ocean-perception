@@ -9,7 +9,6 @@
 #include "core/thread_safe_queue.hpp"
 #include "core/stereo_image.hpp"
 #include "core/imu_measurement.hpp"
-
 #include "vio/stereo_frontend.hpp"
 
 namespace bm {
@@ -24,13 +23,15 @@ class StateEstimator final {
   {
     Options() = default;
 
+    StereoFrontend::Options stereo_frontend_options;
+
     int max_queue_size_stereo = 10;
     int max_queue_size_imu = 1000;
   };
 
   MACRO_DELETE_COPY_CONSTRUCTORS(StateEstimator);
 
-  StateEstimator(const Options& opt);
+  StateEstimator(const Options& opt, const StereoCamera& stereo_rig);
 
   void ReceiveStereo(const StereoImage& stereo_pair);
   void ReceiveImu(const ImuMeasurement& imu_data);
@@ -40,6 +41,8 @@ class StateEstimator final {
 
  private:
   Options opt_;
+
+  StereoFrontend stereo_frontend_;
 
   ThreadsafeQueue<StereoImage> sf_in_queue_;
   ThreadsafeQueue<StereoFrontend::Result> sf_out_queue_;
