@@ -7,7 +7,9 @@ SET(LIBRARY_SRC
   data_provider.cpp
   data_provider.hpp
   euroc_dataset.cpp
-  euroc_dataset.hpp)
+  euroc_dataset.hpp
+  himb_dataset.cpp
+  himb_dataset.hpp)
 
 add_library(${LIBRARY_NAME} SHARED ${LIBRARY_SRC})
 set_target_properties(${LIBRARY_NAME} PROPERTIES LINKER_LANGUAGE CXX)

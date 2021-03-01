@@ -5,6 +5,7 @@ set(TEST_SOURCES
   core/grid_lookup_test.cpp
   core/math_util_test.cpp
   dataset/euroc_provider_test.cpp
+  dataset/himb_dataset_test.cpp
   vo/feature_matching_test.cpp
   vo/point_detector_test.cpp
   vo/line_detector_test.cpp
