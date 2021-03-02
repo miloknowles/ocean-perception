@@ -32,9 +32,16 @@ TEST(VioTest, TestStateEstimator)
   StateEstimator::Options opt;
   StateEstimator state_estimator(opt, stereo_rig);
 
-  Matrix4d T_world_lkf = Matrix4d::Identity();
+  // Matrix4d T_world_lkf = Matrix4d::Identity();
 
   dataset.RegisterStereoCallback(std::bind(&StateEstimator::ReceiveStereo, &state_estimator, std::placeholders::_1));
-  dataset.Playback(10.0f, false);
+  // dataset.Playback(10.0f, false);
+
+  for (int i = 0; i < 100; ++i) {
+    dataset.Step();
+  }
+
+  state_estimator.BlockUntilFinished();
+
   LOG(INFO) << "DONE" << std::endl;
 }

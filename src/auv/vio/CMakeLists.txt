@@ -34,4 +34,5 @@ target_link_libraries(${LIBRARY_NAME}
   ${OpenCV_LIBS}
   ${GLOG_LIBRARIES}
   Boost::boost
-  gtsam)
+  gtsam
+  gtsam_unstable)

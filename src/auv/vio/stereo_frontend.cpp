@@ -148,10 +148,6 @@ StereoFrontend::Result StereoFrontend::Track(const StereoImage& stereo_pair,
                            (int)(stereo_pair.camera_id - prev_keyframe_id_) >= opt_.trigger_keyframe_k;
   result.is_keyframe = is_keyframe;
 
-  // Do stereo matching for live tracks AND newly detection keypoints.
-  std::vector<uid_t> all_lmk_ids;
-  VecPoint2f all_lmk_pts;
-
   //===================== KEYFRAME POSE ESTIMATION =============================
   // If this is a new keyframe, (maybe) detect new keypoints in the image.
   if (is_keyframe) {
@@ -178,6 +174,7 @@ StereoFrontend::Result StereoFrontend::Track(const StereoImage& stereo_pair,
       const double disp = new_lmk_disps.at(i);
 
       // NOTE(milo): For now, we consider a track invalid if we can't triangulate w/ stereo.
+      // TODO(milo): Add monocular measurements also, since the backend can handle them.
       const double min_disp = stereo_rig_.DepthToDisp(opt_.stereo_max_depth);
       if (disp <= min_disp) {
         continue;
@@ -192,7 +189,7 @@ StereoFrontend::Result StereoFrontend::Track(const StereoImage& stereo_pair,
       const LandmarkObservation lmk_obs(lmk_id, stereo_pair.camera_id, pt, disp, 0.0, 0.0);
       live_tracks_.at(lmk_id).emplace_back(lmk_obs);
 
-      result.observations.emplace_back(lmk_obs);
+      result.lmk_obs.emplace_back(lmk_obs);
     }
 
     prev_keyframe_id_ = stereo_pair.camera_id;
@@ -252,6 +249,8 @@ StereoFrontend::Result StereoFrontend::Track(const StereoImage& stereo_pair,
   prev_camera_id_ = stereo_pair.camera_id;
 
   // FAILURE: If too few points for effective odometry estimate, return.
+  // NOTE(milo): This flag will be set for the FIRST image, since no features are tracked upon
+  // initialization.
   if (good_lmk_pts.size() < 6) {
     result.status |= StereoFrontend::Status::FEW_TRACKED_FEATURES;
     return result;
@@ -281,6 +280,7 @@ StereoFrontend::Result StereoFrontend::Track(const StereoImage& stereo_pair,
 
   // Returning -1 indicates an error in LM optimization.
   if (iters < 0 || result.avg_reprojection_err > opt_.max_avg_reprojection_error) {
+    LOG(WARNING) << "LM optimization failed. iters=" << iters << " avg_reprojection_err=" << result.avg_reprojection_err << std::endl;
     result.status |= StereoFrontend::Status::ODOM_ESTIMATION_FAILED;
   }
   result.T_lkf_cam = T_cur_lkf_.inverse();
