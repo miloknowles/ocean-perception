@@ -263,28 +263,26 @@ StereoFrontend::Result StereoFrontend::Track(const StereoImage& stereo_pair,
 
   std::vector<int> lm_inlier_indices, lm_outlier_indices;
 
-  const int iters = OptimizeOdometryIterative(p_prev_3d_list,
-                        p_cur_2d_list,
-                        p_cur_sigma_list,
-                        stereo_rig_,
-                        T_cur_lkf_,
-                        C_cur_lkf,
-                        result.avg_reproj_error,
-                        lm_inlier_indices,
-                        lm_outlier_indices,
-                        20,
-                        1e-3,
-                        1e-6,
-                        3.0);
+  const int iters = OptimizeOdometryIterative(
+      p_prev_3d_list,
+      p_cur_2d_list,
+      p_cur_sigma_list,
+      stereo_rig_,
+      T_cur_lkf_,
+      C_cur_lkf,
+      result.avg_reprojection_err,
+      lm_inlier_indices,
+      lm_outlier_indices,
+      20,
+      1e-3,
+      1e-6,
+      3.0);
 
   // Returning -1 indicates an error in LM optimization.
-  if (iters < 0 || result.avg_reproj_error > opt_.max_avg_reprojection_error) {
+  if (iters < 0 || result.avg_reprojection_err > opt_.max_avg_reprojection_error) {
     result.status |= StereoFrontend::Status::ODOM_ESTIMATION_FAILED;
   }
-  result.T_prev_cur = T_cur_lkf_.inverse();
-
-  std::cout << result.T_prev_cur << std::endl;
-  std::cout << result.avg_reproj_error << std::endl;
+  result.T_lkf_cam = T_cur_lkf_.inverse();
 
   if (is_keyframe) {
     T_cur_lkf_ = Matrix4d::Identity();

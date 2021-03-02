@@ -27,7 +27,8 @@ typedef std::unordered_map<uid_t, VecLandmarkObservation> FeatureTracks;
 class StereoFrontend final {
  public:
   // Parameters that control the frontend.
-  struct Options final {
+  struct Options final
+  {
     Options() = default;
 
     // TODO(milo): Figure out how to parse this within the YAML hierarchy.
@@ -65,19 +66,20 @@ class StereoFrontend final {
   };
 
   // Result from tracking points from previous stereo frames into the current one.
-  struct Result final {
+  struct Result final
+  {
     explicit Result(timestamp_t timestamp,
                     uid_t camera_id)
         : timestamp(timestamp),
           camera_id(camera_id) {}
 
-    bool is_keyframe = false;
-    int status = 0;
-    timestamp_t timestamp;
+    bool is_keyframe = false;                         // Did this image trigger a keyframe?
+    int status = 0;                                   // Contains several flags about parts of the VO pipeline.
+    timestamp_t timestamp;                            // Timestamp of the image with camera_id.
     uid_t camera_id;
-    std::vector<LandmarkObservation> observations;
-    Matrix4d T_prev_cur = Matrix4d::Identity();
-    double avg_reproj_error = -1.0;
+    std::vector<LandmarkObservation> lmk_obs;         // List of landmarks observed in this image.
+    Matrix4d T_lkf_cam = Matrix4d::Identity();        // Pose of the camera in the last kf frame.
+    double avg_reprojection_err = -1.0;               // Avg. error after LM pose optimization.
   };
 
   MACRO_DELETE_COPY_CONSTRUCTORS(StereoFrontend);

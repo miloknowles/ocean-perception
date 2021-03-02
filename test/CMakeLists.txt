@@ -18,7 +18,8 @@ set(TEST_SOURCES
   vio/stereo_matcher_test.cpp
   vio/stereo_frontend_test.cpp
   vio/viz_test.cpp
-  vio/state_estimator_test.cpp)
+  vio/state_estimator_test.cpp
+  vio/backend_test.cpp)
 
 # Add one big executable with all of the tests. Filter for specific tests with:
 # --gtest_filter=TestModuleName.UnitTestName.
@@ -37,7 +38,9 @@ target_link_libraries(${TEST_EXECUTABLE_NAME}
   ${PROJECT_NAME}_imaging
   ${PROJECT_NAME}_stereo_matching
   ${OpenCV_LIBRARIES}
-  ${OpenCV_LIBS})
+  ${OpenCV_LIBS}
+  gtsam
+  gtsam_unstable)
 
 add_test(NAME ${TEST_EXECUTABLE_NAME} COMMAND ${TEST_EXECUTABLE_NAME} --gtest_color=yes)
 

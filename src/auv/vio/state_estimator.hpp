@@ -45,6 +45,7 @@ class StateEstimator final {
 
   // Thread-safe update to the nav state (with mutex).
   void UpdateNavState(const StateEstimate3D& nav_state);
+  StateEstimate3D StateEstimator::GetNavState();
 
  private:
   Options opt_;
@@ -59,7 +60,16 @@ class StateEstimator final {
   std::thread stereo_frontend_thread_;
   std::thread backend_solver_thread_;
 
+  std::mutex lkf_isam_lock_;
+  uid_t cam_id_lkf_isam_ = 0;
+  Matrix4d T_world_lkf_isam_ = Matrix4d::Identity();  // Pose of the last keyframe solved by iSAM.
+
+  std::mutex lkf_frontend_lock_;
+  uid_t cam_id_last_frontend_result_ = 0;
+  timestamp_t timestamp_last_frontend_result_ = 0;
   Matrix4d T_world_lkf_ = Matrix4d::Identity();
+  Matrix4d T_world_cam_ = Matrix4d::Identity();
+
   StateEstimate3D nav_state_;
   std::mutex nav_state_lock_;
 
