@@ -3,6 +3,7 @@ SET(LIBRARY_NAME ${PROJECT_NAME}_vio)
 
 SET(LIBRARY_SRC
   landmark_observation.hpp
+  state_estimate_3d.hpp
   feature_detector.cpp
   feature_detector.hpp
   feature_tracker.cpp
@@ -31,4 +32,6 @@ target_link_libraries(${LIBRARY_NAME}
   ${Boost_LIBRARIES}
   ${OpenCV_LIBRARIES}
   ${OpenCV_LIBS}
-  ${GLOG_LIBRARIES})
+  ${GLOG_LIBRARIES}
+  Boost::boost
+  gtsam)
