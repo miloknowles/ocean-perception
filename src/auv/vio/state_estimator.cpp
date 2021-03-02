@@ -4,6 +4,7 @@
 #include <gtsam/geometry/Pose3.h>
 
 #include "vio/state_estimator.hpp"
+#include "core/timer.hpp"
 
 
 namespace bm {
@@ -86,127 +87,43 @@ void StateEstimator::StereoFrontendLoop()
 }
 
 
+bool StateEstimator::WaitForResultOrTimeout(double timeout_sec)
+{
+  double elapsed = 0;
+  while (sf_out_queue_.Empty() && elapsed < timeout_sec) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    elapsed += 0.1;
+  }
+
+  return elapsed >= timeout_sec;
+}
+
+
 void StateEstimator::BackendSolverLoop()
 {
   LOG(INFO) << "Started up BackendSolverLoop() thread" << std::endl;
 
+  Timer keyframe_timer(true);
+
   while (!is_shutdown_) {
-    // For now, wait until visual odometry measurements are available.
-    // TODO(milo): Add "ghost" keyframes eventually to deal with no vision case.
-    while (sf_out_queue_.Empty()) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    }
+    // If > 5 sec have gone by without a stereo frontend result, create a "ghost" keyframe.
+    const bool did_timeout = WaitForResultOrTimeout(opt_.max_sec_btw_keyframes);
 
-    gtsam::NonlinearFactorGraph new_factors;
-    gtsam::Values new_values;
-    gtsam::FixedLagSmoother::KeyTimestampMap new_timestamps;
+    // If no frontend results were received, create a visionless keyframe.
+    if (did_timeout) {
+      AddVisionlessKeyframe();
+      keyframe_timer.Reset();
 
-    //================================ PROCESS VISUAL ODOMETRY =====================================
-    lkf_frontend_lock_.lock();
-    while (!sf_out_queue_.Empty()) {
-      const StereoFrontend::Result& stereo_frontend_result = sf_out_queue_.Pop();
-      LOG(INFO) << "Processing StereoFrontendResult cam_id=" << stereo_frontend_result.camera_id << std::endl;
+    // If a frontend result was received, (maybe) update the factor graph.
+    } else {
+      const bool vision_ok = ProcessStereoFrontendResults();
 
-      const bool vision_failed = (stereo_frontend_result.status & StereoFrontend::Status::ODOM_ESTIMATION_FAILED) ||
-                                 (stereo_frontend_result.status & StereoFrontend::Status::FEW_TRACKED_FEATURES);
-
-      if (vision_failed) {
-        LOG(INFO) << "Vision measurement unreliable, skipping" << std::endl;
-        continue;
-      }
-
-      // KEYFRAME: If this image is a keyframe, add it to the factor graph.
-      if (stereo_frontend_result.is_keyframe) {
-        // Update the stored camera pose right away (avoid waiting for iSAM solver).
-        cam_id_last_frontend_result_ = stereo_frontend_result.camera_id;
-        timestamp_last_frontend_result_ = stereo_frontend_result.timestamp;
-        T_world_lkf_ = T_world_lkf_ * stereo_frontend_result.T_lkf_cam;
-        T_world_cam_ = T_world_lkf_;
-
-        cam_id_lkf_isam_ = stereo_frontend_result.camera_id;
-
-        //================================ iSAM2 FACTOR GRAPH  =====================================
-        // Add keyframe variables and landmark observations to the graph.
-        const gtsam::Key current_cam_key(stereo_frontend_result.camera_id);
-        new_timestamps[current_cam_key] = ConvertToSeconds(stereo_frontend_result.timestamp);
-
-        // Add an initial guess for the camera pose based on raw visual odometry.
-        const gtsam::Pose3 current_cam_pose(T_world_cam_);
-        new_values.insert(current_cam_key, current_cam_pose);
-
-        // If this is the first pose, add an origin prior.
-        if (!graph_is_initialized_) {
-          graph_is_initialized_ = true;
-
-          // Add a prior on pose x0. This indirectly specifies where the origin is.
-          // 30cm std on x, y, z and 0.1 rad on roll, pitch, yaw
-          const auto prior_noise = gtsam::noiseModel::Diagonal::Sigmas(
-              (gtsam::Vector(6) << gtsam::Vector3::Constant(0.1), gtsam::Vector3::Constant(0.3)).finished());
-          new_factors.addPrior(current_cam_key, gtsam::Pose3::identity(), prior_noise);
-        }
-
-        // Add monocular/stereo landmark observations from frontend.
-        for (const LandmarkObservation& lmk_obs : stereo_frontend_result.lmk_obs) {
-          const uid_t lmk_id = lmk_obs.landmark_id;
-
-          // If a landmark was initialized with a monocular measurement, it will always remain
-          // a mono smart factor.
-          const bool has_valid_disp = lmk_obs.disparity > 1e-3;
-          const bool mono_factor_already_exists = lmk_mono_factors_.count(lmk_id);
-          const bool use_stereo_factor = (has_valid_disp && !mono_factor_already_exists);
-
-          if (use_stereo_factor) {
-            // If this landmark does not exist yet, initialize and add to graph.
-            if (lmk_stereo_factors_.count(lmk_id) == 0) {
-              lmk_stereo_factors_.emplace(lmk_id, new SmartStereoFactor(stereo_factor_noise_));
-              new_factors.push_back(lmk_stereo_factors_.at(lmk_id));
-            }
-
-            SmartStereoFactor::shared_ptr stereo_ptr = lmk_stereo_factors_.at(lmk_id);
-            const gtsam::StereoPoint2 stereo_point2(
-                lmk_obs.pixel_location.x,                      // X-coord in left image
-                lmk_obs.pixel_location.x - lmk_obs.disparity,  // x-coord in right image
-                lmk_obs.pixel_location.y);                     // y-coord in both images (rectified)
-            stereo_ptr->add(stereo_point2, current_cam_key, K_stereo_ptr_);
-
-          } else {
-            // If this landmark does not exist yet, initialize and add to graph.
-            if (lmk_mono_factors_.count(lmk_id) == 0) {
-              lmk_mono_factors_.emplace(lmk_id, new SmartMonoFactor(mono_factor_noise_, K_mono_ptr_));
-              new_factors.push_back(lmk_mono_factors_.at(lmk_id));
-            }
-
-            SmartMonoFactor::shared_ptr mono_ptr = lmk_mono_factors_.at(lmk_id);
-            const gtsam::Point2 point2(lmk_obs.pixel_location.x, lmk_obs.pixel_location.y);
-            mono_ptr->add(point2, current_cam_key);
-          }
-        }
-
-      // NON-KEYFRAME: Update the estimated camera pose with the most recent odometry.
-      } else {
-        // Update the stored camera pose right away (avoid waiting for iSAM solver).
-        cam_id_last_frontend_result_ = stereo_frontend_result.camera_id;
-        timestamp_last_frontend_result_ = stereo_frontend_result.timestamp;
-        T_world_cam_ = T_world_lkf_ * stereo_frontend_result.T_lkf_cam;
-      }
-    }
-    lkf_frontend_lock_.unlock();
-
-    //================================ SOLVE iSAM FACTOR GRAPH =====================================
-    if (!new_factors.empty()) {
-      LOG(INFO) << "Updating iSAM factor graph" << std::endl;
-      isam2_.update(new_factors, new_values, new_timestamps);
-      for (int i = 0; i < opt_.isam2_extra_smoothing_iters; ++i) {
-        isam2_.update();
-      }
-
-      const gtsam::Key current_cam_key(cam_id_lkf_isam_);
-      isam2_.calculateEstimate<gtsam::Pose3>(current_cam_key).print("iSAM2 Estimate:");
-      std::cout << std::endl;
-
-      std::cout << "  iSAM2 Smoother Keys: " << std::endl;
-      for(const gtsam::FixedLagSmoother::KeyTimestampMap::value_type& key_timestamp: isam2_.timestamps()) {
-        std::cout << std::setprecision(5) << "    Key: " << key_timestamp.first << "  Time: " << key_timestamp.second << std::endl;
+      // If vision wasn't reliable, (maybe) add a visionless keyframe.
+      if (vision_ok) {
+        keyframe_timer.Reset();
+      } else if (keyframe_timer.Elapsed().seconds() > opt_.max_sec_btw_keyframes) {
+        AddVisionlessKeyframe();
+        keyframe_timer.Reset();
       }
     }
 
@@ -225,6 +142,169 @@ void StateEstimator::BackendSolverLoop()
   }
 }
 
+void StateEstimator::AddVisionlessKeyframe()
+{
+  // TODO: add identity transform for now.
+}
+
+
+void StateEstimator::HandleReinitializeVision(const StereoFrontend::Result& result,
+                                              gtsam::NonlinearFactorGraph& new_factors,
+                                              gtsam::Values& new_values)
+{
+  const gtsam::Key current_cam_key(result.camera_id);
+
+  // CASE 1: 1st initialization.
+  if (!graph_is_initialized_) {
+    graph_is_initialized_ = true;
+
+    // Add a prior on the first camera pose.
+    // 1 meter stdev on x, y, z and 0.1 rad on roll, pitch, yaw.
+    const auto prior_noise = gtsam::noiseModel::Diagonal::Sigmas(
+        (gtsam::Vector(6) << gtsam::Vector3::Constant(0.1), gtsam::Vector3::Constant(1.0)).finished());
+    new_factors.addPrior(current_cam_key, gtsam::Pose3::identity(), prior_noise);
+
+  // CASE 2: Re-initialization.
+  // TODO: not sure about what we do here
+  } else {
+    // const auto prior_noise = gtsam::noiseModel::Diagonal::Sigmas(
+    //     (gtsam::Vector(6) << gtsam::Vector3::Constant(0.1), gtsam::Vector3::Constant(1.0)).finished());
+    // new_factors.addPrior(current_cam_key, gtsam::Pose3::identity(), prior_noise);
+  }
+}
+
+
+bool StateEstimator::ProcessStereoFrontendResults()
+{
+  gtsam::NonlinearFactorGraph new_factors;
+  gtsam::Values new_values;
+  gtsam::FixedLagSmoother::KeyTimestampMap new_timestamps;
+
+  //================================ PROCESS VISUAL ODOMETRY =====================================
+  lkf_frontend_lock_.lock();
+
+  while (!sf_out_queue_.Empty()) {
+    const StereoFrontend::Result& result = sf_out_queue_.Pop();
+    LOG(INFO) << "Processing StereoFrontendResult cam_id=" << result.camera_id << std::endl;
+
+    //==============================================================================================
+    // (Good Initialization OR Re-Initialization): No tracking, but plenty of features detected.
+    //    --> In this case, we want to add the next keyframe to the factor graph with a wide prior.
+    // (Initialization w/o Vision): No tracking available, and few features detected. Vision is
+    // probably unavailable, so we don't want to use any detected landmarks.
+    //    --> Skip any keyframes suggested by the frontend.
+    // (Good Tracking): Features tracked from a previous frame.
+    //    --> Nominal case, add suggested keyframes to the factor graph.
+    // (Tracking w/o Vision): Tracking was lost, and there aren't many new features. Vision is
+    // probably unavailable, so we don't want to use any detected landmarks.
+    //    --> Skip any keyframes suggested by the frontend.
+    const bool tracking_failed = (result.status & StereoFrontend::Status::ODOM_ESTIMATION_FAILED) ||
+                                 (result.status & StereoFrontend::Status::FEW_TRACKED_FEATURES);
+
+    const bool vision_reliable_now = result.lmk_obs.size() >= opt_.reliable_vision_min_lmks;
+
+    //============================================================================================
+    // KEYFRAME: Add as a camera pose to optimize in the factor graph.
+    if (result.is_keyframe) {
+      const bool need_to_reinitialize_vision = tracking_failed && vision_reliable_now;
+
+      // Update the stored camera pose right away (avoid waiting for iSAM solver).
+      cam_id_last_frontend_result_ = result.camera_id;
+      timestamp_last_frontend_result_ = result.timestamp;
+      T_world_lkf_ = T_world_lkf_ * result.T_lkf_cam;
+      T_world_cam_ = T_world_lkf_;
+
+      cam_id_lkf_isam_ = result.camera_id;
+
+      //================================ iSAM2 FACTOR GRAPH  =====================================
+      // Add keyframe variables and landmark observations to the graph.
+      const gtsam::Key current_cam_key(result.camera_id);
+      new_timestamps[current_cam_key] = ConvertToSeconds(result.timestamp);
+
+      // Add an initial guess for the camera pose based on raw visual odometry.
+      const gtsam::Pose3 current_cam_pose(T_world_cam_);
+      new_values.insert(current_cam_key, current_cam_pose);
+
+      // If this is the first pose, add an origin prior.
+      if (need_to_reinitialize_vision) {
+        HandleReinitializeVision(result, new_factors, new_values);
+      }
+
+      // Add monocular/stereo landmark observations from frontend.
+      for (const LandmarkObservation& lmk_obs : result.lmk_obs) {
+        const uid_t lmk_id = lmk_obs.landmark_id;
+
+        // If a landmark was initialized with a monocular measurement, it will always remain
+        // a mono smart factor.
+        const bool has_valid_disp = lmk_obs.disparity > 1e-3;
+        const bool mono_factor_already_exists = lmk_mono_factors_.count(lmk_id);
+        const bool use_stereo_factor = (has_valid_disp && !mono_factor_already_exists);
+
+        if (use_stereo_factor) {
+          // If this landmark does not exist yet, initialize and add to graph.
+          if (lmk_stereo_factors_.count(lmk_id) == 0) {
+            lmk_stereo_factors_.emplace(lmk_id, new SmartStereoFactor(stereo_factor_noise_));
+            new_factors.push_back(lmk_stereo_factors_.at(lmk_id));
+          }
+
+          SmartStereoFactor::shared_ptr stereo_ptr = lmk_stereo_factors_.at(lmk_id);
+          const gtsam::StereoPoint2 stereo_point2(
+              lmk_obs.pixel_location.x,                      // X-coord in left image
+              lmk_obs.pixel_location.x - lmk_obs.disparity,  // x-coord in right image
+              lmk_obs.pixel_location.y);                     // y-coord in both images (rectified)
+          stereo_ptr->add(stereo_point2, current_cam_key, K_stereo_ptr_);
+
+        } else {
+          // If this landmark does not exist yet, initialize and add to graph.
+          if (lmk_mono_factors_.count(lmk_id) == 0) {
+            lmk_mono_factors_.emplace(lmk_id, new SmartMonoFactor(mono_factor_noise_, K_mono_ptr_));
+            new_factors.push_back(lmk_mono_factors_.at(lmk_id));
+          }
+
+          SmartMonoFactor::shared_ptr mono_ptr = lmk_mono_factors_.at(lmk_id);
+          const gtsam::Point2 point2(lmk_obs.pixel_location.x, lmk_obs.pixel_location.y);
+          mono_ptr->add(point2, current_cam_key);
+        }
+      }
+
+    //============================================================================================
+    // NON-KEYFRAME: Update the estimated camera pose with the most recent odometry.
+    } else {
+      // Update the stored camera pose right away (avoid waiting for iSAM solver).
+      if (!tracking_failed) {
+        cam_id_last_frontend_result_ = result.camera_id;
+        timestamp_last_frontend_result_ = result.timestamp;
+        T_world_cam_ = T_world_lkf_ * result.T_lkf_cam;
+      }
+    }
+  }
+
+  lkf_frontend_lock_.unlock();
+
+  //================================ SOLVE iSAM FACTOR GRAPH =====================================
+  if (!new_factors.empty()) {
+    LOG(INFO) << "Updating iSAM factor graph" << std::endl;
+
+    isam2_.update(new_factors, new_values, new_timestamps);
+
+    for (int i = 0; i < opt_.isam2_extra_smoothing_iters; ++i) {
+      isam2_.update();
+    }
+
+    const gtsam::Key current_cam_key(cam_id_lkf_isam_);
+    isam2_.calculateEstimate<gtsam::Pose3>(current_cam_key).print("iSAM2 Estimate:");
+    std::cout << std::endl;
+
+    std::cout << "  iSAM2 Smoother Keys: " << std::endl;
+    for(const gtsam::FixedLagSmoother::KeyTimestampMap::value_type& key_timestamp: isam2_.timestamps()) {
+      std::cout << std::setprecision(5) << "    Key: " << key_timestamp.first << "  Time: " << key_timestamp.second << std::endl;
+    }
+  }
+
+  // Return whether we added measurements from vision.
+  // TODO(milo): Add conditions about the factor graph solution here.
+  return !new_factors.empty();
+}
 
 // void StateEstimator::UpdateNavState(const StateEstimate3D& nav_state)
 // {

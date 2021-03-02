@@ -42,6 +42,8 @@ class StateEstimator final {
 
     int max_queue_size_stereo = 20;
     int max_queue_size_imu = 1000;
+    int reliable_vision_min_lmks = 12;
+    double max_sec_btw_keyframes = 5.0;
 
     double isam2_lag = 10.0;
     int isam2_extra_smoothing_iters = 2;
@@ -60,6 +62,15 @@ class StateEstimator final {
  private:
   void StereoFrontendLoop();
   void BackendSolverLoop();
+
+  bool WaitForResultOrTimeout(double timeout_sec);
+
+  void AddVisionlessKeyframe();
+  bool ProcessStereoFrontendResults();
+
+  void HandleReinitializeVision(const StereoFrontend::Result& result,
+                                gtsam::NonlinearFactorGraph& new_factors,
+                                gtsam::Values& new_values);
 
   // Thread-safe update to the nav state (with mutex).
   // void UpdateNavState(const StateEstimate3D& nav_state);

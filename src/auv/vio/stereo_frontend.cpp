@@ -140,6 +140,10 @@ StereoFrontend::Result StereoFrontend::Track(const StereoImage& stereo_pair,
         << "No observation of a tracked feature at the previous keyframe!" << std::endl;
   }
 
+  if (good_lmk_pts_prev_kf.empty()) {
+    result.status |= Status::NO_FEATURES_FROM_LAST_KF;
+  }
+
   // Decide if a new keyframe should be initialized.
   // NOTE(milo): If this is the first image, we will have no tracks, triggering a keyframe,
   // causing new keypoints to be detected as desired.
@@ -155,7 +159,7 @@ StereoFrontend::Result StereoFrontend::Track(const StereoImage& stereo_pair,
     detector_.Detect(stereo_pair.left_image, good_lmk_pts, new_left_kps);
 
     // If few features are detected, the input image might be very textureless.
-    if (new_left_kps.size() + good_lmk_pts.size()) {
+    if ((new_left_kps.size() + good_lmk_pts.size()) < 6) {
       result.status |= StereoFrontend::Status::FEW_DETECTED_FEATURES;
     }
 
@@ -213,7 +217,7 @@ StereoFrontend::Result StereoFrontend::Track(const StereoImage& stereo_pair,
     const double disp = good_lmk_disps.at(i);
 
     // NOTE(milo): For now, we consider a track invalid if we can't triangulate w/ stereo.
-    // TODO: min disp
+    // TODO(milo): Add monocular measurements also, since the backend can handle them.
     const double min_disp = stereo_rig_.DepthToDisp(opt_.stereo_max_depth);
     if (disp <= min_disp) {
       continue;

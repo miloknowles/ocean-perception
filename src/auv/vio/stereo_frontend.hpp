@@ -61,8 +61,8 @@ class StereoFrontend final {
   {
     FEW_DETECTED_FEATURES =    1 << 0,   // Last keyframe had very few detected keypoints.
     FEW_TRACKED_FEATURES =     1 << 1,   // Couldn't track >= 5 points from last keyframe.
-    STEREO_MATCHING_FAILED =   1 << 2,   // Tracking OK, but unable to triangulate points.
-    ODOM_ESTIMATION_FAILED =   1 << 3    // Couldn't estimate odometry since last keyframe.
+    ODOM_ESTIMATION_FAILED =   1 << 2,   // Couldn't estimate odometry since last keyframe.
+    NO_FEATURES_FROM_LAST_KF = 1 << 3    // Couldn't track because there were no features from the last keyframe (just initialized or vision lost).
   };
 
   // Result from tracking points from previous stereo frames into the current one.
