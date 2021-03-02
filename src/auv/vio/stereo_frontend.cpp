@@ -91,7 +91,7 @@ StereoFrontend::Result StereoFrontend::Track(const StereoImage& stereo_pair,
                                              const Matrix4d& T_prev_cur_prior,
                                              bool force_keyframe)
 {
-  StereoFrontend::Result result(stereo_pair.timestamp, stereo_pair.camera_id);
+  StereoFrontend::Result result(stereo_pair.timestamp, stereo_pair.camera_id, prev_keyframe_id_);
 
   std::vector<uid_t> live_lmk_ids;
   std::vector<uid_t> live_cam_ids;
@@ -229,7 +229,8 @@ StereoFrontend::Result StereoFrontend::Track(const StereoImage& stereo_pair,
     const LandmarkObservation lmk_obs(lmk_id, stereo_pair.camera_id, pt, disp, 0.0, 0.0);
     live_tracks_.at(lmk_id).emplace_back(lmk_obs);
 
-    result.observations.emplace_back(lmk_obs);
+    // TODO(milo): Don't store observations if non-keyframe.
+    result.lmk_obs.emplace_back(lmk_obs);
 
     // Get the backprojected 3D location of this point in the left camera frame.
     const Vector2d p_prev_2d = Vector2d(good_lmk_pts_prev_kf.at(i).x, good_lmk_pts_prev_kf.at(i).y);

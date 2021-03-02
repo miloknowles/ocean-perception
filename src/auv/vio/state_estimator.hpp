@@ -4,6 +4,15 @@
 #include <atomic>
 
 #include <gtsam/navigation/NavState.h>
+#include <gtsam/nonlinear/NonlinearFactorGraph.h>
+#include <gtsam/nonlinear/Values.h>
+#include <gtsam/geometry/Cal3_S2.h
+#include <gtsam/geometry/Cal3_S2Stereo.h>
+#include <gtsam_unstable/nonlinear/IncrementalFixedLagSmoother.h>
+
+#include <gtsam/slam/ProjectionFactor.h>
+#include <gtsam/slam/SmartProjectionPoseFactor.h>
+#include <gtsam_unstable/slam/SmartStereoProjectionPoseFactor.h>
 
 #include "core/macros.hpp"
 #include "core/eigen_types.hpp"
@@ -20,6 +29,11 @@ namespace vio {
 using namespace core;
 
 
+typedef gtsam::SmartStereoProjectionFactor SmartStereoFactor;
+typedef gtsam::SmartProjectionPoseFactor<gtsam::Cal3_S2> SmartMonoFactor;
+typedef gtsam::PinholePose<gtsam::Cal3_S2> Camera;
+
+
 class StateEstimator final {
  public:
   struct Options final
@@ -30,6 +44,8 @@ class StateEstimator final {
 
     int max_queue_size_stereo = 10;
     int max_queue_size_imu = 1000;
+
+    double isam2_lag = 10.0;
   };
 
   MACRO_DELETE_COPY_CONSTRUCTORS(StateEstimator);
@@ -74,6 +90,17 @@ class StateEstimator final {
   std::mutex nav_state_lock_;
 
   std::atomic_bool is_shutdown_;
+
+  // iSAM2 stuff.
+  gtsam::ISAM2Params isam2_params_;
+  gtsam::IncrementalFixedLagSmoother isam2_;
+  gtsam::NonlinearFactorGraph factor_graph_;
+  gtsam::Values values_;
+  gtsam::FixedLagSmoother::KeyTimestampMap timestamp_map_;
+  gtsam::Cal3_S2Stereo::shared_ptr K_stereo_ptr_;
+  gtsam::Cal3_S2::shared_ptr K_mono_ptr_;
+
+  std::unordered_map<uid_t, SmartMonoFactor::shared_ptr> lmk_mono_factors_;
 };
 
 

@@ -69,14 +69,17 @@ class StereoFrontend final {
   struct Result final
   {
     explicit Result(timestamp_t timestamp,
-                    uid_t camera_id)
+                    uid_t camera_id,
+                    uid_t camera_id_lkf)
         : timestamp(timestamp),
-          camera_id(camera_id) {}
+          camera_id(camera_id),
+          camera_id_lkf(camera_id_lkf) {}
 
     bool is_keyframe = false;                         // Did this image trigger a keyframe?
     int status = 0;                                   // Contains several flags about parts of the VO pipeline.
     timestamp_t timestamp;                            // Timestamp of the image with camera_id.
     uid_t camera_id;
+    uid_t camera_id_lkf;
     std::vector<LandmarkObservation> lmk_obs;         // List of landmarks observed in this image.
     Matrix4d T_lkf_cam = Matrix4d::Identity();        // Pose of the camera in the last kf frame.
     double avg_reprojection_err = -1.0;               // Avg. error after LM pose optimization.
