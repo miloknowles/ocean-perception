@@ -32,7 +32,7 @@ find_package(Boost        REQUIRED COMPONENTS serialization system filesystem th
 find_package(Eigen3       REQUIRED)
 find_package(yaml-cpp     REQUIRED CONFIG PATHS ${YAML_PATHS}) # YAML library
 find_package(Glog 0.3.5 REQUIRED)
-find_package(GTSAM 4.0.0 REQUIRED)
+find_package(GTSAM 4.1.0 REQUIRED)
 
 include_directories(
   /usr/include/
