@@ -91,6 +91,10 @@ TEST(VioTest, TestSimple1)
   std::map<core::uid_t, gtsam::FactorIndex> lm2factor;
 
   std::unordered_map<core::uid_t, SmartStereoFactor::shared_ptr> stereo_factors_;
+  gtsam::SmartProjectionParams stereo_factor_params_(gtsam::HESSIAN, gtsam::ZERO_ON_DEGENERACY);
+
+  // NOTE(milo): Using gtsam::DegeneracyMode::ZERO_ON_DEGENERACY avoids the 'const char*' bug.
+  // stereo_factor_params_.degeneracyMode = gtsam::DegeneracyMode::ZERO_ON_DEGENERACY;
 
   const double skew = 0;
   gtsam::Cal3_S2Stereo::shared_ptr K_stereo_ptr_(
@@ -104,7 +108,7 @@ TEST(VioTest, TestSimple1)
   );
 
   const gtsam::noiseModel::Isotropic::shared_ptr stereo_factor_noise_ =
-      gtsam::noiseModel::Isotropic::Sigma(3, 3.0);
+      gtsam::noiseModel::Isotropic::Sigma(3, 1.0);
 
   //================================================================================================
   dataset::StereoCallback callback = [&](const StereoImage& stereo_data)
@@ -145,11 +149,16 @@ TEST(VioTest, TestSimple1)
         // Add stereo smart projection factors.
         if (!result.lmk_obs.empty()) {
           for (const LandmarkObservation& lmk_obs : result.lmk_obs) {
+            if (lmk_obs.disparity < 1.0) {
+              LOG(WARNING) << "Skipped zero-disparity observation!" << std::endl;
+              continue;
+            }
+
             const core::uid_t lmk_id = lmk_obs.landmark_id;
 
             // Creating factor for the first time.
             if (stereo_factors_.count(lmk_id) == 0) {
-              stereo_factors_.emplace(lmk_id, new SmartStereoFactor(stereo_factor_noise_));
+              stereo_factors_.emplace(lmk_id, new SmartStereoFactor(stereo_factor_noise_, stereo_factor_params_));
 
               // Indicate that the newest factor refers to lmk_id.
               // NOTE(milo): order matters here!
@@ -197,8 +206,12 @@ TEST(VioTest, TestSimple1)
         }
 
         ISAM2.update();
-        const gtsam::ISAM2Result isam_res2 = ISAM2.update();
-        isam_res2.print();
+        ISAM2.update();
+        ISAM2.printStats();
+        // dot -Tps filename.dot -o outfile.ps
+        ISAM2.saveGraph("output.dot");
+        const gtsam::Values estimate = ISAM2.calculateBestEstimate();
+        estimate.print();
 
         new_factors.resize(0);
         new_values.clear();
@@ -209,10 +222,6 @@ TEST(VioTest, TestSimple1)
 
         // std::cout << "  iSAM2 Smoother Keys: " << std::endl;
         // for (const auto& key_timestamp: fixed_lag_ISAM2.timestamps()) {
-        //   std::cout << std::setprecision(5) << "    Key: " << key_timestamp.first << "  Time: " << key_timestamp.second << std::endl;
-        // }
-        // std::cout << "  iSAM2 Smoother Keys: " << std::endl;
-        // for (const auto& key_timestamp: ISAM2.timestamps()) {
         //   std::cout << std::setprecision(5) << "    Key: " << key_timestamp.first << "  Time: " << key_timestamp.second << std::endl;
         // }
       }
