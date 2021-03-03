@@ -1,23 +1,23 @@
 enable_testing()
 
 set(TEST_SOURCES
-  core/stereo_camera_test.cpp
-  core/grid_lookup_test.cpp
-  core/math_util_test.cpp
-  dataset/euroc_dataset_test.cpp
-  dataset/himb_dataset_test.cpp
-  vo/feature_matching_test.cpp
-  vo/point_detector_test.cpp
-  vo/line_detector_test.cpp
-  vo/optimization_test.cpp
-  vo/vo_test.cpp
-  imaging/enhance_test.cpp
-  stereo_matching/sgbm_test.cpp
-  vio/feature_detector_test.cpp
-  vio/feature_tracker_test.cpp
-  vio/stereo_matcher_test.cpp
-  vio/stereo_frontend_test.cpp
-  vio/viz_test.cpp
+  # core/stereo_camera_test.cpp
+  # core/grid_lookup_test.cpp
+  # core/math_util_test.cpp
+  # dataset/euroc_dataset_test.cpp
+  # dataset/himb_dataset_test.cpp
+  # vo/feature_matching_test.cpp
+  # vo/point_detector_test.cpp
+  # vo/line_detector_test.cpp
+  # vo/optimization_test.cpp
+  # vo/vo_test.cpp
+  # imaging/enhance_test.cpp
+  # stereo_matching/sgbm_test.cpp
+  # vio/feature_detector_test.cpp
+  # vio/feature_tracker_test.cpp
+  # vio/stereo_matcher_test.cpp
+  # vio/stereo_frontend_test.cpp
+  # vio/viz_test.cpp
   vio/state_estimator_test.cpp
   vio/backend_test.cpp)
 

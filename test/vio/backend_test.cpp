@@ -100,15 +100,20 @@ TEST(VioTest, TestGtsam1) {
     // to accurately converge. The ISAM smoother doesn't, but we only start getting estiates when
     // both are ready for simplicity.
     if (time >= 0.50) {
-      smootherBatch.update(newFactors, newValues, newTimestamps);
+      newFactors.print();
+
+      // smootherBatch.update(newFactors, newValues, newTimestamps);
       smootherISAM2.update(newFactors, newValues, newTimestamps);
       for(size_t i = 1; i < 2; ++i) { // Optionally perform multiple iSAM2 iterations
           smootherISAM2.update();
       }
 
+      std::cout << "ISAM2 factors:" << std::endl;
+      smootherISAM2.getFactors().print();
+
       // Print the optimized current pose
       cout << setprecision(5) << "Timestamp = " << time << endl;
-      smootherBatch.calculateEstimate<Pose2>(currentKey).print("Batch Estimate:");
+      // smootherBatch.calculateEstimate<Pose2>(currentKey).print("Batch Estimate:");
       smootherISAM2.calculateEstimate<Pose2>(currentKey).print("iSAM2 Estimate:");
       cout << endl;
 

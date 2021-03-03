@@ -45,7 +45,7 @@ class StateEstimator final {
     int reliable_vision_min_lmks = 12;
     double max_sec_btw_keyframes = 5.0;
 
-    double isam2_lag = 10.0;
+    double isam2_lag = 5.0;
     int isam2_extra_smoothing_iters = 2;
   };
 
@@ -65,13 +65,16 @@ class StateEstimator final {
 
   bool WaitForResultOrTimeout(double timeout_sec);
 
-  void AddVisionlessKeyframe();
+  bool AddVisionlessKeyframe();
   bool ProcessStereoFrontendResults();
 
-  void HandleReinitializeVision(const StereoFrontend::Result& result,
+  void HandleReinitializeVision(const gtsam::Key& current_cam_key,
+                                const StereoFrontend::Result& result,
                                 gtsam::NonlinearFactorGraph& new_factors,
                                 gtsam::Values& new_values);
 
+  uid_t GetNextKeyframeId() { return next_kf_id_++; }
+  uid_t GetPrevKeyframeId() { return next_kf_id_ - 1; }
   // Thread-safe update to the nav state (with mutex).
   // void UpdateNavState(const StateEstimate3D& nav_state);
   // StateEstimate3D StateEstimator::GetNavState();
@@ -89,9 +92,9 @@ class StateEstimator final {
   std::thread stereo_frontend_thread_;
   std::thread backend_solver_thread_;
 
-  std::mutex lkf_isam_lock_;
-  uid_t cam_id_lkf_isam_ = 0;
-  Matrix4d T_world_lkf_isam_ = Matrix4d::Identity();  // Pose of the last keyframe solved by iSAM.
+  // std::mutex lkf_isam_lock_;
+  // uid_t cam_id_lkf_isam_ = 0;
+  // Matrix4d T_world_lkf_isam_ = Matrix4d::Identity();  // Pose of the last keyframe solved by iSAM.
 
   std::mutex lkf_frontend_lock_;
   uid_t cam_id_last_frontend_result_ = 0;
@@ -108,19 +111,25 @@ class StateEstimator final {
   std::atomic_bool graph_is_initialized_;
   gtsam::ISAM2Params isam2_params_;
   gtsam::IncrementalFixedLagSmoother isam2_;
+  gtsam::Values values_;
+  // uid_t graph_num_factors_ = 0;
 
   gtsam::Cal3_S2Stereo::shared_ptr K_stereo_ptr_;
   gtsam::Cal3_S2::shared_ptr K_mono_ptr_;
 
   std::unordered_map<uid_t, SmartMonoFactor::shared_ptr> lmk_mono_factors_;
   std::unordered_map<uid_t, SmartStereoFactor::shared_ptr> lmk_stereo_factors_;
+  // std::unordered_map<uid_t, uid_t> lmk_id_to_factor_id_;
 
   const gtsam::noiseModel::Isotropic::shared_ptr mono_factor_noise_ =
-      gtsam::noiseModel::Isotropic::Sigma(2, 1.0); // one pixel in u and v
+      gtsam::noiseModel::Isotropic::Sigma(2, 2.0); // one pixel in u and v
 
   // TODO(milo): Is this uncertainty for u, v, disp?
   const gtsam::noiseModel::Isotropic::shared_ptr stereo_factor_noise_ =
-      gtsam::noiseModel::Isotropic::Sigma(3, 1.0);
+      gtsam::noiseModel::Isotropic::Sigma(3, 3.0);
+
+  uid_t next_kf_id_ = 0;
+  double last_kf_time_ = 0;
 };
 
 
