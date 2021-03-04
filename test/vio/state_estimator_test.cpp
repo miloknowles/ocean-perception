@@ -8,6 +8,9 @@
 
 #include <gtsam_unstable/nonlinear/IncrementalFixedLagSmoother.h>
 #include <gtsam_unstable/slam/SmartStereoProjectionPoseFactor.h>
+// #include <gtsam_unstable/nonlinear/ConcurrentIncrementalFilter.h>
+// #include <gtsam_unstable/nonlinear/ConcurrentIncrementalSmoother.h>
+
 #include <gtsam/slam/BetweenFactor.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
@@ -19,6 +22,7 @@
 #include "core/pinhole_camera.hpp"
 #include "core/stereo_camera.hpp"
 #include "core/uid.hpp"
+#include "core/timer.hpp"
 #include "core/transform_util.hpp"
 #include "vio/stereo_frontend.hpp"
 #include "vio/visualization_2d.hpp"
@@ -60,9 +64,9 @@ using namespace vio;
 
 // https://github.com/borglab/gtsam/pull/25
 // https://github.com/borglab/gtsam/blob/d6b24294712db197096cd3ea75fbed3157aea096/gtsam_unstable/slam/tests/testSmartStereoFactor_iSAM2.cpp
-TEST(VioTest, TestSimple1)
+TEST(VioTest, TestISAM2_SmartStereo)
 {
-  const std::string toplevel_folder = "/home/milo/datasets/Unity3D/farmsim/euroc_test1";
+  const std::string toplevel_folder = "/home/milo/datasets/Unity3D/farmsim/euroc_test2";
   dataset::EurocDataset dataset(toplevel_folder);
 
   StereoFrontend::Options opt;
@@ -116,6 +120,8 @@ TEST(VioTest, TestSimple1)
   //================================================================================================
   dataset::StereoCallback callback = [&](const StereoImage& stereo_data)
   {
+    Timer callback_timer(true);
+
     Matrix4d T_prev_cur_prior = Matrix4d::Identity();
     const StereoFrontend::Result& result = stereo_frontend.Track(stereo_data, T_prev_cur_prior);
 
@@ -198,23 +204,25 @@ TEST(VioTest, TestSimple1)
       }
 
       if (!new_values.empty()) {
-        // fixed_lag_ISAM2.update(new_factors, new_values, new_timestamps);
-        const gtsam::ISAM2Result isam_res1 = ISAM2.update(new_factors, new_values);
+        Timer isam_timer(true);
+        gtsam::ISAM2UpdateParams updateParams;
+        updateParams.newAffectedKeys = std::move(factorNewAffectedKeys);
+        const gtsam::ISAM2Result isam_res1 = ISAM2.update(new_factors, new_values, updateParams);
+
+        LOG(INFO) << "ISAM2 update took " << isam_timer.Elapsed().milliseconds() << " ms" << std::endl;
 
         // Figure out what factor index has been assigned to each new factor.
         for (const auto &f2l : newFactor2lm) {
-
-          // TODO(milo): I think the problem is here ...
           lm2factor[f2l.second] = isam_res1.newFactorsIndices.at(f2l.first);
         }
 
-        ISAM2.update();
-        ISAM2.update();
-        ISAM2.printStats();
+        // ISAM2.update();
+        // ISAM2.update();
+        // ISAM2.printStats();
         // dot -Tps filename.dot -o outfile.ps
-        ISAM2.saveGraph("output.dot");
+        // ISAM2.saveGraph("output.dot");
         const gtsam::Values estimate = ISAM2.calculateBestEstimate();
-        estimate.print();
+        // estimate.print();
 
         new_factors.resize(0);
         new_values.clear();
@@ -229,6 +237,8 @@ TEST(VioTest, TestSimple1)
         // }
       }
     }
+
+    LOG(INFO) << "Total callback took " << callback_timer.Elapsed().milliseconds() << " ms" << std::endl;
   };
   //================================================================================================
 

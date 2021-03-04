@@ -6,11 +6,13 @@
 #include <gtsam/navigation/NavState.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
+#include <gtsam/inference/Key.h>
+#include <gtsam/geometry/Pose3.h>
 #include <gtsam/geometry/Cal3_S2.h>
 #include <gtsam/geometry/Cal3_S2Stereo.h>
+#include <gtsam/nonlinear/ISAM2.h>
 #include <gtsam/slam/SmartProjectionPoseFactor.h>
 #include <gtsam_unstable/slam/SmartStereoProjectionPoseFactor.h>
-#include <gtsam_unstable/nonlinear/IncrementalFixedLagSmoother.h>
 
 #include "core/macros.hpp"
 #include "core/eigen_types.hpp"
@@ -26,10 +28,42 @@ namespace vio {
 
 using namespace core;
 
+static const size_t kWaitForDataMilliseconds = 100;
 
 typedef gtsam::SmartStereoProjectionPoseFactor SmartStereoFactor;
 typedef gtsam::SmartProjectionPoseFactor<gtsam::Cal3_S2> SmartMonoFactor;
 typedef gtsam::PinholePose<gtsam::Cal3_S2> Camera;
+
+typedef std::unordered_map<uid_t, SmartMonoFactor::shared_ptr> SmartMonoFactorMap;
+typedef std::unordered_map<uid_t, SmartStereoFactor::shared_ptr> SmartStereoFactorMap;
+typedef std::map<uid_t, gtsam::FactorIndex> LmkToFactorMap;
+
+// Waits for a queue item for timeout_sec. Returns whether an item arrived before the timeout.
+template <typename QueueType>
+bool WaitForResultOrTimeout(QueueType& queue, double timeout_sec)
+{
+  double elapsed = 0;
+  const size_t ms_each_wait = (timeout_sec < kWaitForDataMilliseconds) ? \
+                               kWaitForDataMilliseconds / 5 : kWaitForDataMilliseconds;
+  while (queue.Empty() && elapsed < timeout_sec) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(ms_each_wait));
+    elapsed += static_cast<double>(1e-3 * ms_each_wait);
+  }
+
+  return elapsed >= timeout_sec;
+}
+
+
+enum class SmootherMode { VISION_AVAILABLE, VISION_UNAVAILABLE };
+
+
+// Returns a summary of the smoother update.
+struct SmootherResult
+{
+  bool added_keypose = false;
+  gtsam::Key new_keypose_key;
+  gtsam::Pose3 T_world_keypose;
+};
 
 
 class StateEstimator final {
@@ -42,11 +76,18 @@ class StateEstimator final {
 
     int max_queue_size_stereo = 20;
     int max_queue_size_imu = 1000;
+    int max_queue_size_aps = 20;
+
     int reliable_vision_min_lmks = 12;
     double max_sec_btw_keyframes = 5.0;
 
-    double isam2_lag = 5.0;
-    int isam2_extra_smoothing_iters = 2;
+    int ISAM2_extra_smoothing_iters = 2;
+
+    // If vision is available, wait longer for stereo measurements to come in.
+    double smoother_wait_vision_available = 5.0; // sec
+
+    // If vision is unavailable, don't waste time waiting around for it.
+    double smoother_wait_vision_unavailable = 0.1; // sec
   };
 
   MACRO_DELETE_COPY_CONSTRUCTORS(StateEstimator);
@@ -60,78 +101,57 @@ class StateEstimator final {
   void BlockUntilFinished();
 
  private:
+  // Tracks features from stereo images, and decides what to do with the results.
   void StereoFrontendLoop();
-  void BackendSolverLoop();
 
-  bool WaitForResultOrTimeout(double timeout_sec);
+  void SmootherLoop();
 
-  bool AddVisionlessKeyframe();
-  bool ProcessStereoFrontendResults();
+  SmootherResult UpdateGraphNoVision();
+
+  SmootherResult UpdateGraphWithVision(gtsam::ISAM2& smoother,
+                                      SmartStereoFactorMap& stereo_factors,
+                                      LmkToFactorMap& lmk_to_factor_map,
+                                      const gtsam::SharedNoiseModel& stereo_factor_noise,
+                                      const gtsam::SmartProjectionParams& stereo_factor_params,
+                                      const gtsam::Cal3_S2Stereo::shared_ptr& cal3_stereo,
+                                      const Matrix4d& T_world_lkf);
+
+  void FilterLoop();
 
   void HandleReinitializeVision(const gtsam::Key& current_cam_key,
                                 const StereoFrontend::Result& result,
                                 gtsam::NonlinearFactorGraph& new_factors,
                                 gtsam::Values& new_values);
 
-  uid_t GetNextKeyframeId() { return next_kf_id_++; }
-  uid_t GetPrevKeyframeId() { return next_kf_id_ - 1; }
-  // Thread-safe update to the nav state (with mutex).
-  // void UpdateNavState(const StateEstimate3D& nav_state);
-  // StateEstimate3D StateEstimator::GetNavState();
+  // A central place to allocate new "keypose" ids. They are called "keyposes" because they could
+  // come from vision OR other data sources (e.g acoustic localization).
+  uid_t GetNextKeyposeId() { return next_kf_id_++; }
+  uid_t GetPrevKeyposeId() { return next_kf_id_ - 1; }
 
  private:
   Options opt_;
+  StereoCamera stereo_rig_;
+  std::atomic_bool is_shutdown_;  // Set this to trigger a *graceful* shutdown.
 
   StereoFrontend stereo_frontend_;
 
-  ThreadsafeQueue<StereoImage> sf_in_queue_;
-  ThreadsafeQueue<StereoFrontend::Result> sf_out_queue_;
-
-  ThreadsafeQueue<ImuMeasurement> imu_in_queue_;
-
   std::thread stereo_frontend_thread_;
-  std::thread backend_solver_thread_;
+  std::thread smoother_thread_;
+  std::thread filter_thread_;
 
-  // std::mutex lkf_isam_lock_;
-  // uid_t cam_id_lkf_isam_ = 0;
-  // Matrix4d T_world_lkf_isam_ = Matrix4d::Identity();  // Pose of the last keyframe solved by iSAM.
+  // After solving the factor graph, the smoother updates this pose.
+  std::mutex mutex_smoother_pose_;
+  gtsam::Pose3 smoother_pose_;
 
-  std::mutex lkf_frontend_lock_;
-  uid_t cam_id_last_frontend_result_ = 0;
-  timestamp_t timestamp_last_frontend_result_ = 0;
-  Matrix4d T_world_lkf_ = Matrix4d::Identity();
-  Matrix4d T_world_cam_ = Matrix4d::Identity();
-
-  // StateEstimate3D nav_state_;
-  // std::mutex nav_state_lock_;
-
-  std::atomic_bool is_shutdown_;
-
-  // iSAM2 stuff.
-  std::atomic_bool graph_is_initialized_;
-  gtsam::ISAM2Params isam2_params_;
-  gtsam::IncrementalFixedLagSmoother isam2_;
-  gtsam::Values values_;
-  // uid_t graph_num_factors_ = 0;
-
-  gtsam::Cal3_S2Stereo::shared_ptr K_stereo_ptr_;
-  gtsam::Cal3_S2::shared_ptr K_mono_ptr_;
-
-  std::unordered_map<uid_t, SmartMonoFactor::shared_ptr> lmk_mono_factors_;
-  std::unordered_map<uid_t, SmartStereoFactor::shared_ptr> lmk_stereo_factors_;
-  // std::unordered_map<uid_t, uid_t> lmk_id_to_factor_id_;
-
-  const gtsam::noiseModel::Isotropic::shared_ptr mono_factor_noise_ =
-      gtsam::noiseModel::Isotropic::Sigma(2, 2.0); // one pixel in u and v
-
-  // TODO(milo): Is this uncertainty for u, v, disp?
-  const gtsam::noiseModel::Isotropic::shared_ptr stereo_factor_noise_ =
-      gtsam::noiseModel::Isotropic::Sigma(3, 3.0);
+  ThreadsafeQueue<StereoImage> raw_stereo_queue_;
+  ThreadsafeQueue<ImuMeasurement> smoother_imu_queue_;
+  ThreadsafeQueue<StereoFrontend::Result> smoother_vo_queue_;
+  ThreadsafeQueue<ImuMeasurement> filter_imu_queue_;
+  ThreadsafeQueue<StereoFrontend::Result> filter_vo_queue_;
 
   uid_t next_kf_id_ = 0;
   double last_kf_time_ = 0;
 };
-
 
 }
 }

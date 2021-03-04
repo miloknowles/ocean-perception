@@ -149,3 +149,4 @@ TEST(VioTest, TestGtsam1) {
   Matrix jacobian = linearGraph->jacobian().first;
   cout << " Jacobian: " << jacobian << endl;
 }
+

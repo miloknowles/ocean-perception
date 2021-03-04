@@ -3,7 +3,6 @@
 #include <glog/logging.h>
 
 #include <gtsam/slam/BetweenFactor.h>
-#include <gtsam/geometry/Pose3.h>
 
 #include "vio/state_estimator.hpp"
 #include "core/timer.hpp"
@@ -12,56 +11,47 @@
 namespace bm {
 namespace vio {
 
+static const double kSetSkewToZero = 0.0;
+
 
 StateEstimator::StateEstimator(const Options& opt, const StereoCamera& stereo_rig)
     : opt_(opt),
+      stereo_rig_(stereo_rig),
       stereo_frontend_(opt_.stereo_frontend_options, stereo_rig),
-      sf_in_queue_(opt_.max_queue_size_stereo, true),
-      sf_out_queue_(opt_.max_queue_size_stereo, true),
-      imu_in_queue_(opt_.max_queue_size_imu, true),
+      raw_stereo_queue_(opt_.max_queue_size_stereo, true),
+      smoother_vo_queue_(opt_.max_queue_size_stereo, true),
+      smoother_imu_queue_(opt_.max_queue_size_imu, true),
+      filter_vo_queue_(opt_.max_queue_size_stereo, true),
+      filter_imu_queue_(opt_.max_queue_size_imu, true),
       is_shutdown_(false),
-      graph_is_initialized_(false)
 {
   stereo_frontend_thread_ = std::thread(&StateEstimator::StereoFrontendLoop, this);
-  backend_solver_thread_ = std::thread(&StateEstimator::BackendSolverLoop, this);
-
-  // TODO: initialize nav state
-
-  isam2_params_.relinearizeThreshold = 0.0; // Set the relin threshold to zero such that the batch estimate is recovered
-  isam2_params_.relinearizeSkip = 1;        // Relinearize every time
-  isam2_ = gtsam::IncrementalFixedLagSmoother(opt_.isam2_lag, isam2_params_);
-
-  const double skew = 0;
-  K_stereo_ptr_ = gtsam::Cal3_S2Stereo::shared_ptr(
-      new gtsam::Cal3_S2Stereo(
-          stereo_rig.fx(),
-          stereo_rig.fy(),
-          skew,
-          stereo_rig.cx(),
-          stereo_rig.cy(),
-          stereo_rig.Baseline())
-  );
-
-  K_mono_ptr_ = gtsam::Cal3_S2::shared_ptr(
-      new gtsam::Cal3_S2(
-          stereo_rig.fx(),
-          stereo_rig.fy(),
-          skew,
-          stereo_rig.cx(),
-          stereo_rig.cy())
-  );
+  smoother_thread_ = std::thread(&StateEstimator::SmootherLoop, this);
+  filter_thread_ = std::thread(&StateEstimator::FilterLoop, this);
 }
 
 
 void StateEstimator::ReceiveStereo(const StereoImage& stereo_pair)
 {
-  sf_in_queue_.Push(stereo_pair);
+  raw_stereo_queue_.Push(stereo_pair);
 }
 
 
 void StateEstimator::ReceiveImu(const ImuMeasurement& imu_data)
 {
-  imu_in_queue_.Push(imu_data);
+  smoother_imu_queue_.Push(imu_data);
+  filter_imu_queue_.Push(imu_data);
+}
+
+
+void StateEstimator::BlockUntilFinished()
+{
+  LOG(INFO) << "BlockUntilFinished() called! StateEstimator will wait for last image to be processed" << std::endl;
+  while (!is_shutdown_) {
+    while (!smoother_vo_queue_.Empty() || !filter_vo_queue_.Empty()) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+  }
 }
 
 
@@ -71,155 +61,14 @@ void StateEstimator::StereoFrontendLoop()
 
   while (!is_shutdown_) {
     // If no images waiting to be processed, take a nap.
-    while (sf_in_queue_.Empty()) {
+    while (raw_stereo_queue_.Empty()) {
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
-    LOG(INFO) << "StereoFrontendLoop() received stereo pair" << std::endl;
-
     // Process a stereo image pair (KLT tracking, odometry estimation, etc.)
-    const StereoImage& stereo_pair = sf_in_queue_.Pop();
+    // TODO(milo): Use initial odometry estimate other than identity!
     const StereoFrontend::Result& result = stereo_frontend_.Track(
-        stereo_pair, Matrix4d::Identity(), false);
-
-    sf_out_queue_.Push(result);
-
-    LOG(INFO) << "StereoFrontendLoop() pushed frontend result" << std::endl;
-  }
-}
-
-
-bool StateEstimator::WaitForResultOrTimeout(double timeout_sec)
-{
-  double elapsed = 0;
-  while (sf_out_queue_.Empty() && elapsed < timeout_sec) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    elapsed += 0.1;
-  }
-
-  return elapsed >= timeout_sec;
-}
-
-
-void StateEstimator::BackendSolverLoop()
-{
-  LOG(INFO) << "Started up BackendSolverLoop() thread" << std::endl;
-
-  Timer keyframe_timer(true);
-
-  while (!is_shutdown_) {
-    const bool did_timeout = WaitForResultOrTimeout(opt_.max_sec_btw_keyframes);
-
-    bool did_add_kf = false;
-
-    // If no frontend results were received, create a visionless keyframe.
-    if (did_timeout) {
-      did_add_kf = AddVisionlessKeyframe();
-
-    // If a frontend result was received, (maybe) update the factor graph.
-    } else {
-      did_add_kf = ProcessStereoFrontendResults();
-
-      // If vision wasn't reliable, (maybe) add a visionless keyframe.
-      if (!did_add_kf && keyframe_timer.Elapsed().seconds() > opt_.max_sec_btw_keyframes) {
-        did_add_kf = AddVisionlessKeyframe();
-      }
-    }
-
-    if (did_add_kf) {
-      keyframe_timer.Reset();
-    }
-
-    // StateEstimate3D state;
-    // const Matrix4d T_world_cam = T_world_lkf_ * sfr.T_lkf_cam;
-    // const gtsam::Rot3 R_world_cam(T_world_cam.block<3, 3>(0, 0));
-    // const gtsam::Point3 t_world_cam(T_world_cam.block<3, 1>(0, 3));
-    // const gtsam::Velocity3 v_world_cam = gtsam::Velocity3::Zero();
-    // state.nav = gtsam::NavState(R_world_cam, t_world_cam, v_world_cam);
-
-    // UpdateNavState(state);
-
-    // if (sfr.is_keyframe) {
-    //   T_world_lkf_ = T_world_cam;
-    // }
-  }
-}
-
-bool StateEstimator::AddVisionlessKeyframe()
-{
-  LOG(INFO) << "Add VisionlessKeyframe()" << std::endl;
-  // TODO: APS and IMU
-
-  // TODO: add identity transform for now.
-  // gtsam::NonlinearFactorGraph new_factors;
-  // gtsam::Values new_values;
-  // gtsam::FixedLagSmoother::KeyTimestampMap new_timestamps;
-
-  // const uid_t kf_id = GetNextKeyframeId();
-  // const gtsam::Key current_cam_key(kf_id);
-
-  // new_timestamps[current_cam_key] = ConvertToSeconds(result.timestamp);
-
-  // LOG(INFO) << "Updating iSAM factor graph" << std::endl;
-
-  // isam2_.update(new_factors, new_values, new_timestamps);
-
-  // for (int i = 0; i < opt_.isam2_extra_smoothing_iters; ++i) {
-  //   isam2_.update();
-  // }
-
-  // const gtsam::Key current_cam_key(cam_id_lkf_isam_);
-  // isam2_.calculateEstimate<gtsam::Pose3>(current_cam_key).print("iSAM2 Estimate:");
-  // std::cout << std::endl;
-
-  // std::cout << "  iSAM2 Smoother Keys: " << std::endl;
-  // for(const gtsam::FixedLagSmoother::KeyTimestampMap::value_type& key_timestamp: isam2_.timestamps()) {
-  //   std::cout << std::setprecision(5) << "    Key: " << key_timestamp.first << "  Time: " << key_timestamp.second << std::endl;
-  // }
-}
-
-
-void StateEstimator::HandleReinitializeVision(const gtsam::Key& current_cam_key,
-                                              const StereoFrontend::Result& result,
-                                              gtsam::NonlinearFactorGraph& new_factors,
-                                              gtsam::Values& new_values)
-{
-  // CASE 1: 1st initialization.
-  if (!graph_is_initialized_) {
-    graph_is_initialized_ = true;
-
-    // Add a prior on the first camera pose.
-    // 1 meter stdev on x, y, z and 0.1 rad on roll, pitch, yaw.
-    const auto prior_noise = gtsam::noiseModel::Diagonal::Sigmas(
-        (gtsam::Vector(6) << gtsam::Vector3::Constant(0.1), gtsam::Vector3::Constant(1.0)).finished());
-    new_factors.addPrior(current_cam_key, gtsam::Pose3::identity(), prior_noise);
-    LOG(INFO) << "Added prior on pose" << current_cam_key << std::endl;
-  // CASE 2: Re-initialization.
-  // TODO: not sure about what we do here
-  } else {
-    // const auto prior_noise = gtsam::noiseModel::Diagonal::Sigmas(
-    //     (gtsam::Vector(6) << gtsam::Vector3::Constant(0.1), gtsam::Vector3::Constant(1.0)).finished());
-    // new_factors.addPrior(current_cam_key, gtsam::Pose3::identity(), prior_noise);
-  }
-}
-
-
-bool StateEstimator::ProcessStereoFrontendResults()
-{
-  gtsam::NonlinearFactorGraph new_factors;
-  gtsam::Values new_values;
-  gtsam::FixedLagSmoother::KeyTimestampMap new_timestamps;
-
-  //================================ PROCESS VISUAL ODOMETRY =====================================
-  lkf_frontend_lock_.lock();
-
-  gtsam::Key current_cam_key;
-  int lmk_obs_this_kf_to_prev = 0;
-  int new_lmk_obs = 0;
-
-  while (!sf_out_queue_.Empty()) {
-    const StereoFrontend::Result& result = sf_out_queue_.Pop();
-    LOG(INFO) << "Processing StereoFrontendResult cam_id=" << result.camera_id << std::endl;
+        raw_stereo_queue_.Pop(), Matrix4d::Identity(), false);
 
     //==============================================================================================
     // (Good Initialization OR Re-Initialization): No tracking, but plenty of features detected.
@@ -237,189 +86,235 @@ bool StateEstimator::ProcessStereoFrontendResults()
 
     const bool vision_reliable_now = result.lmk_obs.size() >= opt_.reliable_vision_min_lmks;
 
-    //============================================================================================
-    // KEYFRAME: Add as a camera pose to optimize in the factor graph.
-    if (result.is_keyframe) {
-      lmk_obs_this_kf_to_prev = 0;
-      new_lmk_obs = 0;
+    // CASE 1: If this is a reliable keyframe, send to the smoother.
+    // NOTE: This means that we will NOT send the first result to the smoother!
+    if (result.is_keyframe && vision_reliable_now && !tracking_failed) {
+      smoother_vo_queue_.Push(std::move(result));
+      filter_vo_queue_.Push(std::move(result));
 
-      const bool need_to_reinitialize_vision = tracking_failed && vision_reliable_now;
+    // CASE 2: If tracking was successful, send to the filter (even non-keyframes).
+    } else if (!tracking_failed) {
+      filter_vo_queue_.Push(std::move(result));
 
-      // Update the stored camera pose right away (avoid waiting for iSAM solver).
-      cam_id_last_frontend_result_ = result.camera_id;
-      timestamp_last_frontend_result_ = result.timestamp;
-      T_world_lkf_ = T_world_lkf_ * result.T_lkf_cam;
-      T_world_cam_ = T_world_lkf_;
-
-      //================================ iSAM2 FACTOR GRAPH  =====================================
-      // Add keyframe variables and landmark observations to the graph.
-      current_cam_key = gtsam::Key(GetNextKeyframeId());
-      new_timestamps[current_cam_key] = ConvertToSeconds(result.timestamp);
-
-      // Add an initial guess for the camera pose based on raw visual odometry.
-      const gtsam::Pose3 current_cam_pose(T_world_cam_);
-      new_values.insert(current_cam_key, current_cam_pose);
-
-      // If this is the first pose, add an origin prior.
-      if (need_to_reinitialize_vision) {
-        HandleReinitializeVision(current_cam_key, result, new_factors, new_values);
-      }
-
-      if (!tracking_failed) {
-        // Also add the visual odometry measurement to help with stability.
-        const gtsam::Key previous_cam_key(GetPrevKeyframeId());
-        gtsam::Pose3 odom_lkf_cam(result.T_lkf_cam);
-        const auto odom_noise = gtsam::noiseModel::Diagonal::Sigmas(
-            (gtsam::Vector(6) << gtsam::Vector3::Constant(0.1), gtsam::Vector3::Constant(0.3)).finished());
-        new_factors.push_back(gtsam::BetweenFactor<gtsam::Pose3>(
-            previous_cam_key, current_cam_key, odom_lkf_cam, odom_noise));
-      } else {
-        LOG(WARNING) << "TRACKING FAILED, DID NOT ADD ODOMETRY BETWEEN" << std::endl;
-      }
-
-      // Add monocular/stereo landmark observations from frontend.
-      for (const LandmarkObservation& lmk_obs : result.lmk_obs) {
-        const uid_t lmk_id = lmk_obs.landmark_id;
-
-        // If a landmark was initialized with a monocular measurement, it will always remain
-        // a mono smart factor.
-        const bool has_valid_disp = lmk_obs.disparity > 1e-3;
-        const bool mono_factor_already_exists = lmk_mono_factors_.count(lmk_id) != 0;
-        const bool use_stereo_factor = (has_valid_disp && !mono_factor_already_exists);
-
-        if (use_stereo_factor) {
-          // If this landmark does not exist yet, initialize and add to graph.
-          if (lmk_stereo_factors_.count(lmk_id) == 0) {
-            lmk_stereo_factors_.emplace(lmk_id, new SmartStereoFactor(stereo_factor_noise_));
-            // new_factors.push_back(lmk_stereo_factors_.at(lmk_id));
-            ++new_lmk_obs;
-          }
-
-          SmartStereoFactor::shared_ptr stereo_ptr = lmk_stereo_factors_.at(lmk_id);
-          const gtsam::StereoPoint2 stereo_point2(
-              lmk_obs.pixel_location.x,                      // X-coord in left image
-              lmk_obs.pixel_location.x - lmk_obs.disparity,  // x-coord in right image
-              lmk_obs.pixel_location.y);                     // y-coord in both images (rectified)
-          stereo_ptr->add(stereo_point2, current_cam_key, K_stereo_ptr_);
-
-          ++lmk_obs_this_kf_to_prev;
-
-        } else {
-          // If this landmark does not exist yet, initialize and add to graph.
-          // if (lmk_mono_factors_.count(lmk_id) == 0) {
-          //   lmk_mono_factors_.emplace(lmk_id, new SmartMonoFactor(mono_factor_noise_, K_mono_ptr_));
-          // }
-
-          // SmartMonoFactor::shared_ptr mono_ptr = lmk_mono_factors_.at(lmk_id);
-          // const gtsam::Point2 point2(lmk_obs.pixel_location.x, lmk_obs.pixel_location.y);
-          // mono_ptr->add(point2, current_cam_key);
-
-          // new_factors.push_back(lmk_mono_factors_.at(lmk_id));
-        }
-      }
-
-    //============================================================================================
-    // NON-KEYFRAME: Update the estimated camera pose with the most recent odometry.
+    // CASE 3: Vision unreliable.
     } else {
-      // Update the stored camera pose right away (avoid waiting for iSAM solver).
-      if (!tracking_failed) {
-        cam_id_last_frontend_result_ = result.camera_id;
-        timestamp_last_frontend_result_ = result.timestamp;
-        T_world_cam_ = T_world_lkf_ * result.T_lkf_cam;
-      }
+      LOG(WARNING) << "VISION UNRELIABLE! Discarding visual odometry measurements." << std::endl;
     }
   }
-
-  lkf_frontend_lock_.unlock();
-
-  //================================ SOLVE iSAM FACTOR GRAPH =====================================
-  if (!new_values.empty()) {
-    // LOG(INFO) << "\n\n NEW FACTORS: Updating iSAM factor graph" << std::endl;
-    // new_factors.print();
-
-    // gtsam::FastVector<gtsam::Key> factor_indices_to_remove;
-    // for (size_t i = 0; i < isam2_.getFactors().size(); ++i) {
-    //   for (const SmartStereoFactor::shared_ptr& ptr : updated_smart_stereo_factors) {
-    //     if (isam2_.getFactors().at(i) == ptr) {
-    //       factor_indices_to_remove.emplace_back(i);
-    //       LOG(INFO) << "Should remove factor " << i << std::endl;
-
-    //       std::cout << "EXISTING FACTOR" << std::endl;
-    //       isam2_.getFactors().at(i)->print();
-    //       std::cout << "NEW FACTOR" << std::endl;
-    //       ptr->print();
-    //     }
-    //   }
-    // }
-    // LOG(INFO) << "Removing " << factor_indices_to_remove.size() << " factors that have been updated" << std::endl;
-
-    values_.insert(new_values);
-    // LOG(INFO) << "\n\n EXISTING FACTORS:" << std::endl;
-    // isam2_.getFactors().print();
-    std::cout << "========================================================================\n";
-    LOG(INFO) << "LANDMARK OBSERVATIONS FOR " << current_cam_key << std::endl;
-    LOG(INFO) << "  NEW=" << new_lmk_obs << " TRACKED=" << lmk_obs_this_kf_to_prev << std::endl;
-
-    // new_values.print();
-    // new_timestamps.print();
-
-    std::ofstream os("factor_graph.dot");
-    isam2_.getFactors().saveGraph(os, values_);
-
-    isam2_.update(new_factors, new_values, new_timestamps);
-    for (int i = 0; i < opt_.isam2_extra_smoothing_iters; ++i) {
-      isam2_.update();
-    }
-
-    LOG(INFO) << "Did isam2 update" << std::endl;
-
-    const gtsam::Pose3 T_world_lkf_isam = isam2_.calculateEstimate<gtsam::Pose3>(current_cam_key);
-
-    lkf_frontend_lock_.lock();
-    // After ISAM2 gets an estimate of the last keyframe, propagate this to the current camera pose.
-    const Matrix4d T_lkf_cam = T_world_lkf_.inverse() * T_world_cam_;
-    T_world_lkf_ = T_world_lkf_isam.matrix();
-    T_world_cam_ = T_world_lkf_ * T_lkf_cam;
-    lkf_frontend_lock_.unlock();
-
-    std::cout << "ISAM2 pose estimate:" << std::endl;
-    T_world_lkf_isam.print();
-
-    std::cout << "  iSAM2 Smoother Keys: " << std::endl;
-    for(const gtsam::FixedLagSmoother::KeyTimestampMap::value_type& key_timestamp: isam2_.timestamps()) {
-      std::cout << std::setprecision(5) << "    Key: " << key_timestamp.first << "  Time: " << key_timestamp.second << std::endl;
-    }
-  }
-
-  // Return whether we added measurements from vision.
-  // TODO(milo): Add conditions about the factor graph solution here.
-  return !new_values.empty();
 }
 
-// void StateEstimator::UpdateNavState(const StateEstimate3D& nav_state)
-// {
-//   nav_state_lock_.lock();
-//   nav_state_ = nav_state;
-//   nav_state_lock_.unlock();
-// }
 
-
-// StateEstimate3D StateEstimator::GetNavState()
-// {
-//   nav_state_lock_.lock();
-//   const StateEstimate3D out = nav_state_;
-//   nav_state_lock_.unlock();
-
-//   return out;
-// }
-
-
-void StateEstimator::BlockUntilFinished()
+bool StateEstimator::UpdateGraphNoVision()
 {
-  LOG(INFO) << "StateEstimator::BlockUntilFinished()" << std::endl;
+  return false;
+}
+
+
+SmootherResult StateEstimator::UpdateGraphWithVision(
+    gtsam::ISAM2& smoother,
+    SmartStereoFactorMap& stereo_factors,
+    LmkToFactorMap& lmk_to_factor_map,
+    const gtsam::SharedNoiseModel& stereo_factor_noise,
+    const gtsam::SmartProjectionParams& stereo_factor_params,
+    const gtsam::Cal3_S2Stereo::shared_ptr& cal3_stereo,
+    const Matrix4d& T_world_lkf)
+{
+  CHECK(!smoother_vo_queue_.Empty()) << "UpdateGraphWithVision called by VO queue is empty!" << std::endl;
+  const StereoFrontend::Result& result = smoother_vo_queue_.Pop();
+
+  CHECK(result.is_keyframe) << "Smoother shouldn't receive a non-keyframe result" << std::endl;
+  CHECK(result.lmk_obs.size() > 0) << "Smoother shouln't receive a keyframe with no observations" << std::endl;
+
+  LOG(INFO) << "PROCESSING FRAME: " << result.camera_id << std::endl;
+
+  gtsam::NonlinearFactorGraph new_factors;
+  gtsam::Values new_values;
+
+  // Needed for using ISAM2 with smart factors.
+  gtsam::FastMap<gtsam::FactorIndex, gtsam::KeySet> factorNewAffectedKeys;
+
+  // Map: ISAM2 internal FactorIndex => lmk_id.
+  std::map<gtsam::FactorIndex, core::uid_t> map_new_factor_to_lmk_id;
+
+  const gtsam::Key ckf_key(GetNextKeyposeId());
+  const gtsam::Key lkf_key(GetPrevKeyposeId());
+  const Matrix4d T_world_ckf = T_world_lkf * result.T_lkf_cam;
+
+  // Add an initial guess for the camera pose based on raw visual odometry.
+  const gtsam::Pose3 pose_ckf(T_world_ckf);
+  new_values.insert(ckf_key, pose_ckf);
+
+  // Add an odometry factor between the previous KF and current KF.
+  const gtsam::Pose3 odom3_pose(result.T_lkf_cam);
+  const auto odom3_noise = gtsam::noiseModel::Diagonal::Sigmas(
+      (gtsam::Vector(6) << gtsam::Vector3::Constant(0.1), gtsam::Vector3::Constant(0.3)).finished());
+  new_factors.push_back(gtsam::BetweenFactor<gtsam::Pose3>(lkf_key, ckf_key, odom3_pose, odom3_noise));
+
+  for (const LandmarkObservation& lmk_obs : result.lmk_obs) {
+    if (lmk_obs.disparity < 1.0) {
+      LOG(WARNING) << "Skipped zero-disparity observation!" << std::endl;
+      continue;
+    }
+
+    const uid_t lmk_id = lmk_obs.landmark_id;
+
+    // NEW SMART FACTOR: Creating smart stereo factor for the first time.
+    if (stereo_factors.count(lmk_id) == 0) {
+      stereo_factors.emplace(lmk_id, new SmartStereoFactor(stereo_factor_noise, stereo_factor_params));
+
+      // Indicate that the newest factor refers to lmk_id.
+      // NOTE(milo): Add the new factor to the graph. Order matters here!
+      map_new_factor_to_lmk_id[new_factors.size()] = lmk_id;
+      new_factors.push_back(stereo_factors.at(lmk_id));
+
+    // UPDATE SMART FACTOR: An existing ISAM2 factor now affects the camera pose with the current key.
+    } else {
+      factorNewAffectedKeys[lmk_to_factor_map.at(lmk_id)].insert(ckf_key);
+    }
+
+    SmartStereoFactor::shared_ptr sfptr = stereo_factors.at(lmk_id);
+    const gtsam::StereoPoint2 stereo_point2(
+        lmk_obs.pixel_location.x,                      // X-coord in left image
+        lmk_obs.pixel_location.x - lmk_obs.disparity,  // x-coord in right image
+        lmk_obs.pixel_location.y);                     // y-coord in both images (rectified)
+    sfptr->add(stereo_point2, ckf_key, cal3_stereo);
+  }
+
+  // TODO(milo): Eventually we could check for problematic graphs and avoid update().
+  const bool did_add_kf = !new_values.empty();
+  SmootherResult sr;
+
+  if (did_add_kf) {
+    gtsam::ISAM2UpdateParams updateParams;
+    updateParams.newAffectedKeys = std::move(factorNewAffectedKeys);
+
+    gtsam::ISAM2Result isam_result = smoother.update(new_factors, new_values, updateParams);
+
+    // Housekeeping: figure out what factor index has been assigned to each new factor.
+    for (const auto &fct_to_lmk : map_new_factor_to_lmk_id) {
+      lmk_to_factor_map[fct_to_lmk.second] = isam_result.newFactorsIndices.at(fct_to_lmk.first);
+    }
+
+    // (Optional) run the smoother a few more times to reduce error.
+    for (int i = 0; i < opt_.ISAM2_extra_smoothing_iters; ++i) {
+      smoother.update();
+    }
+    // ISAM2.printStats();
+    // dot -Tps filename.dot -o outfile.ps
+    // ISAM2.saveGraph("output.dot");
+    const gtsam::Values estimate = smoother.calculateBestEstimate();
+
+    sr.added_keypose = did_add_kf;
+    sr.new_keypose_key = ckf_key;
+    sr.T_world_keypose = estimate.at(ckf_key); // TODO
+    // estimate.print();
+    new_factors.resize(0);
+    new_values.clear();
+  }
+
+  return sr;
+}
+
+
+void StateEstimator::SmootherLoop()
+{
+  //======================================= ISAM2 SETUP ============================================
+  // If relinearizeThreshold is zero, the graph is always relinearized on update().
+  gtsam::ISAM2Params smoother_params;
+  smoother_params.relinearizeThreshold = 0.0;
+  smoother_params.relinearizeSkip = 1;
+
+  // NOTE(milo): This is needed for using smart factors.
+  // See: https://github.com/borglab/gtsam/blob/d6b24294712db197096cd3ea75fbed3157aea096/gtsam_unstable/slam/tests/testSmartStereoFactor_iSAM2.cpp
+  smoother_params.cacheLinearizedFactors = false;
+  gtsam::ISAM2 smoother = gtsam::ISAM2(smoother_params);
+  SmootherMode smoother_mode = SmootherMode::VISION_AVAILABLE;
+
+  gtsam::Cal3_S2Stereo::shared_ptr cal3_stereo = gtsam::Cal3_S2Stereo::shared_ptr(
+      new gtsam::Cal3_S2Stereo(
+          stereo_rig_.fx(),
+          stereo_rig_.fy(),
+          kSetSkewToZero,
+          stereo_rig_.cx(),
+          stereo_rig_.cy(),
+          stereo_rig_.Baseline()));
+  gtsam::Cal3_S2::shared_ptr cal3_mono = gtsam::Cal3_S2::shared_ptr(
+      new gtsam::Cal3_S2(
+          stereo_rig_.fx(),
+          stereo_rig_.fy(),
+          kSetSkewToZero,
+          stereo_rig_.cx(),
+          stereo_rig_.cy()));
+
+  SmartMonoFactorMap lmk_mono_factors;
+  SmartStereoFactorMap lmk_stereo_factors;
+
+  const gtsam::noiseModel::Isotropic::shared_ptr lmk_mono_factor_noise =
+      gtsam::noiseModel::Isotropic::Sigma(2, 2.0); // one pixel in u and v
+
+  // TODO(milo): Is this uncertainty for u, v, disp?
+  const gtsam::noiseModel::Isotropic::shared_ptr lmk_stereo_factor_noise =
+      gtsam::noiseModel::Isotropic::Sigma(3, 3.0);
+
+  //================================= FACTOR GRAPH HOUSEKEEPING ====================================
+
+  // Map: landmark_id => smart_factor_index inside iSAM2
+  LmkToFactorMap lmk_to_factor_map;
+
+  // https://bitbucket.org/gtborg/gtsam/issues/420/problem-with-isam2-stereo-smart-factors-no
+  gtsam::SmartProjectionParams lmk_stereo_factor_params(gtsam::JACOBIAN_SVD, gtsam::ZERO_ON_DEGENERACY);
+
+  //================================ FACTOR GRAPH INITIALIZATION ===================================
+  Matrix4d T_world_lkf = Matrix4d::Identity();
+
+  gtsam::NonlinearFactorGraph new_factors;
+  gtsam::Values new_values;
+
+  const gtsam::Key key_kf0(GetNextKeyposeId());
+  const gtsam::Pose3 pose_kf0(T_world_lkf);
+  const auto noise_kf0 = gtsam::noiseModel::Diagonal::Sigmas(
+      (gtsam::Vector(6) << 0.1, 0.1, 0.1, 0.3, 0.3, 0.3).finished());
+  new_factors.addPrior<gtsam::Pose3>(key_kf0, pose_kf0, noise_kf0);
+  new_values.insert(key_kf0, pose_kf0);
+  smoother.update(new_factors, new_values);
+
   while (!is_shutdown_) {
-    while (!sf_in_queue_.Empty()) {
+    // Wait for a visual odometry measurement to arrive. If vision hasn't come in recently, don't
+    // wait as long, since it is probably unreliable.
+    const double wait_sec = (smoother_mode == SmootherMode::VISION_AVAILABLE) ? \
+        opt_.smoother_wait_vision_available : opt_.smoother_wait_vision_unavailable;
+    const bool did_timeout = WaitForResultOrTimeout<ThreadsafeQueue<StereoFrontend::Result>>(smoother_vo_queue_, wait_sec);
+
+    if (did_timeout) {
+      UpdateGraphNoVision();
+    } else {
+      const bool added_new_kf = UpdateGraphWithVision(
+          smoother,
+          lmk_stereo_factors,
+          lmk_to_factor_map,
+          lmk_stereo_factor_noise,
+          lmk_stereo_factor_params,
+          cal3_stereo,
+          T_world_lkf);
+    }
+  } // while (!is_shutdown)
+}
+
+
+// NOTE(milo): For now, this thread does nothing. It just keeps up with queues.
+void StateEstimator::FilterLoop()
+{
+  while (!is_shutdown_) {
+    if (filter_vo_queue_.Empty() && filter_imu_queue_.Empty()) {
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+
+    while (!filter_vo_queue_.Empty()) {
+      filter_vo_queue_.Pop();
+    }
+
+    while (!filter_imu_queue_.Empty()) {
+      filter_imu_queue_.Pop();
     }
   }
 }
