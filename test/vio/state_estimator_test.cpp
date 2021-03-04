@@ -91,7 +91,10 @@ TEST(VioTest, TestSimple1)
   std::map<core::uid_t, gtsam::FactorIndex> lm2factor;
 
   std::unordered_map<core::uid_t, SmartStereoFactor::shared_ptr> stereo_factors_;
-  gtsam::SmartProjectionParams stereo_factor_params_(gtsam::HESSIAN, gtsam::ZERO_ON_DEGENERACY);
+
+  // HESSIAN originally
+  // Runs without problems with Jacobian SVD ...
+  gtsam::SmartProjectionParams stereo_factor_params_(gtsam::JACOBIAN_SVD, gtsam::ZERO_ON_DEGENERACY);
 
   // NOTE(milo): Using gtsam::DegeneracyMode::ZERO_ON_DEGENERACY avoids the 'const char*' bug.
   // stereo_factor_params_.degeneracyMode = gtsam::DegeneracyMode::ZERO_ON_DEGENERACY;
