@@ -33,7 +33,7 @@ TEST(VioTest, TestFrontendFarmSim)
   cv::namedWindow("StereoTracking", cv::WINDOW_AUTOSIZE);
 
   Visualizer3D::Options viz_3d_opt;
-  Visualizer3D viz_3d(viz_3d_opt);
+  Visualizer3D viz_3d(viz_3d_opt, stereo_rig);
   viz_3d.Start();
 
   Matrix4d T_world_lkf = Matrix4d::Identity();

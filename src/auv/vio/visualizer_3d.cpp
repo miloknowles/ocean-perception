@@ -40,8 +40,9 @@ static cv::Affine3d EigenMatrix4dToCvAffine3d(const Matrix4d& T_world_cam)
 
 void Visualizer3D::AddCameraPose(uid_t cam_id, const Image1b& left_image, const Matrix4d& T_world_cam, bool is_keyframe)
 {
-  // TODO
-  const cv::Matx33d K = {458.0, 0.0, left_image.cols / 2.0, 0.0, 458.0, left_image.rows / 2.0, 0.0, 0.0, 1.0};
+  const cv::Matx33d K = { stereo_rig_.fx(), 0.0,              stereo_rig_.cx(),
+                          0.0,              stereo_rig_.fy(), stereo_rig_.cy(),
+                          0.0,              0.0,              1.0  };
   const cv::Affine3d T_world_cam_cv = EigenMatrix4dToCvAffine3d(T_world_cam);
 
   // REALTIME CAMERA: Show the current camera image inside a frustum.
@@ -52,6 +53,7 @@ void Visualizer3D::AddCameraPose(uid_t cam_id, const Image1b& left_image, const 
 
   viz_lock_.lock();
 
+  // Update the REALTIME camera by removing/re-adding it.
   if (widget_names_.count(kWidgetNameRealtime) != 0) {
     viz_.removeWidget(kWidgetNameRealtime);
   }

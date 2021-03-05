@@ -47,14 +47,24 @@ TEST(VioTest, TestStateEstimator1)
   StateEstimator::Options opt;
   StateEstimator state_estimator(opt, stereo_rig);
 
+  Visualizer3D::Options vizopt;
+  Visualizer3D viz(vizopt, stereo_rig);
+
+  // std::function<void(const SmootherResult& result)>
+  SmootherResultCallback smoother_callback = [&](const SmootherResult& result)
+  {
+    const core::uid_t cam_id = static_cast<core::uid_t>(result.new_keypose_key);
+    viz.AddCameraPose(cam_id, Image1b(), result.T_world_keypose.matrix(), true);
+  };
+
+  viz.Start();
+
+  state_estimator.RegisterSmootherResultCallback(smoother_callback);
+
   // Matrix4d T_world_lkf = Matrix4d::Identity();
 
   dataset.RegisterStereoCallback(std::bind(&StateEstimator::ReceiveStereo, &state_estimator, std::placeholders::_1));
   dataset.Playback(10.0f, false);
-
-  // for (int i = 0; i < 30; ++i) {
-  //   dataset.Step();
-  // }
 
   state_estimator.BlockUntilFinished();
   state_estimator.Shutdown();

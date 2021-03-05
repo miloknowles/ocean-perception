@@ -78,6 +78,9 @@ struct SmootherResult final
 };
 
 
+typedef std::function<void(const SmootherResult& result)> SmootherResultCallback;
+
+
 class StateEstimator final {
  public:
   struct Options final
@@ -108,6 +111,10 @@ class StateEstimator final {
 
   void ReceiveStereo(const StereoImage& stereo_pair);
   void ReceiveImu(const ImuMeasurement& imu_data);
+
+  // Add a function that gets called whenever the smoother finished an update.
+  // NOTE(milo): Callbacks will block the smoother thread, so keep them fast!
+  void RegisterSmootherResultCallback(const SmootherResultCallback& cb);
 
   // This call blocks until all queued stereo pairs have been processed.
   void BlockUntilFinished();
@@ -169,6 +176,8 @@ class StateEstimator final {
 
   uid_t next_kf_id_ = 0;
   double last_kf_time_ = 0;
+
+  std::vector<SmootherResultCallback> smoother_result_callbacks_;
 };
 
 }

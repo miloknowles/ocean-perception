@@ -44,6 +44,12 @@ void StateEstimator::ReceiveImu(const ImuMeasurement& imu_data)
 }
 
 
+void StateEstimator::RegisterSmootherResultCallback(const SmootherResultCallback& cb)
+{
+  smoother_result_callbacks_.emplace_back(cb);
+}
+
+
 void StateEstimator::BlockUntilFinished()
 {
   LOG(INFO) << "BlockUntilFinished() called! StateEstimator will wait for last image to be processed" << std::endl;
@@ -248,6 +254,7 @@ void StateEstimator::SmootherLoop()
   smoother_params.cacheLinearizedFactors = false;
   gtsam::ISAM2 smoother = gtsam::ISAM2(smoother_params);
   SmootherMode smoother_mode = SmootherMode::VISION_AVAILABLE;
+  //================================================================================================
 
   gtsam::Cal3_S2Stereo::shared_ptr cal3_stereo = gtsam::Cal3_S2Stereo::shared_ptr(
       new gtsam::Cal3_S2Stereo(
@@ -276,7 +283,6 @@ void StateEstimator::SmootherLoop()
       gtsam::noiseModel::Isotropic::Sigma(3, 3.0);
 
   //================================= FACTOR GRAPH HOUSEKEEPING ====================================
-
   // Map: landmark_id => smart_factor_index inside iSAM2
   LmkToFactorMap lmk_to_factor_map;
 
@@ -293,9 +299,11 @@ void StateEstimator::SmootherLoop()
   const gtsam::Pose3 pose_kf0(T_world_lkf);
   const auto noise_kf0 = gtsam::noiseModel::Diagonal::Sigmas(
       (gtsam::Vector(6) << 0.1, 0.1, 0.1, 0.3, 0.3, 0.3).finished());
+
   new_factors.addPrior<gtsam::Pose3>(key_kf0, pose_kf0, noise_kf0);
   new_values.insert(key_kf0, pose_kf0);
   smoother.update(new_factors, new_values);
+  //================================================================================================
 
   while (!is_shutdown_) {
     // Wait for a visual odometry measurement to arrive. If vision hasn't come in recently, don't
@@ -304,7 +312,7 @@ void StateEstimator::SmootherLoop()
         opt_.smoother_wait_vision_available : opt_.smoother_wait_vision_unavailable;
     const bool did_timeout = WaitForResultOrTimeout<ThreadsafeQueue<StereoFrontend::Result>>(smoother_vo_queue_, wait_sec);
 
-    if (is_shutdown_) { break; }
+    if (is_shutdown_) { break; }  // Timeout could have happened due to shutdown; check that here.
 
     if (did_timeout) {
       UpdateGraphNoVision();
@@ -326,6 +334,11 @@ void StateEstimator::SmootherLoop()
         mutex_smoother_result_.lock();
         smoother_result_ = result;
         mutex_smoother_result_.unlock();
+
+        for (const SmootherResultCallback& cb : smoother_result_callbacks_) {
+          cb(smoother_result_);
+        }
+
       } else {
         LOG(WARNING) << "SMOOTHER DID NOT ADD KEYPOSE" << std::endl;
       }

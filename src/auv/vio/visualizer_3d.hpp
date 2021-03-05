@@ -37,7 +37,8 @@ class Visualizer3D final {
 
   MACRO_DELETE_COPY_CONSTRUCTORS(Visualizer3D);
 
-  Visualizer3D(const Options& opt) : opt_(opt) {}
+  Visualizer3D(const Options& opt, const StereoCamera& stereo_rig)
+      : opt_(opt), stereo_rig_(stereo_rig) {}
   ~Visualizer3D();
 
   // Adds a new camera frustrum at the given pose. If the camera_id already exists, updates its
@@ -61,6 +62,7 @@ class Visualizer3D final {
 
  private:
   Options opt_;
+  StereoCamera stereo_rig_;
 
   cv::viz::Viz3d viz_;
   std::mutex viz_lock_;
