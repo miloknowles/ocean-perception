@@ -101,9 +101,11 @@ class StateEstimator final {
 
     StereoFrontend::Options stereo_frontend_options;
 
-    int max_queue_size_stereo = 20;
-    int max_queue_size_imu = 1000;
-    int max_queue_size_aps = 20;
+    int max_size_raw_stereo_queue = 40;      // Images for the stereo frontend to process.
+    int max_size_smoother_vo_queue = 20;     // Holds keyframe VO estiamtes for the smoother to process.
+    int max_size_smoother_imu_queue = 1000;  // Holds IMU measurements for the smoother to process.
+    int max_size_filter_vo_queue = 100;      // Holds all VO estimates for the filter to process.
+    int max_size_filter_imu_queue = 1000;    // Holds IMU measurements for the filter to process.
 
     int reliable_vision_min_lmks = 12;
     double max_sec_btw_keyframes = 5.0;

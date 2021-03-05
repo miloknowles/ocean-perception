@@ -15,6 +15,8 @@ namespace core {
 template<typename Item>
 class ThreadsafeQueue {
  public:
+  // Construct the queue with a max size and drop policy.
+  // If max_queue_size is zero, no items are dropped (size unbounded).
   ThreadsafeQueue(size_t max_queue_size,
                   bool drop_oldest_if_full = true)
       : max_queue_size_(max_queue_size),
@@ -25,8 +27,9 @@ class ThreadsafeQueue {
   {
     bool did_push = false;
     lock_.lock();
-    if (q_.size() >= max_queue_size_) {
+    if (q_.size() >= max_queue_size_ && max_queue_size_ != 0) {
       if (drop_oldest_if_full_) {
+        LOG(WARNING) << "Dropping item from ThreadSafeQueue!" << std::endl;
         q_.pop();
         q_.push(item);
         did_push = true;
@@ -78,7 +81,7 @@ class ThreadsafeQueue {
   bool Empty() { return Size() == 0; }
 
  private:
-  size_t max_queue_size_ = 100;
+  size_t max_queue_size_ = 0;
   bool drop_oldest_if_full_ = true;
 
   std::queue<Item> q_;

@@ -20,11 +20,11 @@ StateEstimator::StateEstimator(const Options& opt, const StereoCamera& stereo_ri
       stereo_rig_(stereo_rig),
       is_shutdown_(false),
       stereo_frontend_(opt_.stereo_frontend_options, stereo_rig),
-      raw_stereo_queue_(opt_.max_queue_size_stereo, true),
-      smoother_vo_queue_(opt_.max_queue_size_stereo, true),
-      smoother_imu_queue_(opt_.max_queue_size_imu, true),
-      filter_vo_queue_(opt_.max_queue_size_stereo, true),
-      filter_imu_queue_(opt_.max_queue_size_imu, true)
+      raw_stereo_queue_(opt_.max_size_raw_stereo_queue, true),
+      smoother_vo_queue_(opt_.max_size_smoother_vo_queue, true),
+      smoother_imu_queue_(opt_.max_size_smoother_imu_queue, true),
+      filter_vo_queue_(opt_.max_size_filter_vo_queue, true),
+      filter_imu_queue_(opt_.max_size_filter_imu_queue, true)
 {
   stereo_frontend_thread_ = std::thread(&StateEstimator::StereoFrontendLoop, this);
   smoother_thread_ = std::thread(&StateEstimator::SmootherLoop, this);
