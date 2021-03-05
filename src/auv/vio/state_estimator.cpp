@@ -48,9 +48,26 @@ void StateEstimator::BlockUntilFinished()
 {
   LOG(INFO) << "BlockUntilFinished() called! StateEstimator will wait for last image to be processed" << std::endl;
   while (!is_shutdown_) {
-    while (!smoother_vo_queue_.Empty() || !filter_vo_queue_.Empty()) {
+    while ((!smoother_vo_queue_.Empty()) || (!filter_vo_queue_.Empty())) {
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
+    Shutdown();
+    return;
+  }
+}
+
+
+void StateEstimator::Shutdown()
+{
+  is_shutdown_ = true;
+  if (stereo_frontend_thread_.joinable()) {
+    stereo_frontend_thread_.join();
+  }
+  if (smoother_thread_.joinable()) {
+    smoother_thread_.join();
+  }
+  if (filter_thread_.joinable()) {
+    filter_thread_.join();
   }
 }
 
@@ -63,6 +80,10 @@ void StateEstimator::StereoFrontendLoop()
     // If no images waiting to be processed, take a nap.
     while (raw_stereo_queue_.Empty()) {
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      if (is_shutdown_) {
+        LOG(INFO) << "StereoFrontendLoop() exiting" << std::endl;
+        return;
+      }
     }
 
     // Process a stereo image pair (KLT tracking, odometry estimation, etc.)
@@ -283,11 +304,13 @@ void StateEstimator::SmootherLoop()
         opt_.smoother_wait_vision_available : opt_.smoother_wait_vision_unavailable;
     const bool did_timeout = WaitForResultOrTimeout<ThreadsafeQueue<StereoFrontend::Result>>(smoother_vo_queue_, wait_sec);
 
+    if (is_shutdown_) { break; }
+
     if (did_timeout) {
       UpdateGraphNoVision();
 
     } else {
-      const SmootherResult sr = UpdateGraphWithVision(
+      const SmootherResult result = UpdateGraphWithVision(
           smoother,
           lmk_stereo_factors,
           lmk_to_factor_map,
@@ -297,9 +320,12 @@ void StateEstimator::SmootherLoop()
           T_world_lkf);
 
       // Get the pose of the latest keyframe (keypose).
-      T_world_lkf = sr.T_world_keypose;
+      T_world_lkf = result.T_world_keypose;
+      LOG(INFO) << "SMOOTHER ESTIMATED POSE:\n" << T_world_lkf << std::endl;
     }
   } // end while (!is_shutdown)
+
+  LOG(INFO) << "SmootherLoop() exiting" << std::endl;
 }
 
 
@@ -319,6 +345,8 @@ void StateEstimator::FilterLoop()
       filter_imu_queue_.Pop();
     }
   }
+
+  LOG(INFO) << "FilterLoop() exiting" << std::endl;
 }
 
 

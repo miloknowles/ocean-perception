@@ -57,6 +57,7 @@ TEST(VioTest, TestStateEstimator1)
   // }
 
   state_estimator.BlockUntilFinished();
+  state_estimator.Shutdown();
 
   LOG(INFO) << "DONE" << std::endl;
 }

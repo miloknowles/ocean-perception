@@ -107,6 +107,8 @@ class StateEstimator final {
   // This call blocks until all queued stereo pairs have been processed.
   void BlockUntilFinished();
 
+  void Shutdown();
+
  private:
   // Tracks features from stereo images, and decides what to do with the results.
   void StereoFrontendLoop();
