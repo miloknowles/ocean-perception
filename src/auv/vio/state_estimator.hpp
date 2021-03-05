@@ -38,6 +38,7 @@ typedef std::unordered_map<uid_t, SmartMonoFactor::shared_ptr> SmartMonoFactorMa
 typedef std::unordered_map<uid_t, SmartStereoFactor::shared_ptr> SmartStereoFactorMap;
 typedef std::map<uid_t, gtsam::FactorIndex> LmkToFactorMap;
 
+
 // Waits for a queue item for timeout_sec. Returns whether an item arrived before the timeout.
 template <typename QueueType>
 bool WaitForResultOrTimeout(QueueType& queue, double timeout_sec)
@@ -54,6 +55,7 @@ bool WaitForResultOrTimeout(QueueType& queue, double timeout_sec)
 }
 
 
+// The smoother changes its behavior depending on whether vision is available/unavailable.
 enum class SmootherMode { VISION_AVAILABLE, VISION_UNAVAILABLE };
 
 
@@ -62,14 +64,17 @@ struct SmootherResult final
 {
   explicit SmootherResult(bool added_keypose,
                           const gtsam::Key& new_keypose_key,
-                          const gtsam::Pose3& T_world_keypose)
+                          const gtsam::Pose3& T_world_keypose,
+                          double new_keypose_time)
       : added_keypose(added_keypose),
         new_keypose_key(new_keypose_key),
-        T_world_keypose(T_world_keypose) {}
+        T_world_keypose(T_world_keypose),
+        new_keypose_time(new_keypose_time) {}
 
   bool added_keypose = false;
   gtsam::Key new_keypose_key;
   gtsam::Pose3 T_world_keypose;
+  double new_keypose_time;
 };
 
 
@@ -107,6 +112,7 @@ class StateEstimator final {
   // This call blocks until all queued stereo pairs have been processed.
   void BlockUntilFinished();
 
+  // Tells all of the threads to exit, then joins them, then exits.
   void Shutdown();
 
  private:
@@ -148,9 +154,11 @@ class StateEstimator final {
   std::thread smoother_thread_;
   std::thread filter_thread_;
 
+  //================================================================================================
   // After solving the factor graph, the smoother updates this pose.
-  std::mutex mutex_smoother_pose_;
-  gtsam::Pose3 smoother_pose_;
+  std::mutex mutex_smoother_result_;
+  SmootherResult smoother_result_{false, gtsam::Key(0), gtsam::Pose3::identity(), -1};
+  //================================================================================================
 
   ThreadsafeQueue<StereoImage> raw_stereo_queue_;
   ThreadsafeQueue<StereoFrontend::Result> smoother_vo_queue_;

@@ -117,7 +117,7 @@ void StateEstimator::StereoFrontendLoop()
     } else if (!tracking_failed) {
       filter_vo_queue_.Push(std::move(result));
 
-    // CASE 3: Vision unreliable.
+    // CASE 3: Vision unreliable. Throw away the odometry since it's probably not useful.
     } else {
       LOG(WARNING) << "VISION UNRELIABLE! Discarding visual odometry measurements." << std::endl;
     }
@@ -127,7 +127,7 @@ void StateEstimator::StereoFrontendLoop()
 
 SmootherResult StateEstimator::UpdateGraphNoVision()
 {
-  return SmootherResult(false, gtsam::Key(0), gtsam::Pose3::identity());
+  return SmootherResult(false, gtsam::Key(0), gtsam::Pose3::identity(), 0);
 }
 
 
@@ -203,7 +203,7 @@ SmootherResult StateEstimator::UpdateGraphWithVision(
 
   // TODO(milo): Eventually we could check for problematic graphs and avoid update().
   const bool did_add_kf = !new_values.empty();
-  SmootherResult sr(did_add_kf, ckf_key, gtsam::Pose3::identity());
+  SmootherResult sr(did_add_kf, ckf_key, gtsam::Pose3::identity(), ConvertToSeconds(result.timestamp));
 
   if (did_add_kf) {
     gtsam::ISAM2UpdateParams updateParams;
@@ -320,8 +320,15 @@ void StateEstimator::SmootherLoop()
           T_world_lkf);
 
       // Get the pose of the latest keyframe (keypose).
-      T_world_lkf = result.T_world_keypose;
-      LOG(INFO) << "SMOOTHER ESTIMATED POSE:\n" << T_world_lkf << std::endl;
+      if (result.added_keypose) {
+        T_world_lkf = result.T_world_keypose;
+        LOG(INFO) << "SMOOTHER UPDATED POSE:\n" << T_world_lkf << std::endl;
+        mutex_smoother_result_.lock();
+        smoother_result_ = result;
+        mutex_smoother_result_.unlock();
+      } else {
+        LOG(WARNING) << "SMOOTHER DID NOT ADD KEYPOSE" << std::endl;
+      }
     }
   } // end while (!is_shutdown)
 
