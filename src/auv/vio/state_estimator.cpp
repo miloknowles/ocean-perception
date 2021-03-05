@@ -17,13 +17,13 @@ static const double kSetSkewToZero = 0.0;
 StateEstimator::StateEstimator(const Options& opt, const StereoCamera& stereo_rig)
     : opt_(opt),
       stereo_rig_(stereo_rig),
+      is_shutdown_(false),
       stereo_frontend_(opt_.stereo_frontend_options, stereo_rig),
       raw_stereo_queue_(opt_.max_queue_size_stereo, true),
       smoother_vo_queue_(opt_.max_queue_size_stereo, true),
       smoother_imu_queue_(opt_.max_queue_size_imu, true),
       filter_vo_queue_(opt_.max_queue_size_stereo, true),
-      filter_imu_queue_(opt_.max_queue_size_imu, true),
-      is_shutdown_(false),
+      filter_imu_queue_(opt_.max_queue_size_imu, true)
 {
   stereo_frontend_thread_ = std::thread(&StateEstimator::StereoFrontendLoop, this);
   smoother_thread_ = std::thread(&StateEstimator::SmootherLoop, this);
@@ -84,7 +84,7 @@ void StateEstimator::StereoFrontendLoop()
     const bool tracking_failed = (result.status & StereoFrontend::Status::ODOM_ESTIMATION_FAILED) ||
                                  (result.status & StereoFrontend::Status::FEW_TRACKED_FEATURES);
 
-    const bool vision_reliable_now = result.lmk_obs.size() >= opt_.reliable_vision_min_lmks;
+    const bool vision_reliable_now = (int)result.lmk_obs.size() >= opt_.reliable_vision_min_lmks;
 
     // CASE 1: If this is a reliable keyframe, send to the smoother.
     // NOTE: This means that we will NOT send the first result to the smoother!
@@ -104,9 +104,9 @@ void StateEstimator::StereoFrontendLoop()
 }
 
 
-bool StateEstimator::UpdateGraphNoVision()
+SmootherResult StateEstimator::UpdateGraphNoVision()
 {
-  return false;
+  return SmootherResult(false, gtsam::Key(0), gtsam::Pose3::identity());
 }
 
 
@@ -117,7 +117,7 @@ SmootherResult StateEstimator::UpdateGraphWithVision(
     const gtsam::SharedNoiseModel& stereo_factor_noise,
     const gtsam::SmartProjectionParams& stereo_factor_params,
     const gtsam::Cal3_S2Stereo::shared_ptr& cal3_stereo,
-    const Matrix4d& T_world_lkf)
+    const gtsam::Pose3& T_world_lkf)
 {
   CHECK(!smoother_vo_queue_.Empty()) << "UpdateGraphWithVision called by VO queue is empty!" << std::endl;
   const StereoFrontend::Result& result = smoother_vo_queue_.Pop();
@@ -138,10 +138,10 @@ SmootherResult StateEstimator::UpdateGraphWithVision(
 
   const gtsam::Key ckf_key(GetNextKeyposeId());
   const gtsam::Key lkf_key(GetPrevKeyposeId());
-  const Matrix4d T_world_ckf = T_world_lkf * result.T_lkf_cam;
+  // const Matrix4d T_world_ckf = T_world_lkf.matrix() * result.T_lkf_cam;
 
   // Add an initial guess for the camera pose based on raw visual odometry.
-  const gtsam::Pose3 pose_ckf(T_world_ckf);
+  const gtsam::Pose3 pose_ckf = T_world_lkf * gtsam::Pose3(result.T_lkf_cam);
   new_values.insert(ckf_key, pose_ckf);
 
   // Add an odometry factor between the previous KF and current KF.
@@ -182,7 +182,7 @@ SmootherResult StateEstimator::UpdateGraphWithVision(
 
   // TODO(milo): Eventually we could check for problematic graphs and avoid update().
   const bool did_add_kf = !new_values.empty();
-  SmootherResult sr;
+  SmootherResult sr(did_add_kf, ckf_key, gtsam::Pose3::identity());
 
   if (did_add_kf) {
     gtsam::ISAM2UpdateParams updateParams;
@@ -204,9 +204,7 @@ SmootherResult StateEstimator::UpdateGraphWithVision(
     // ISAM2.saveGraph("output.dot");
     const gtsam::Values estimate = smoother.calculateBestEstimate();
 
-    sr.added_keypose = did_add_kf;
-    sr.new_keypose_key = ckf_key;
-    sr.T_world_keypose = estimate.at(ckf_key); // TODO
+    sr.T_world_keypose = estimate.at<gtsam::Pose3>(ckf_key);
     // estimate.print();
     new_factors.resize(0);
     new_values.clear();
@@ -265,7 +263,7 @@ void StateEstimator::SmootherLoop()
   gtsam::SmartProjectionParams lmk_stereo_factor_params(gtsam::JACOBIAN_SVD, gtsam::ZERO_ON_DEGENERACY);
 
   //================================ FACTOR GRAPH INITIALIZATION ===================================
-  Matrix4d T_world_lkf = Matrix4d::Identity();
+  gtsam::Pose3 T_world_lkf = gtsam::Pose3::identity();
 
   gtsam::NonlinearFactorGraph new_factors;
   gtsam::Values new_values;
@@ -287,8 +285,9 @@ void StateEstimator::SmootherLoop()
 
     if (did_timeout) {
       UpdateGraphNoVision();
+
     } else {
-      const bool added_new_kf = UpdateGraphWithVision(
+      const SmootherResult sr = UpdateGraphWithVision(
           smoother,
           lmk_stereo_factors,
           lmk_to_factor_map,
@@ -296,8 +295,11 @@ void StateEstimator::SmootherLoop()
           lmk_stereo_factor_params,
           cal3_stereo,
           T_world_lkf);
+
+      // Get the pose of the latest keyframe (keypose).
+      T_world_lkf = sr.T_world_keypose;
     }
-  } // while (!is_shutdown)
+  } // end while (!is_shutdown)
 }
 
 

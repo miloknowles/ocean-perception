@@ -36,30 +36,30 @@ using namespace core;
 using namespace vio;
 
 
-// TEST(VioTest, TestStateEstimator)
-// {
-//   const std::string toplevel_folder = "/home/milo/datasets/Unity3D/farmsim/euroc_test1";
-//   dataset::EurocDataset dataset(toplevel_folder);
+TEST(VioTest, TestStateEstimator1)
+{
+  const std::string toplevel_folder = "/home/milo/datasets/Unity3D/farmsim/euroc_test1";
+  dataset::EurocDataset dataset(toplevel_folder);
 
-//   const PinholeCamera camera_model(415.876509, 415.876509, 375.5, 239.5, 480, 752);
-//   const StereoCamera stereo_rig(camera_model, 0.2);
+  const PinholeCamera camera_model(415.876509, 415.876509, 375.5, 239.5, 480, 752);
+  const StereoCamera stereo_rig(camera_model, 0.2);
 
-//   StateEstimator::Options opt;
-//   StateEstimator state_estimator(opt, stereo_rig);
+  StateEstimator::Options opt;
+  StateEstimator state_estimator(opt, stereo_rig);
 
-//   // Matrix4d T_world_lkf = Matrix4d::Identity();
+  // Matrix4d T_world_lkf = Matrix4d::Identity();
 
-//   dataset.RegisterStereoCallback(std::bind(&StateEstimator::ReceiveStereo, &state_estimator, std::placeholders::_1));
-//   dataset.Playback(10.0f, false);
+  dataset.RegisterStereoCallback(std::bind(&StateEstimator::ReceiveStereo, &state_estimator, std::placeholders::_1));
+  dataset.Playback(10.0f, false);
 
-//   // for (int i = 0; i < 30; ++i) {
-//   //   dataset.Step();
-//   // }
+  // for (int i = 0; i < 30; ++i) {
+  //   dataset.Step();
+  // }
 
-//   state_estimator.BlockUntilFinished();
+  state_estimator.BlockUntilFinished();
 
-//   LOG(INFO) << "DONE" << std::endl;
-// }
+  LOG(INFO) << "DONE" << std::endl;
+}
 
 
 // https://github.com/borglab/gtsam/pull/25

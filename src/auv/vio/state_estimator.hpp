@@ -58,8 +58,15 @@ enum class SmootherMode { VISION_AVAILABLE, VISION_UNAVAILABLE };
 
 
 // Returns a summary of the smoother update.
-struct SmootherResult
+struct SmootherResult final
 {
+  explicit SmootherResult(bool added_keypose,
+                          const gtsam::Key& new_keypose_key,
+                          const gtsam::Pose3& T_world_keypose)
+      : added_keypose(added_keypose),
+        new_keypose_key(new_keypose_key),
+        T_world_keypose(T_world_keypose) {}
+
   bool added_keypose = false;
   gtsam::Key new_keypose_key;
   gtsam::Pose3 T_world_keypose;
@@ -114,7 +121,7 @@ class StateEstimator final {
                                       const gtsam::SharedNoiseModel& stereo_factor_noise,
                                       const gtsam::SmartProjectionParams& stereo_factor_params,
                                       const gtsam::Cal3_S2Stereo::shared_ptr& cal3_stereo,
-                                      const Matrix4d& T_world_lkf);
+                                      const gtsam::Pose3& T_world_lkf);
 
   void FilterLoop();
 
@@ -144,10 +151,11 @@ class StateEstimator final {
   gtsam::Pose3 smoother_pose_;
 
   ThreadsafeQueue<StereoImage> raw_stereo_queue_;
-  ThreadsafeQueue<ImuMeasurement> smoother_imu_queue_;
   ThreadsafeQueue<StereoFrontend::Result> smoother_vo_queue_;
-  ThreadsafeQueue<ImuMeasurement> filter_imu_queue_;
+  ThreadsafeQueue<ImuMeasurement> smoother_imu_queue_;
+
   ThreadsafeQueue<StereoFrontend::Result> filter_vo_queue_;
+  ThreadsafeQueue<ImuMeasurement> filter_imu_queue_;
 
   uid_t next_kf_id_ = 0;
   double last_kf_time_ = 0;
