@@ -18,10 +18,27 @@
 #include "core/pinhole_camera.hpp"
 #include "core/stereo_camera.hpp"
 #include "core/fixed_queue.hpp"
+#include "core/thread_safe_queue.hpp"
 #include "vio/landmark_observation.hpp"
 
 namespace bm {
 namespace vio {
+
+
+// Used to pass a camera pose (with an optional image) to the visualizer.
+struct CameraPoseData
+{
+  CameraPoseData(uid_t cam_id,
+                 const Image1b& left_image,
+                 const Matrix4d& T_world_cam,
+                 bool is_keyframe)
+      : cam_id(cam_id), left_image(left_image), T_world_cam(T_world_cam), is_keyframe(is_keyframe) {}
+
+  uid_t cam_id;
+  Image1b left_image;
+  Matrix4d T_world_cam;
+  bool is_keyframe;
+};
 
 
 class Visualizer3D final {
@@ -37,7 +54,8 @@ class Visualizer3D final {
 
   MACRO_DELETE_COPY_CONSTRUCTORS(Visualizer3D);
 
-  Visualizer3D(const Options& opt) : opt_(opt) {}
+  Visualizer3D(const Options& opt, const StereoCamera& stereo_rig)
+      : opt_(opt), stereo_rig_(stereo_rig) {}
   ~Visualizer3D();
 
   // Adds a new camera frustrum at the given pose. If the camera_id already exists, updates its
@@ -56,16 +74,25 @@ class Visualizer3D final {
   void Start();
 
  private:
+  // Internal functions that take items off of queues and add to the visualizer.
+  void AddCameraPose(const CameraPoseData& data);
+  void UpdateCameraPose(const CameraPoseData& data);
+
   void RemoveOldLandmarks();  // Ensures that max number of landmarks isn't exceeded.
-  void RedrawThread();
+  void RedrawThread();        // Main thread that handles the Viz3D window.
 
  private:
   Options opt_;
+  StereoCamera stereo_rig_;
 
   cv::viz::Viz3d viz_;
   std::mutex viz_lock_;
   bool viz_needs_redraw_;
   std::thread redraw_thread_;
+
+  // NOTE(milo): These queues are allowed to grow unbounded!
+  ThreadsafeQueue<CameraPoseData> add_camera_pose_queue_{0, true};
+  ThreadsafeQueue<CameraPoseData> update_camera_pose_queue_{0, true};
 
   std::unordered_set<std::string> widget_names_;
 

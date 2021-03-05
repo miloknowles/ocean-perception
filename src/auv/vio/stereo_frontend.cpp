@@ -91,7 +91,7 @@ StereoFrontend::Result StereoFrontend::Track(const StereoImage& stereo_pair,
                                              const Matrix4d& T_prev_cur_prior,
                                              bool force_keyframe)
 {
-  StereoFrontend::Result result(stereo_pair.timestamp, stereo_pair.camera_id);
+  StereoFrontend::Result result(stereo_pair.timestamp, stereo_pair.camera_id, prev_keyframe_id_);
 
   std::vector<uid_t> live_lmk_ids;
   std::vector<uid_t> live_cam_ids;
@@ -140,6 +140,10 @@ StereoFrontend::Result StereoFrontend::Track(const StereoImage& stereo_pair,
         << "No observation of a tracked feature at the previous keyframe!" << std::endl;
   }
 
+  if (good_lmk_pts_prev_kf.empty()) {
+    result.status |= Status::NO_FEATURES_FROM_LAST_KF;
+  }
+
   // Decide if a new keyframe should be initialized.
   // NOTE(milo): If this is the first image, we will have no tracks, triggering a keyframe,
   // causing new keypoints to be detected as desired.
@@ -148,10 +152,6 @@ StereoFrontend::Result StereoFrontend::Track(const StereoImage& stereo_pair,
                            (int)(stereo_pair.camera_id - prev_keyframe_id_) >= opt_.trigger_keyframe_k;
   result.is_keyframe = is_keyframe;
 
-  // Do stereo matching for live tracks AND newly detection keypoints.
-  std::vector<uid_t> all_lmk_ids;
-  VecPoint2f all_lmk_pts;
-
   //===================== KEYFRAME POSE ESTIMATION =============================
   // If this is a new keyframe, (maybe) detect new keypoints in the image.
   if (is_keyframe) {
@@ -159,7 +159,7 @@ StereoFrontend::Result StereoFrontend::Track(const StereoImage& stereo_pair,
     detector_.Detect(stereo_pair.left_image, good_lmk_pts, new_left_kps);
 
     // If few features are detected, the input image might be very textureless.
-    if (new_left_kps.size() + good_lmk_pts.size()) {
+    if ((new_left_kps.size() + good_lmk_pts.size()) < 6) {
       result.status |= StereoFrontend::Status::FEW_DETECTED_FEATURES;
     }
 
@@ -178,6 +178,7 @@ StereoFrontend::Result StereoFrontend::Track(const StereoImage& stereo_pair,
       const double disp = new_lmk_disps.at(i);
 
       // NOTE(milo): For now, we consider a track invalid if we can't triangulate w/ stereo.
+      // TODO(milo): Add monocular measurements also, since the backend can handle them.
       const double min_disp = stereo_rig_.DepthToDisp(opt_.stereo_max_depth);
       if (disp <= min_disp) {
         continue;
@@ -192,7 +193,7 @@ StereoFrontend::Result StereoFrontend::Track(const StereoImage& stereo_pair,
       const LandmarkObservation lmk_obs(lmk_id, stereo_pair.camera_id, pt, disp, 0.0, 0.0);
       live_tracks_.at(lmk_id).emplace_back(lmk_obs);
 
-      result.observations.emplace_back(lmk_obs);
+      result.lmk_obs.emplace_back(lmk_obs);
     }
 
     prev_keyframe_id_ = stereo_pair.camera_id;
@@ -216,7 +217,7 @@ StereoFrontend::Result StereoFrontend::Track(const StereoImage& stereo_pair,
     const double disp = good_lmk_disps.at(i);
 
     // NOTE(milo): For now, we consider a track invalid if we can't triangulate w/ stereo.
-    // TODO: min disp
+    // TODO(milo): Add monocular measurements also, since the backend can handle them.
     const double min_disp = stereo_rig_.DepthToDisp(opt_.stereo_max_depth);
     if (disp <= min_disp) {
       continue;
@@ -229,7 +230,8 @@ StereoFrontend::Result StereoFrontend::Track(const StereoImage& stereo_pair,
     const LandmarkObservation lmk_obs(lmk_id, stereo_pair.camera_id, pt, disp, 0.0, 0.0);
     live_tracks_.at(lmk_id).emplace_back(lmk_obs);
 
-    result.observations.emplace_back(lmk_obs);
+    // TODO(milo): Don't store observations if non-keyframe.
+    result.lmk_obs.emplace_back(lmk_obs);
 
     // Get the backprojected 3D location of this point in the left camera frame.
     const Vector2d p_prev_2d = Vector2d(good_lmk_pts_prev_kf.at(i).x, good_lmk_pts_prev_kf.at(i).y);
@@ -251,6 +253,8 @@ StereoFrontend::Result StereoFrontend::Track(const StereoImage& stereo_pair,
   prev_camera_id_ = stereo_pair.camera_id;
 
   // FAILURE: If too few points for effective odometry estimate, return.
+  // NOTE(milo): This flag will be set for the FIRST image, since no features are tracked upon
+  // initialization.
   if (good_lmk_pts.size() < 6) {
     result.status |= StereoFrontend::Status::FEW_TRACKED_FEATURES;
     return result;
@@ -263,28 +267,27 @@ StereoFrontend::Result StereoFrontend::Track(const StereoImage& stereo_pair,
 
   std::vector<int> lm_inlier_indices, lm_outlier_indices;
 
-  const int iters = OptimizeOdometryIterative(p_prev_3d_list,
-                        p_cur_2d_list,
-                        p_cur_sigma_list,
-                        stereo_rig_,
-                        T_cur_lkf_,
-                        C_cur_lkf,
-                        result.avg_reproj_error,
-                        lm_inlier_indices,
-                        lm_outlier_indices,
-                        20,
-                        1e-3,
-                        1e-6,
-                        3.0);
+  const int iters = OptimizeOdometryIterative(
+      p_prev_3d_list,
+      p_cur_2d_list,
+      p_cur_sigma_list,
+      stereo_rig_,
+      T_cur_lkf_,
+      C_cur_lkf,
+      result.avg_reprojection_err,
+      lm_inlier_indices,
+      lm_outlier_indices,
+      20,
+      1e-3,
+      1e-6,
+      3.0);
 
   // Returning -1 indicates an error in LM optimization.
-  if (iters < 0 || result.avg_reproj_error > opt_.max_avg_reprojection_error) {
+  if (iters < 0 || result.avg_reprojection_err > opt_.max_avg_reprojection_error) {
+    LOG(WARNING) << "LM optimization failed. iters=" << iters << " avg_reprojection_err=" << result.avg_reprojection_err << std::endl;
     result.status |= StereoFrontend::Status::ODOM_ESTIMATION_FAILED;
   }
-  result.T_prev_cur = T_cur_lkf_.inverse();
-
-  std::cout << result.T_prev_cur << std::endl;
-  std::cout << result.avg_reproj_error << std::endl;
+  result.T_lkf_cam = T_cur_lkf_.inverse();
 
   if (is_keyframe) {
     T_cur_lkf_ = Matrix4d::Identity();

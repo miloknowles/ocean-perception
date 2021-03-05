@@ -1,23 +1,25 @@
 enable_testing()
 
 set(TEST_SOURCES
-  core/stereo_camera_test.cpp
-  core/grid_lookup_test.cpp
-  core/math_util_test.cpp
-  dataset/euroc_dataset_test.cpp
-  dataset/himb_dataset_test.cpp
-  vo/feature_matching_test.cpp
-  vo/point_detector_test.cpp
-  vo/line_detector_test.cpp
-  vo/optimization_test.cpp
-  vo/vo_test.cpp
-  imaging/enhance_test.cpp
-  stereo_matching/sgbm_test.cpp
-  vio/feature_detector_test.cpp
-  vio/feature_tracker_test.cpp
-  vio/stereo_matcher_test.cpp
-  vio/stereo_frontend_test.cpp
-  vio/viz_test.cpp)
+  # core/stereo_camera_test.cpp
+  # core/grid_lookup_test.cpp
+  # core/math_util_test.cpp
+  # dataset/euroc_dataset_test.cpp
+  # dataset/himb_dataset_test.cpp
+  # vo/feature_matching_test.cpp
+  # vo/point_detector_test.cpp
+  # vo/line_detector_test.cpp
+  # vo/optimization_test.cpp
+  # vo/vo_test.cpp
+  # imaging/enhance_test.cpp
+  # stereo_matching/sgbm_test.cpp
+  # vio/feature_detector_test.cpp
+  # vio/feature_tracker_test.cpp
+  # vio/stereo_matcher_test.cpp
+  # vio/stereo_frontend_test.cpp
+  # vio/viz_test.cpp
+  vio/state_estimator_test.cpp
+  vio/backend_test.cpp)
 
 # Add one big executable with all of the tests. Filter for specific tests with:
 # --gtest_filter=TestModuleName.UnitTestName.
@@ -36,7 +38,9 @@ target_link_libraries(${TEST_EXECUTABLE_NAME}
   ${PROJECT_NAME}_imaging
   ${PROJECT_NAME}_stereo_matching
   ${OpenCV_LIBRARIES}
-  ${OpenCV_LIBS})
+  ${OpenCV_LIBS}
+  gtsam
+  gtsam_unstable)
 
 add_test(NAME ${TEST_EXECUTABLE_NAME} COMMAND ${TEST_EXECUTABLE_NAME} --gtest_color=yes)
 

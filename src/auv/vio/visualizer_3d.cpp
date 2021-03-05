@@ -40,18 +40,26 @@ static cv::Affine3d EigenMatrix4dToCvAffine3d(const Matrix4d& T_world_cam)
 
 void Visualizer3D::AddCameraPose(uid_t cam_id, const Image1b& left_image, const Matrix4d& T_world_cam, bool is_keyframe)
 {
-  // TODO
-  const cv::Matx33d K = {458.0, 0.0, left_image.cols / 2.0, 0.0, 458.0, left_image.rows / 2.0, 0.0, 0.0, 1.0};
-  const cv::Affine3d T_world_cam_cv = EigenMatrix4dToCvAffine3d(T_world_cam);
+  add_camera_pose_queue_.Push(std::move(CameraPoseData(cam_id, left_image, T_world_cam, is_keyframe)));
+}
+
+
+void Visualizer3D::AddCameraPose(const CameraPoseData& data)
+{
+  const cv::Matx33d K = { stereo_rig_.fx(), 0.0,              stereo_rig_.cx(),
+                          0.0,              stereo_rig_.fy(), stereo_rig_.cy(),
+                          0.0,              0.0,              1.0  };
+  const cv::Affine3d T_world_cam_cv = EigenMatrix4dToCvAffine3d(data.T_world_cam);
 
   // REALTIME CAMERA: Show the current camera image inside a frustum.
   cv::viz::WCameraPosition widget_realtime(K, 1.0, cv::viz::Color::red());
-  if (!left_image.empty()) {
-    widget_realtime = cv::viz::WCameraPosition(K, left_image, 1.0, cv::viz::Color::red());
+  if (!data.left_image.empty()) {
+    widget_realtime = cv::viz::WCameraPosition(K, data.left_image, 1.0, cv::viz::Color::red());
   }
 
   viz_lock_.lock();
 
+  // Update the REALTIME camera by removing/re-adding it.
   if (widget_names_.count(kWidgetNameRealtime) != 0) {
     viz_.removeWidget(kWidgetNameRealtime);
   }
@@ -59,8 +67,8 @@ void Visualizer3D::AddCameraPose(uid_t cam_id, const Image1b& left_image, const 
   widget_names_.insert(kWidgetNameRealtime);
 
   // KEYFRAME CAMERA: If this is a keyframe, add a stereo camera frustum.
-  if (is_keyframe) {
-    const std::string widget_name = GetCameraPoseWidgetName(cam_id);
+  if (data.is_keyframe) {
+    const std::string widget_name = GetCameraPoseWidgetName(data.cam_id);
     CHECK(widget_names_.count(widget_name) == 0) << "Trying to add existing cam_id: " << widget_name << std::endl;
     cv::viz::WCameraPosition widget_keyframe(K, 1.0, cv::viz::Color::blue());
     viz_.showWidget(widget_name, widget_keyframe, T_world_cam_cv);
@@ -73,10 +81,16 @@ void Visualizer3D::AddCameraPose(uid_t cam_id, const Image1b& left_image, const 
 
 void Visualizer3D::UpdateCameraPose(uid_t cam_id, const Matrix4d& T_world_cam)
 {
-  const std::string widget_name = GetCameraPoseWidgetName(cam_id);
+  update_camera_pose_queue_.Push(CameraPoseData(cam_id, Image1b(), T_world_cam, false));
+}
+
+
+void Visualizer3D::UpdateCameraPose(const CameraPoseData& data)
+{
+  const std::string widget_name = GetCameraPoseWidgetName(data.cam_id);
   CHECK(widget_names_.count(widget_name) != 0) << "Tried to update camera pose that doesn't exist yet" << std::endl;
 
-  const cv::Affine3d T_world_cam_cv = EigenMatrix4dToCvAffine3d(T_world_cam);
+  const cv::Affine3d T_world_cam_cv = EigenMatrix4dToCvAffine3d(data.T_world_cam);
 
   viz_lock_.lock();
   viz_.updateWidgetPose(widget_name, T_world_cam_cv);
@@ -155,6 +169,14 @@ void Visualizer3D::RedrawThread()
     viz_lock_.lock();
     viz_.spinOnce(1, false);
     viz_lock_.unlock();
+
+    while (!add_camera_pose_queue_.Empty()) {
+      AddCameraPose(add_camera_pose_queue_.Pop());
+    }
+
+    while (!update_camera_pose_queue_.Empty()) {
+      UpdateCameraPose(update_camera_pose_queue_.Pop());
+    }
 
     // NOTE(milo): Need to sleep for a bit to let other functions get the mutex.
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
