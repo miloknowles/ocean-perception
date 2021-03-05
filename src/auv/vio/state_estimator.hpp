@@ -165,6 +165,14 @@ class StateEstimator final {
   // After solving the factor graph, the smoother updates this pose.
   std::mutex mutex_smoother_result_;
   SmootherResult smoother_result_{false, gtsam::Key(0), gtsam::Pose3::identity(), -1};
+  std::atomic_bool trigger_sync_filter_{false};
+  //================================================================================================
+
+  //================================================================================================
+  // The filter maintains the pose of the camera in the world.
+  std::mutex mutex_filter_result_;
+  double filter_T_world_cam_time_ = -1;
+  gtsam::Pose3 filter_T_world_cam_ = gtsam::Pose3::identity();
   //================================================================================================
 
   ThreadsafeQueue<StereoImage> raw_stereo_queue_;

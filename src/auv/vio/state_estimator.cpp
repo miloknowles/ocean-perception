@@ -5,6 +5,7 @@
 #include <gtsam/slam/BetweenFactor.h>
 
 #include "vio/state_estimator.hpp"
+#include "vio/pose_history.hpp"
 #include "core/timer.hpp"
 
 
@@ -335,6 +336,8 @@ void StateEstimator::SmootherLoop()
         smoother_result_ = result;
         mutex_smoother_result_.unlock();
 
+        trigger_sync_filter_.store(true); // Tell the filter to update with this result!
+
         for (const SmootherResultCallback& cb : smoother_result_callbacks_) {
           cb(smoother_result_);
         }
@@ -352,17 +355,71 @@ void StateEstimator::SmootherLoop()
 // NOTE(milo): For now, this thread does nothing. It just keeps up with queues.
 void StateEstimator::FilterLoop()
 {
+  PoseHistory<double> pose_history;
+
+  gtsam::Pose3 T_world_lkf;
+
   while (!is_shutdown_) {
+    // If no data available, run at ~200Hz.
     if (filter_vo_queue_.Empty() && filter_imu_queue_.Empty()) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+      std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
 
+    // NOTE(milo): Always empty these queues BEFORE trying to sync with smoother! This avoids a
+    // a situation whether the filter is actually behind the smoother in terms of measurements it
+    // has received so far.
+    mutex_filter_result_.lock();
     while (!filter_vo_queue_.Empty()) {
-      filter_vo_queue_.Pop();
-    }
+      const StereoFrontend::Result& result = filter_vo_queue_.Pop();
+      if (result.is_keyframe) {
+        T_world_lkf = T_world_lkf * gtsam::Pose3(result.T_lkf_cam);
+        filter_T_world_cam_ = T_world_lkf;
+      } else {
+        filter_T_world_cam_ = T_world_lkf * gtsam::Pose3(result.T_lkf_cam);
+      }
 
+      pose_history.Update(ConvertToSeconds(result.timestamp), filter_T_world_cam_);
+    }
+    mutex_filter_result_.unlock();
+
+    // Update the filter state using IMU.
     while (!filter_imu_queue_.Empty()) {
       filter_imu_queue_.Pop();
+    }
+
+    //================================== SYNCHRONIZE WITH SMOOTHER =================================
+    if (trigger_sync_filter_.exchange(false)) {
+      // Get a copy of the latest smoother state to make sure it doesn't change during the synchronization.
+      mutex_smoother_result_.lock();
+      const SmootherResult result = smoother_result_;
+      mutex_smoother_result_.unlock();
+
+      // TODO(milo): Better system:
+      // Get sensor measurements since the smoother result.
+      // Re-apply the measurements on top of the smoother result.
+      mutex_filter_result_.lock();
+
+      if (pose_history.Empty()) {
+        filter_T_world_cam_ = result.T_world_keypose;
+        filter_T_world_cam_time_ = result.new_keypose_time;
+      } else {
+        const double t_now = pose_history.NewestKey();
+
+        const gtsam::Pose3& filter_T_world_keypose = pose_history.at(result.new_keypose_time);
+        const gtsam::Pose3& filter_T_world_now = pose_history.at(t_now);
+        const gtsam::Pose3 filter_T_keypose_now = filter_T_world_keypose.inverse() * filter_T_world_now;
+
+        // Update the current filter pose (cam in world).
+        filter_T_world_cam_time_ = t_now;
+        filter_T_world_cam_ = result.T_world_keypose * filter_T_keypose_now;
+        // LOG(INFO) << "Synchronized FILTER with SMOOTHER" << std::endl;
+        // LOG(INFO) << "  TIME(smoother) = " << result.new_keypose_time << std::endl;
+        // LOG(INFO) << "  TIME(filter)   = " << t_now << std::endl;
+
+        pose_history.DiscardBefore(result.new_keypose_time);
+      }
+
+      mutex_filter_result_.unlock();
     }
   }
 

@@ -18,6 +18,7 @@ SET(LIBRARY_SRC
   stereo_frontend.hpp
   visualizer_3d.cpp
   visualizer_3d.hpp
+  pose_history.hpp
   state_estimator.cpp
   state_estimator.hpp)
 
