@@ -78,7 +78,19 @@ struct SmootherResult final
 };
 
 
-typedef std::function<void(const SmootherResult& result)> SmootherResultCallback;
+struct FilterResult final
+{
+  FilterResult(double T_world_cam_time,
+               const gtsam::Pose3& T_world_cam)
+      : T_world_cam_time(T_world_cam_time), T_world_cam(T_world_cam) {}
+
+  double T_world_cam_time;
+  gtsam::Pose3 T_world_cam;
+};
+
+
+typedef std::function<void(const SmootherResult&)> SmootherResultCallback;
+typedef std::function<void(const FilterResult&)> FilterResultCallback;
 
 
 class StateEstimator final {
@@ -115,6 +127,7 @@ class StateEstimator final {
   // Add a function that gets called whenever the smoother finished an update.
   // NOTE(milo): Callbacks will block the smoother thread, so keep them fast!
   void RegisterSmootherResultCallback(const SmootherResultCallback& cb);
+  void RegisterFilterResultCallback(const FilterResultCallback& cb);
 
   // This call blocks until all queued stereo pairs have been processed.
   void BlockUntilFinished();
@@ -186,6 +199,7 @@ class StateEstimator final {
   double last_kf_time_ = 0;
 
   std::vector<SmootherResultCallback> smoother_result_callbacks_;
+  std::vector<FilterResultCallback> filter_result_callbacks_;
 };
 
 }

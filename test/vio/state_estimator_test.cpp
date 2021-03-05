@@ -57,9 +57,15 @@ TEST(VioTest, TestStateEstimator1)
     viz.AddCameraPose(cam_id, Image1b(), result.T_world_keypose.matrix(), true);
   };
 
+  FilterResultCallback filter_callback = [&](const FilterResult& result)
+  {
+    viz.AddCameraPose(0, Image1b(), result.T_world_cam.matrix(), false);
+  };
+
   viz.Start();
 
   state_estimator.RegisterSmootherResultCallback(smoother_callback);
+  state_estimator.RegisterFilterResultCallback(filter_callback);
 
   // Matrix4d T_world_lkf = Matrix4d::Identity();
 

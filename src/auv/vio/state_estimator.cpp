@@ -51,6 +51,12 @@ void StateEstimator::RegisterSmootherResultCallback(const SmootherResultCallback
 }
 
 
+void StateEstimator::RegisterFilterResultCallback(const FilterResultCallback& cb)
+{
+  filter_result_callbacks_.emplace_back(cb);
+}
+
+
 void StateEstimator::BlockUntilFinished()
 {
   LOG(INFO) << "BlockUntilFinished() called! StateEstimator will wait for last image to be processed" << std::endl;
@@ -419,6 +425,9 @@ void StateEstimator::FilterLoop()
         pose_history.DiscardBefore(result.new_keypose_time);
       }
 
+      for (const FilterResultCallback& cb : filter_result_callbacks_) {
+        cb(FilterResult(filter_T_world_cam_time_, filter_T_world_cam_));
+      }
       mutex_filter_result_.unlock();
     }
   }
