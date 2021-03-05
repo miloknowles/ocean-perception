@@ -367,9 +367,9 @@ void StateEstimator::FilterLoop()
 
   while (!is_shutdown_) {
     // If no data available, run at ~200Hz.
-    if (filter_vo_queue_.Empty() && filter_imu_queue_.Empty()) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(5));
-    }
+    // if (filter_vo_queue_.Empty() && filter_imu_queue_.Empty()) {
+    //   std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    // }
 
     // NOTE(milo): Always empty these queues BEFORE trying to sync with smoother! This avoids a
     // a situation whether the filter is actually behind the smoother in terms of measurements it
@@ -385,6 +385,10 @@ void StateEstimator::FilterLoop()
       }
 
       pose_history.Update(ConvertToSeconds(result.timestamp), filter_T_world_cam_);
+
+      for (const FilterResultCallback& cb : filter_result_callbacks_) {
+        cb(FilterResult(filter_T_world_cam_time_, filter_T_world_cam_));
+      }
     }
     mutex_filter_result_.unlock();
 
@@ -418,6 +422,7 @@ void StateEstimator::FilterLoop()
         // Update the current filter pose (cam in world).
         filter_T_world_cam_time_ = t_now;
         filter_T_world_cam_ = result.T_world_keypose * filter_T_keypose_now;
+        T_world_lkf = result.T_world_keypose;
         // LOG(INFO) << "Synchronized FILTER with SMOOTHER" << std::endl;
         // LOG(INFO) << "  TIME(smoother) = " << result.new_keypose_time << std::endl;
         // LOG(INFO) << "  TIME(filter)   = " << t_now << std::endl;
@@ -430,7 +435,7 @@ void StateEstimator::FilterLoop()
       }
       mutex_filter_result_.unlock();
     }
-  }
+  } // end while (!is_shutdown)
 
   LOG(INFO) << "FilterLoop() exiting" << std::endl;
 }
