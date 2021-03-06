@@ -32,7 +32,6 @@ static const size_t kWaitForDataMilliseconds = 100;
 
 typedef gtsam::SmartStereoProjectionPoseFactor SmartStereoFactor;
 typedef gtsam::SmartProjectionPoseFactor<gtsam::Cal3_S2> SmartMonoFactor;
-typedef gtsam::PinholePose<gtsam::Cal3_S2> Camera;
 
 typedef std::unordered_map<uid_t, SmartMonoFactor::shared_ptr> SmartMonoFactorMap;
 typedef std::unordered_map<uid_t, SmartStereoFactor::shared_ptr> SmartStereoFactorMap;
@@ -80,7 +79,7 @@ struct SmootherResult final
 
 struct FilterResult final
 {
-  FilterResult(double T_world_cam_time,
+  explicit FilterResult(double T_world_cam_time,
                const gtsam::Pose3& T_world_cam)
       : T_world_cam_time(T_world_cam_time), T_world_cam(T_world_cam) {}
 

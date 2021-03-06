@@ -19,6 +19,8 @@ SET(LIBRARY_SRC
   visualizer_3d.cpp
   visualizer_3d.hpp
   pose_history.hpp
+  imu_manager.cpp
+  imu_manager.hpp
   state_estimator.cpp
   state_estimator.hpp)
 

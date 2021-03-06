@@ -3,6 +3,8 @@
 #include <glog/logging.h>
 
 #include <gtsam/slam/BetweenFactor.h>
+#include <gtsam/navigation/ImuFactor.h>
+#include <gtsam/navigation/CombinedImuFactor.h>
 
 #include "vio/state_estimator.hpp"
 #include "vio/pose_history.hpp"
@@ -13,6 +15,9 @@ namespace bm {
 namespace vio {
 
 static const double kSetSkewToZero = 0.0;
+
+typedef gtsam::PreintegratedImuMeasurements PIM;
+typedef gtsam::PreintegratedCombinedMeasurements CombinedPIM;
 
 
 StateEstimator::StateEstimator(const Options& opt, const StereoCamera& stereo_rig)
@@ -184,6 +189,7 @@ SmootherResult StateEstimator::UpdateGraphWithVision(
       (gtsam::Vector(6) << gtsam::Vector3::Constant(0.1), gtsam::Vector3::Constant(0.3)).finished());
   new_factors.push_back(gtsam::BetweenFactor<gtsam::Pose3>(lkf_key, ckf_key, odom3_pose, odom3_noise));
 
+  //===================================== STEREO SMART FACTOS ======================================
   for (const LandmarkObservation& lmk_obs : result.lmk_obs) {
     if (lmk_obs.disparity < 1.0) {
       LOG(WARNING) << "Skipped zero-disparity observation!" << std::endl;
@@ -214,6 +220,28 @@ SmootherResult StateEstimator::UpdateGraphWithVision(
     sfptr->add(stereo_point2, ckf_key, cal3_stereo);
   }
 
+  //=================================== IMU PREINTEGRATION FACTOR ==================================
+  // if (!smoother_imu_queue_.Empty()) {
+    // https://github.com/haidai/gtsam/blob/master/examples/ImuFactorsExample.cpp
+    // Check if a previous velocity variable is available.
+    // If so, it must ha
+
+    // CombinedPIM pim(pim_params, prev_imu_bias);
+
+    // Integrated all measurements up to the current keypose time.
+    // Add CombinedImuFactor to the graph.
+
+    // prop_state = imu_preintegrated_->predict(prev_state, prev_bias);
+    // initial_values.insert(X(correction_count), prop_state.pose());
+    // initial_values.insert(V(correction_count), prop_state.v());
+    // initial_values.insert(B(correction_count), prev_bias);
+
+    // Add this after solving the graph.
+    // Reset the preintegration object.
+    // imu_preintegrated_->resetIntegrationAndSetBias(prev_bias);
+  // }
+
+  //===================================== UPDATE ISAM2 GRAPH =======================================
   // TODO(milo): Eventually we could check for problematic graphs and avoid update().
   const bool did_add_kf = !new_values.empty();
   SmootherResult sr(did_add_kf, ckf_key, gtsam::Pose3::identity(), ConvertToSeconds(result.timestamp));
