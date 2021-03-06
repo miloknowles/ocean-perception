@@ -27,7 +27,7 @@ StateEstimator::StateEstimator(const Options& opt, const StereoCamera& stereo_ri
       stereo_frontend_(opt_.stereo_frontend_options, stereo_rig),
       raw_stereo_queue_(opt_.max_size_raw_stereo_queue, true),
       smoother_vo_queue_(opt_.max_size_smoother_vo_queue, true),
-      smoother_imu_queue_(opt_.max_size_smoother_imu_queue, true),
+      smoother_imu_manager_(opt_.imu_manager_options),
       filter_vo_queue_(opt_.max_size_filter_vo_queue, true),
       filter_imu_queue_(opt_.max_size_filter_imu_queue, true)
 {
@@ -45,7 +45,7 @@ void StateEstimator::ReceiveStereo(const StereoImage& stereo_pair)
 
 void StateEstimator::ReceiveImu(const ImuMeasurement& imu_data)
 {
-  smoother_imu_queue_.Push(imu_data);
+  smoother_imu_manager_.Push(imu_data);
   filter_imu_queue_.Push(imu_data);
 }
 
@@ -145,7 +145,7 @@ void StateEstimator::StereoFrontendLoop()
 
 SmootherResult StateEstimator::UpdateGraphNoVision()
 {
-  return SmootherResult(false, gtsam::Key(0), gtsam::Pose3::identity(), 0);
+  return SmootherResult(gtsam::Key(0), gtsam::Pose3::identity(), 0);
 }
 
 
@@ -156,7 +156,8 @@ SmootherResult StateEstimator::UpdateGraphWithVision(
     const gtsam::SharedNoiseModel& stereo_factor_noise,
     const gtsam::SmartProjectionParams& stereo_factor_params,
     const gtsam::Cal3_S2Stereo::shared_ptr& cal3_stereo,
-    const gtsam::Pose3& T_world_lkf)
+    const gtsam::Pose3& T_world_lkf,
+    const SmootherResult& smoother_result_lkf)
 {
   CHECK(!smoother_vo_queue_.Empty()) << "UpdateGraphWithVision called by VO queue is empty!" << std::endl;
   const StereoFrontend::Result& result = smoother_vo_queue_.Pop();
@@ -221,8 +222,13 @@ SmootherResult StateEstimator::UpdateGraphWithVision(
   }
 
   //=================================== IMU PREINTEGRATION FACTOR ==================================
+  const double from_time = smoother_result_lkf.new_keypose_time;
+  const double to_time = ConvertToSeconds(result.timestamp);
+  const PimResult& pim_result = smoother_imu_manager_.Preintegrate(from_time, to_time);
+
+  if (pim_result.valid) {
+  }
   // if (!smoother_imu_queue_.Empty()) {
-    // https://github.com/haidai/gtsam/blob/master/examples/ImuFactorsExample.cpp
     // Check if a previous velocity variable is available.
     // If so, it must ha
 
@@ -242,35 +248,31 @@ SmootherResult StateEstimator::UpdateGraphWithVision(
   // }
 
   //===================================== UPDATE ISAM2 GRAPH =======================================
-  // TODO(milo): Eventually we could check for problematic graphs and avoid update().
-  const bool did_add_kf = !new_values.empty();
-  SmootherResult sr(did_add_kf, ckf_key, gtsam::Pose3::identity(), ConvertToSeconds(result.timestamp));
+  SmootherResult sr(ckf_key, gtsam::Pose3::identity(), ConvertToSeconds(result.timestamp));
 
-  if (did_add_kf) {
-    gtsam::ISAM2UpdateParams updateParams;
-    updateParams.newAffectedKeys = std::move(factorNewAffectedKeys);
+  gtsam::ISAM2UpdateParams updateParams;
+  updateParams.newAffectedKeys = std::move(factorNewAffectedKeys);
 
-    gtsam::ISAM2Result isam_result = smoother.update(new_factors, new_values, updateParams);
+  gtsam::ISAM2Result isam_result = smoother.update(new_factors, new_values, updateParams);
 
-    // Housekeeping: figure out what factor index has been assigned to each new factor.
-    for (const auto &fct_to_lmk : map_new_factor_to_lmk_id) {
-      lmk_to_factor_map[fct_to_lmk.second] = isam_result.newFactorsIndices.at(fct_to_lmk.first);
-    }
-
-    // (Optional) run the smoother a few more times to reduce error.
-    for (int i = 0; i < opt_.ISAM2_extra_smoothing_iters; ++i) {
-      smoother.update();
-    }
-    // ISAM2.printStats();
-    // dot -Tps filename.dot -o outfile.ps
-    // ISAM2.saveGraph("output.dot");
-    const gtsam::Values estimate = smoother.calculateBestEstimate();
-
-    sr.T_world_keypose = estimate.at<gtsam::Pose3>(ckf_key);
-    // estimate.print();
-    new_factors.resize(0);
-    new_values.clear();
+  // Housekeeping: figure out what factor index has been assigned to each new factor.
+  for (const auto &fct_to_lmk : map_new_factor_to_lmk_id) {
+    lmk_to_factor_map[fct_to_lmk.second] = isam_result.newFactorsIndices.at(fct_to_lmk.first);
   }
+
+  // (Optional) run the smoother a few more times to reduce error.
+  for (int i = 0; i < opt_.ISAM2_extra_smoothing_iters; ++i) {
+    smoother.update();
+  }
+  // ISAM2.printStats();
+  // dot -Tps filename.dot -o outfile.ps
+  // ISAM2.saveGraph("output.dot");
+  const gtsam::Values estimate = smoother.calculateBestEstimate();
+
+  sr.T_world_keypose = estimate.at<gtsam::Pose3>(ckf_key);
+  // estimate.print();
+  new_factors.resize(0);
+  new_values.clear();
 
   return sr;
 }
@@ -360,24 +362,20 @@ void StateEstimator::SmootherLoop()
           lmk_stereo_factor_noise,
           lmk_stereo_factor_params,
           cal3_stereo,
-          T_world_lkf);
+          T_world_lkf,
+          smoother_result_);
 
       // Get the pose of the latest keyframe (keypose).
-      if (result.added_keypose) {
-        T_world_lkf = result.T_world_keypose;
-        LOG(INFO) << "SMOOTHER UPDATED POSE:\n" << T_world_lkf << std::endl;
-        mutex_smoother_result_.lock();
-        smoother_result_ = result;
-        mutex_smoother_result_.unlock();
+      T_world_lkf = result.T_world_keypose;
+      LOG(INFO) << "SMOOTHER UPDATED POSE:\n" << T_world_lkf << std::endl;
+      mutex_smoother_result_.lock();
+      smoother_result_ = result;
+      mutex_smoother_result_.unlock();
 
-        trigger_sync_filter_.store(true); // Tell the filter to update with this result!
+      trigger_sync_filter_.store(true); // Tell the filter to update with this result!
 
-        for (const SmootherResultCallback& cb : smoother_result_callbacks_) {
-          cb(smoother_result_);
-        }
-
-      } else {
-        LOG(WARNING) << "SMOOTHER DID NOT ADD KEYPOSE" << std::endl;
+      for (const SmootherResultCallback& cb : smoother_result_callbacks_) {
+        cb(smoother_result_);
       }
     }
   } // end while (!is_shutdown)

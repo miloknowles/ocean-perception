@@ -61,7 +61,7 @@ class ImuManager final {
   // Preintegrate queued IMU measurements, optionally within a time range [from_time, to_time].
   // If not time range is given, all available result are integrated.
   // NOTE(milo): All measurements up to the to_time are removed from the queue!
-  PimResult Preintegrate(seconds_t from_time = kMaxSeconds,
+  PimResult Preintegrate(seconds_t from_time = kMinSeconds,
                          seconds_t to_time = kMaxSeconds);
 
  private:

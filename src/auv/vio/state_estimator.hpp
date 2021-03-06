@@ -22,6 +22,7 @@
 #include "core/imu_measurement.hpp"
 #include "vio/stereo_frontend.hpp"
 #include "vio/state_estimate_3d.hpp"
+#include "vio/imu_manager.hpp"
 
 namespace bm {
 namespace vio {
@@ -61,16 +62,13 @@ enum class SmootherMode { VISION_AVAILABLE, VISION_UNAVAILABLE };
 // Returns a summary of the smoother update.
 struct SmootherResult final
 {
-  explicit SmootherResult(bool added_keypose,
-                          const gtsam::Key& new_keypose_key,
+  explicit SmootherResult(const gtsam::Key& new_keypose_key,
                           const gtsam::Pose3& T_world_keypose,
                           double new_keypose_time)
-      : added_keypose(added_keypose),
-        new_keypose_key(new_keypose_key),
+      : new_keypose_key(new_keypose_key),
         T_world_keypose(T_world_keypose),
         new_keypose_time(new_keypose_time) {}
 
-  bool added_keypose = false;
   gtsam::Key new_keypose_key;
   gtsam::Pose3 T_world_keypose;
   double new_keypose_time;
@@ -99,6 +97,7 @@ class StateEstimator final {
     Options() = default;
 
     StereoFrontend::Options stereo_frontend_options;
+    ImuManager::Options imu_manager_options;
 
     int max_size_raw_stereo_queue = 40;      // Images for the stereo frontend to process.
     int max_size_smoother_vo_queue = 20;     // Holds keyframe VO estiamtes for the smoother to process.
@@ -150,7 +149,8 @@ class StateEstimator final {
                                       const gtsam::SharedNoiseModel& stereo_factor_noise,
                                       const gtsam::SmartProjectionParams& stereo_factor_params,
                                       const gtsam::Cal3_S2Stereo::shared_ptr& cal3_stereo,
-                                      const gtsam::Pose3& T_world_lkf);
+                                      const gtsam::Pose3& T_world_lkf,
+                                      const SmootherResult& smoother_result_lkf);
 
   void FilterLoop();
 
@@ -178,7 +178,7 @@ class StateEstimator final {
   //================================================================================================
   // After solving the factor graph, the smoother updates this pose.
   std::mutex mutex_smoother_result_;
-  SmootherResult smoother_result_{false, gtsam::Key(0), gtsam::Pose3::identity(), -1};
+  SmootherResult smoother_result_{gtsam::Key(0), gtsam::Pose3::identity(), -1};
   std::atomic_bool trigger_sync_filter_{false};
   //================================================================================================
 
@@ -191,7 +191,8 @@ class StateEstimator final {
 
   ThreadsafeQueue<StereoImage> raw_stereo_queue_;
   ThreadsafeQueue<StereoFrontend::Result> smoother_vo_queue_;
-  ThreadsafeQueue<ImuMeasurement> smoother_imu_queue_;
+  // ThreadsafeQueue<ImuMeasurement> smoother_imu_queue_;
+  ImuManager smoother_imu_manager_;
 
   ThreadsafeQueue<StereoFrontend::Result> filter_vo_queue_;
   ThreadsafeQueue<ImuMeasurement> filter_imu_queue_;
