@@ -17,6 +17,10 @@ using namespace core;
 // Shorten these types a little bit.
 typedef gtsam::PreintegratedImuMeasurements Pim;
 typedef gtsam::PreintegratedCombinedMeasurements PimC;
+typedef gtsam::imuBias::ConstantBias ImuBias;
+
+
+static const ImuBias kZeroImuBias = ImuBias(gtsam::Vector3::Zero(), gtsam::Vector3::Zero());
 
 
 struct PimResult final

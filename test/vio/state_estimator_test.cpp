@@ -53,13 +53,13 @@ TEST(VioTest, TestStateEstimator1)
   // std::function<void(const SmootherResult& result)>
   SmootherResultCallback smoother_callback = [&](const SmootherResult& result)
   {
-    const core::uid_t cam_id = static_cast<core::uid_t>(result.new_keypose_key);
-    viz.AddCameraPose(cam_id, Image1b(), result.T_world_keypose.matrix(), true);
+    const core::uid_t cam_id = static_cast<core::uid_t>(result.keypose_id);
+    viz.AddCameraPose(cam_id, Image1b(), result.P_world_body.matrix(), true);
   };
 
   FilterResultCallback filter_callback = [&](const FilterResult& result)
   {
-    viz.AddCameraPose(0, Image1b(), result.T_world_cam.matrix(), false);
+    viz.AddCameraPose(0, Image1b(), result.P_world_body.matrix(), false);
   };
 
   viz.Start();
