@@ -262,6 +262,7 @@ SmootherResult StateEstimator::UpdateGraphWithVision(
   const gtsam::Symbol last_bias_sym('B', last_keypose_id);
 
   if (pim_result.valid) {
+    // NOTE(milo): Gravity is corrected for in predict(), not during preintegration (NavState.cpp).
     const gtsam::NavState prev_state(last_smoother_result.P_world_body,
                                      last_smoother_result.v_world_body);
     const gtsam::NavState pred_state = pim_result.pim.predict(prev_state, last_smoother_result.imu_bias);
@@ -296,8 +297,6 @@ SmootherResult StateEstimator::UpdateGraphWithVision(
                                               pim_result.pim);
     new_factors.push_back(imu_factor);
 
-    std::cout << imu_factor << std::endl;
-
     // Add a prior on the change in bias.
     new_factors.push_back(gtsam::BetweenFactor<ImuBias>(
         last_bias_sym, bias_sym, kZeroImuBias, bias_noise_model));
@@ -313,7 +312,6 @@ SmootherResult StateEstimator::UpdateGraphWithVision(
   //===================================== UPDATE ISAM2 GRAPH =======================================
   gtsam::ISAM2UpdateParams updateParams;
   updateParams.newAffectedKeys = std::move(factorNewAffectedKeys);
-  smoother.print();
   gtsam::ISAM2Result isam_result = smoother.update(new_factors, new_values, updateParams);
 
   // Housekeeping: figure out what factor index has been assigned to each new factor.
@@ -335,6 +333,8 @@ SmootherResult StateEstimator::UpdateGraphWithVision(
       graph_has_imu_btw_factor,
       graph_has_imu_btw_factor ? estimate.at<gtsam::Vector3>(vel_sym) : kZeroVelocity,
       graph_has_imu_btw_factor ? estimate.at<ImuBias>(bias_sym) : kZeroImuBias);
+
+  smoother_imu_manager_.ResetAndUpdateBias(estimate.at<ImuBias>(bias_sym));
 
   new_factors.resize(0);
   new_values.clear();
