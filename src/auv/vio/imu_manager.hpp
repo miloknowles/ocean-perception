@@ -62,11 +62,18 @@ class ImuManager final {
   // Add new IMU data to the queue.
   void Push(const ImuMeasurement& imu);
 
+  bool Empty() { return queue_.Empty(); }
+
   // Preintegrate queued IMU measurements, optionally within a time range [from_time, to_time].
   // If not time range is given, all available result are integrated.
   // NOTE(milo): All measurements up to the to_time are removed from the queue!
   PimResult Preintegrate(seconds_t from_time = kMinSeconds,
                          seconds_t to_time = kMaxSeconds);
+
+  void DiscardBefore(seconds_t time);
+
+  seconds_t Newest() { return queue_.PeekBack().timestamp; }
+  seconds_t Oldest() { return queue_.PeekFront().timestamp; }
 
  private:
   Options opt_;

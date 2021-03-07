@@ -67,9 +67,10 @@ TEST(VioTest, TestStateEstimator1)
   state_estimator.RegisterSmootherResultCallback(smoother_callback);
   state_estimator.RegisterFilterResultCallback(filter_callback);
 
-  // Matrix4d T_world_lkf = Matrix4d::Identity();
-
   dataset.RegisterStereoCallback(std::bind(&StateEstimator::ReceiveStereo, &state_estimator, std::placeholders::_1));
+
+  state_estimator.Initialize(0, gtsam::Pose3::identity());
+
   dataset.Playback(10.0f, false);
 
   state_estimator.BlockUntilFinished();

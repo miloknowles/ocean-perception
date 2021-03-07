@@ -112,8 +112,8 @@ class StateEstimator final {
     StereoFrontend::Options stereo_frontend_options;
     ImuManager::Options imu_manager_options;
 
-    int max_size_raw_stereo_queue = 40;      // Images for the stereo frontend to process.
-    int max_size_smoother_vo_queue = 20;     // Holds keyframe VO estiamtes for the smoother to process.
+    int max_size_raw_stereo_queue = 100;      // Images for the stereo frontend to process.
+    int max_size_smoother_vo_queue = 100;     // Holds keyframe VO estimates for the smoother to process.
     int max_size_smoother_imu_queue = 1000;  // Holds IMU measurements for the smoother to process.
     int max_size_filter_vo_queue = 100;      // Holds all VO estimates for the filter to process.
     int max_size_filter_imu_queue = 1000;    // Holds IMU measurements for the filter to process.
@@ -142,6 +142,9 @@ class StateEstimator final {
   void RegisterSmootherResultCallback(const SmootherResultCallback& cb);
   void RegisterFilterResultCallback(const FilterResultCallback& cb);
 
+  // Initialize the state estimator pose from an external source of localization.
+  void Initialize(seconds_t t0, const gtsam::Pose3 P0_world_body);
+
   // This call blocks until all queued stereo pairs have been processed.
   void BlockUntilFinished();
 
@@ -152,7 +155,8 @@ class StateEstimator final {
   // Tracks features from stereo images, and decides what to do with the results.
   void StereoFrontendLoop();
 
-  void SmootherLoop();
+  // Smart the backend smoother with an initial timestamp and pose.
+  void SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_body);
 
   SmootherResult UpdateGraphNoVision();
 
@@ -181,6 +185,7 @@ class StateEstimator final {
   std::thread stereo_frontend_thread_;
   std::thread smoother_thread_;
   std::thread filter_thread_;
+  std::thread init_thread_;
 
   //================================================================================================
   // After solving the factor graph, the smoother updates this pose.

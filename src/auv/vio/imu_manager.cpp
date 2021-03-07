@@ -77,5 +77,13 @@ PimResult ImuManager::Preintegrate(seconds_t from_time, seconds_t to_time)
 }
 
 
+void ImuManager::DiscardBefore(seconds_t time)
+{
+  while (!queue_.Empty() && queue_.PeekFront().timestamp < time) {
+    queue_.Pop();
+  }
+}
+
+
 }
 }

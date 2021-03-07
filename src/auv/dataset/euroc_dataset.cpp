@@ -73,7 +73,7 @@ void EurocDataset::ParseImu(const std::string& data_csv_path)
 
   LOG(INFO) << "IMU average (hz): "
            << (1e9 * static_cast<double>(count) / static_cast<double>(total_time)) << '\n'
-           << "Maximum measured rotation rate (rad/s):" << max_norm_rot_rate << '\n'
+           << "Maximum measured rotation rate (rad/s): " << max_norm_rot_rate << '\n'
            << "Maximum measured acceleration (m/s^2): " << max_norm_acc;
 }
 
