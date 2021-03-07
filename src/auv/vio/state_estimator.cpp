@@ -281,6 +281,7 @@ SmootherResult StateEstimator::UpdateGraphWithVision(
     // If IMU was unavailable at the last state, we initialize it here with a prior.
     // NOTE(milo): For now we assume zero velocity and zero acceleration for the first pose.
     if (!last_smoother_result.has_imu_state) {
+      LOG(INFO) << "Last smoother state missing VELOCITY and BIAS, will add them" << std::endl;
       new_values.insert(last_vel_sym, kZeroVelocity);
       new_values.insert(last_bias_sym, kZeroImuBias);
 
@@ -295,15 +296,13 @@ SmootherResult StateEstimator::UpdateGraphWithVision(
                                               pim_result.pim);
     new_factors.push_back(imu_factor);
 
+    std::cout << imu_factor << std::endl;
+
     // Add a prior on the change in bias.
     new_factors.push_back(gtsam::BetweenFactor<ImuBias>(
         last_bias_sym, bias_sym, kZeroImuBias, bias_noise_model));
 
     graph_has_imu_btw_factor = true;
-
-  // Invalid PIM result (couldn't find measurements that align with last and current keypose).
-  } else {
-    LOG(INFO) << "IMU unavailable or misaligned, couldn't preintegrate" << std::endl;
   }
   //================================================================================================
 
@@ -314,7 +313,7 @@ SmootherResult StateEstimator::UpdateGraphWithVision(
   //===================================== UPDATE ISAM2 GRAPH =======================================
   gtsam::ISAM2UpdateParams updateParams;
   updateParams.newAffectedKeys = std::move(factorNewAffectedKeys);
-
+  smoother.print();
   gtsam::ISAM2Result isam_result = smoother.update(new_factors, new_values, updateParams);
 
   // Housekeeping: figure out what factor index has been assigned to each new factor.
