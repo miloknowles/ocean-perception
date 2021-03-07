@@ -42,8 +42,8 @@ void StateEstimator::ReceiveStereo(const StereoImage& stereo_pair)
 
 void StateEstimator::ReceiveImu(const ImuMeasurement& imu_data)
 {
-  // smoother_imu_manager_.Push(imu_data);
-  // filter_imu_queue_.Push(imu_data);
+  smoother_imu_manager_.Push(imu_data);
+  filter_imu_queue_.Push(imu_data);
 }
 
 
@@ -245,6 +245,14 @@ SmootherResult StateEstimator::UpdateGraphWithVision(
   //=================================== IMU PREINTEGRATION FACTOR ==================================
   const double from_time = last_smoother_result.timestamp;
   const double to_time = ConvertToSeconds(result.timestamp);
+
+  if (smoother_imu_manager_.Empty()) {
+    LOG(WARNING) << "Preintegration: IMU queue is empty" << std::endl;
+  } else {
+    LOG(INFO) << "Preintegration: from_time=" << from_time << " to_time=" << to_time << std::endl;
+    LOG(INFO) << "Preintegration: oldest_imu=" << smoother_imu_manager_.Oldest() << " newest_imu=" << smoother_imu_manager_.Newest() << std::endl;
+  }
+
   const PimResult& pim_result = smoother_imu_manager_.Preintegrate(from_time, to_time);
 
   const gtsam::Symbol vel_sym('V', keypose_id);

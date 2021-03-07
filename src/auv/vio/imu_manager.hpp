@@ -42,7 +42,8 @@ class ImuManager final {
     Options() = default;
 
     // Say that an IMU measurement is "synchronized" with a timestamp if it's within this epsilon.
-    double allowed_misalignment_sec = 1e-3;
+    // FarmSim IMU comes in at 50 Hz, so using slightly > 0.02 sec epsilon.
+    double allowed_misalignment_sec = 0.05;
     size_t max_queue_size = 1000;   // At 100Hz, collects 10 sec of measurements.
 
     // Sensor noise model parameters.
@@ -51,7 +52,9 @@ class ImuManager final {
     double accel_bias_rw_sigma =  0.004905;
     double gyro_bias_rw_sigma =   0.000001454441043;
 
-    double accel_gravity = 9.81; // m/s^2
+    // Direction of the gravity vector in the world frame.
+    // NOTE(milo): Right now, we use a RDF frame for the IMU, so gravity is +y.
+    gtsam::Vector3 n_gravity = gtsam::Vector3(0, 9.81, 0); // m/s^2
   };
 
   MACRO_DELETE_COPY_CONSTRUCTORS(ImuManager);
@@ -65,15 +68,21 @@ class ImuManager final {
   bool Empty() { return queue_.Empty(); }
 
   // Preintegrate queued IMU measurements, optionally within a time range [from_time, to_time].
-  // If not time range is given, all available result are integrated.
+  // If not time range is given, all available result are integrated. Integration is reset inside
+  // of this function once all IMU measurements are incorporated.
   // NOTE(milo): All measurements up to the to_time are removed from the queue!
   PimResult Preintegrate(seconds_t from_time = kMinSeconds,
                          seconds_t to_time = kMaxSeconds);
 
+
+  // Call this after getting a new bias estimate from the smoother update.
+  void ResetAndUpdateBias(const ImuBias& bias);
+
+  // Throw away IMU measurements before (but NOT equal to) time.
   void DiscardBefore(seconds_t time);
 
-  seconds_t Newest() { return queue_.PeekBack().timestamp; }
-  seconds_t Oldest() { return queue_.PeekFront().timestamp; }
+  seconds_t Newest() { return ConvertToSeconds(queue_.PeekBack().timestamp); }
+  seconds_t Oldest() { return ConvertToSeconds(queue_.PeekFront().timestamp); }
 
  private:
   Options opt_;
