@@ -16,9 +16,6 @@ namespace vio {
 
 static const double kSetSkewToZero = 0.0;
 
-typedef gtsam::PreintegratedImuMeasurements PIM;
-typedef gtsam::PreintegratedCombinedMeasurements CombinedPIM;
-
 
 StateEstimator::StateEstimator(const Params& params, const StereoCamera& stereo_rig)
     : params_(params),
@@ -114,20 +111,10 @@ void StateEstimator::StereoFrontendLoop()
     const StereoFrontend::Result& result = stereo_frontend_.Track(
         raw_stereo_queue_.Pop(), Matrix4d::Identity(), false);
 
-    //==============================================================================================
-    // (Good Initialization OR Re-Initialization): No tracking, but plenty of features detected.
-    //    --> In this case, we want to add the next keyframe to the factor graph with a wide prior.
-    // (Initialization w/o Vision): No tracking available, and few features detected. Vision is
-    // probably unavailable, so we don't want to use any detected landmarks.
-    //    --> Skip any keyframes suggested by the frontend.
-    // (Good Tracking): Features tracked from a previous frame.
-    //    --> Nominal case, add suggested keyframes to the factor graph.
-    // (Tracking w/o Vision): Tracking was lost, and there aren't many new features. Vision is
-    // probably unavailable, so we don't want to use any detected landmarks.
-    //    --> Skip any keyframes suggested by the frontend.
     const bool tracking_failed = (result.status & StereoFrontend::Status::ODOM_ESTIMATION_FAILED) ||
                                  (result.status & StereoFrontend::Status::FEW_TRACKED_FEATURES);
 
+    // If there are observed landmarks in this image, there must be visual texture.
     const bool vision_reliable_now = (int)result.lmk_obs.size() >= params_.reliable_vision_min_lmks;
 
     // CASE 1: If this is a reliable keyframe, send to the smoother.
@@ -142,7 +129,7 @@ void StateEstimator::StereoFrontendLoop()
 
     // CASE 3: Vision unreliable. Throw away the odometry since it's probably not useful.
     } else {
-      LOG(WARNING) << "VISION UNRELIABLE! Discarding visual odometry measurements." << std::endl;
+      LOG(WARNING) << "VISION UNRELIABLE! Discarding VO measurements." << std::endl;
     }
   }
 }
@@ -168,8 +155,6 @@ SmootherResult StateEstimator::UpdateGraphWithVision(
   const StereoFrontend::Result& result = smoother_vo_queue_.Pop();
   CHECK(result.is_keyframe) << "Smoother shouldn't receive a non-keyframe result" << std::endl;
   CHECK(result.lmk_obs.size() > 0) << "Smoother shouln't receive a keyframe with no observations" << std::endl;
-
-  LOG(INFO) << "PROCESSING FRAME: " << result.camera_id << std::endl;
 
   gtsam::NonlinearFactorGraph new_factors;
   gtsam::Values new_values;
@@ -320,7 +305,7 @@ SmootherResult StateEstimator::UpdateGraphWithVision(
   }
 
   // (Optional) run the smoother a few more times to reduce error.
-  for (int i = 0; i < params_.ISAM2_extra_smoothing_iters; ++i) {
+  for (int i = 0; i < params_.extra_smoothing_iters; ++i) {
     smoother.update();
   }
 
@@ -472,7 +457,7 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
       smoother_result_ = new_result;
       mutex_smoother_result_.unlock();
 
-      trigger_sync_filter_.store(true); // Tell the filter to update with this result!
+      smoother_update_flag_.store(true); // Tell the filter to update with this result!
 
       for (const SmootherResultCallback& cb : smoother_result_callbacks_) {
         cb(smoother_result_);
@@ -519,7 +504,7 @@ void StateEstimator::FilterLoop()
     }
 
     //================================== SYNCHRONIZE WITH SMOOTHER =================================
-    if (trigger_sync_filter_.exchange(false)) {
+    if (smoother_update_flag_.exchange(false)) {
       // Get a copy of the latest smoother state to make sure it doesn't change during the synchronization.
       mutex_smoother_result_.lock();
       const SmootherResult result = smoother_result_;

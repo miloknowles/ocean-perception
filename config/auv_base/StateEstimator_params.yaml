@@ -1,5 +1,20 @@
 %YAML:1.0
 
+#===============================================================================
+max_size_raw_stereo_queue: 100
+max_size_smoother_vo_queue: 100
+max_size_smoother_imu_queue: 1000
+max_size_filter_vo_queue: 100
+max_size_filter_imu_queue: 1000
+
+reliable_vision_min_lmks: 12
+max_sec_btw_keyframes: 5.0
+
+extra_smoothing_iters: 2
+smoother_wait_vision_available: 5.0
+smoother_wait_vision_unavailable: 0.1
+
+#===============================================================================
 StereoFrontend:
   FeatureDetector:
     max_features_per_frame: 200
@@ -24,6 +39,7 @@ StereoFrontend:
     bidirectional: false
     subpixel_refinement: false
 
+#===============================================================================
 ImuManager:
   allowed_misalignment_sec: 0.05
   max_queue_size: 1000

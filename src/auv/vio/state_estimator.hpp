@@ -122,7 +122,7 @@ class StateEstimator final {
     int reliable_vision_min_lmks = 12;
     double max_sec_btw_keyframes = 5.0;
 
-    int ISAM2_extra_smoothing_iters = 2;
+    int extra_smoothing_iters = 2;
 
     // If vision is available, wait longer for stereo measurements to come in.
     double smoother_wait_vision_available = 5.0; // sec
@@ -135,11 +135,21 @@ class StateEstimator final {
     {
       stereo_frontend_params = StereoFrontend::Params(parser.GetYamlNode("StereoFrontend"));
       imu_manager_params = ImuManager::Params(parser.GetYamlNode("ImuManager"));
+
+      parser.GetYamlParam("max_size_raw_stereo_queue", &max_size_raw_stereo_queue);
+      parser.GetYamlParam("max_size_smoother_vo_queue", &max_size_smoother_vo_queue);
+      parser.GetYamlParam("max_size_smoother_imu_queue", &max_size_smoother_imu_queue);
+      parser.GetYamlParam("max_size_filter_vo_queue", &max_size_filter_vo_queue);
+      parser.GetYamlParam("max_size_filter_imu_queue", &max_size_filter_imu_queue);
+      parser.GetYamlParam("reliable_vision_min_lmks", &reliable_vision_min_lmks);
+      parser.GetYamlParam("max_sec_btw_keyframes", &max_sec_btw_keyframes);
+      parser.GetYamlParam("extra_smoothing_iters", &extra_smoothing_iters);
+      parser.GetYamlParam("smoother_wait_vision_available", &smoother_wait_vision_available);
+      parser.GetYamlParam("smoother_wait_vision_unavailable", &smoother_wait_vision_unavailable);
     }
   };
 
   MACRO_DELETE_COPY_CONSTRUCTORS(StateEstimator);
-
   StateEstimator(const Params& params, const StereoCamera& stereo_rig);
 
   void ReceiveStereo(const StereoImage& stereo_pair);
@@ -156,7 +166,7 @@ class StateEstimator final {
   // This call blocks until all queued stereo pairs have been processed.
   void BlockUntilFinished();
 
-  // Tells all of the threads to exit, then joins them, then exits.
+  // Tells all of the threads to exit, joins them, then exits.
   void Shutdown();
 
  private:
@@ -165,6 +175,7 @@ class StateEstimator final {
 
   // Smart the backend smoother with an initial timestamp and pose.
   void SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_body);
+  void FilterLoop();
 
   SmootherResult UpdateGraphNoVision();
 
@@ -175,8 +186,6 @@ class StateEstimator final {
                                       const gtsam::SmartProjectionParams& stereo_factor_params,
                                       const gtsam::Cal3_S2Stereo::shared_ptr& cal3_stereo,
                                       const SmootherResult& last_smoother_result);
-
-  void FilterLoop();
 
   // A central place to allocate new "keypose" ids. They are called "keyposes" because they could
   // come from vision OR other data sources (e.g acoustic localization).
@@ -199,7 +208,7 @@ class StateEstimator final {
   // After solving the factor graph, the smoother updates this pose.
   std::mutex mutex_smoother_result_;
   SmootherResult smoother_result_{0, 0, gtsam::Pose3::identity(), false, kZeroVelocity, kZeroImuBias};
-  std::atomic_bool trigger_sync_filter_{false};
+  std::atomic_bool smoother_update_flag_{false};
   //================================================================================================
 
   //================================================================================================
@@ -211,14 +220,12 @@ class StateEstimator final {
 
   ThreadsafeQueue<StereoImage> raw_stereo_queue_;
   ThreadsafeQueue<StereoFrontend::Result> smoother_vo_queue_;
-  // ThreadsafeQueue<ImuMeasurement> smoother_imu_queue_;
   ImuManager smoother_imu_manager_;
 
   ThreadsafeQueue<StereoFrontend::Result> filter_vo_queue_;
   ThreadsafeQueue<ImuMeasurement> filter_imu_queue_;
 
   uid_t next_kf_id_ = 0;
-  double last_kf_time_ = 0;
 
   std::vector<SmootherResultCallback> smoother_result_callbacks_;
   std::vector<FilterResultCallback> filter_result_callbacks_;
