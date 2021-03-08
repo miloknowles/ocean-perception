@@ -1,4 +1,2 @@
-# add_subdirectory(./external/apriltags)
-# add_subdirectory(./external/line_descriptor)
 add_subdirectory(./external/anms)
 add_subdirectory(./auv)
