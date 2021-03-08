@@ -8,8 +8,6 @@
 
 #include <gtsam_unstable/nonlinear/IncrementalFixedLagSmoother.h>
 #include <gtsam_unstable/slam/SmartStereoProjectionPoseFactor.h>
-// #include <gtsam_unstable/nonlinear/ConcurrentIncrementalFilter.h>
-// #include <gtsam_unstable/nonlinear/ConcurrentIncrementalSmoother.h>
 
 #include <gtsam/slam/BetweenFactor.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
