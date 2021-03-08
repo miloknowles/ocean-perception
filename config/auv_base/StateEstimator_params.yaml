@@ -15,6 +15,14 @@ smoother_wait_vision_available: 5.0
 smoother_wait_vision_unavailable: 0.1
 
 #===============================================================================
+GtsamInferenceParams:
+  pose_prior_noise_model: [0.1, 0.1, 0.1, 0.3, 0.3, 0.3]        # rad, rad, rad, m, m, m
+  frontend_vo_noise_model: [0.01, 0.01, 0.01, 0.05, 0.05, 0.05] # rad, rad, rad, m, m, m
+  lmk_mono_reproj_err_sigma: 2.0    # px in u and v
+  lmk_stereo_reproj_err_sigma: 2.0  # px in u and v
+  velocity_sigma: 0.1 # m/s
+
+#===============================================================================
 StereoFrontend:
   FeatureDetector:
     max_features_per_frame: 200
@@ -49,6 +57,12 @@ ImuManager:
   gyro_noise_sigma:     0.000205689024915
   accel_bias_rw_sigma:  0.004905
   gyro_bias_rw_sigma:   0.000001454441043
+
+  # Noise model for the zero-prior on IMU bias.
+  bias_prior_noise_model_sigma: 0.01
+
+  # Noise model for the IMU bias between factors.
+  bias_drift_noise_model_sigma: 0.001
 
   # Direction of the gravity vector in the world frame.
   # NOTE(milo): Right now, we use a RDF frame for the IMU, so gravity is +y.

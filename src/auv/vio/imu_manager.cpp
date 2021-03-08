@@ -8,12 +8,12 @@ ImuManager::ImuManager(const Params& params)
     : params_(params), queue_(params_.max_queue_size, true)
 {
   // https://github.com/haidai/gtsam/blob/master/examples/ImuFactorsExample.cpp
-  const gtsam::Matrix33 measured_acc_cov = gtsam::Matrix33::Identity(3,3) * std::pow(params_.accel_noise_sigma, 2);
-  const gtsam::Matrix33 measured_omega_cov = gtsam::Matrix33::Identity(3,3) * std::pow(params_.gyro_noise_sigma, 2);
-  const gtsam::Matrix33 integration_error_cov = gtsam::Matrix33::Identity(3,3) * 1e-8; // error committed in integrating position from velocities
-  const gtsam::Matrix33 bias_acc_cov = gtsam::Matrix33::Identity(3,3) * std::pow(params_.accel_bias_rw_sigma, 2);
-  const gtsam::Matrix33 bias_omega_cov = gtsam::Matrix33::Identity(3,3) * std::pow(params_.gyro_bias_rw_sigma, 2);
-  const gtsam::Matrix66 bias_acc_omega_int = gtsam::Matrix::Identity(6,6) * 1e-5; // error in the bias used for preintegration
+  const gtsam::Matrix33 measured_acc_cov = gtsam::I_3x3 * std::pow(params_.accel_noise_sigma, 2);
+  const gtsam::Matrix33 measured_omega_cov = gtsam::I_3x3 * std::pow(params_.gyro_noise_sigma, 2);
+  const gtsam::Matrix33 integration_error_cov = gtsam::I_3x3 * 1e-8; // error committed in integrating position from velocities
+  const gtsam::Matrix33 bias_acc_cov = gtsam::I_3x3 * std::pow(params_.accel_bias_rw_sigma, 2);
+  const gtsam::Matrix33 bias_omega_cov = gtsam::I_3x3 * std::pow(params_.gyro_bias_rw_sigma, 2);
+  const gtsam::Matrix66 bias_acc_omega_int = gtsam::I_6x6 * 1e-5; // error in the bias used for preintegration
 
   // Set up all of the params for preintegration.
   pim_params_ = boost::make_shared<PimC::Params>(params_.n_gravity);

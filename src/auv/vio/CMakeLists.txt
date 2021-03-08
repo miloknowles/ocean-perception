@@ -2,6 +2,8 @@
 SET(LIBRARY_NAME ${PROJECT_NAME}_vio)
 
 SET(LIBRARY_SRC
+  state_estimator_types.hpp
+  state_estimator_util.hpp
   landmark_observation.hpp
   state_estimate_3d.hpp
   feature_detector.cpp

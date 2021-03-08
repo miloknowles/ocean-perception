@@ -13,95 +13,18 @@
 #include "vio/stereo_frontend.hpp"
 #include "vio/state_estimate_3d.hpp"
 #include "vio/imu_manager.hpp"
+#include "vio/state_estimator_types.hpp"
+#include "vio/state_estimator_util.hpp"
 
 #include <gtsam/navigation/NavState.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/inference/Key.h>
 #include <gtsam/inference/Symbol.h>
-#include <gtsam/geometry/Pose3.h>
-#include <gtsam/geometry/Cal3_S2.h>
-#include <gtsam/geometry/Cal3_S2Stereo.h>
 #include <gtsam/nonlinear/ISAM2.h>
-#include <gtsam/slam/SmartProjectionPoseFactor.h>
-#include <gtsam_unstable/slam/SmartStereoProjectionPoseFactor.h>
 
 namespace bm {
 namespace vio {
-
-using namespace core;
-
-static const size_t kWaitForDataMilliseconds = 100;
-static const gtsam::Vector3 kZeroVelocity = gtsam::Vector3::Zero();
-
-typedef gtsam::SmartStereoProjectionPoseFactor SmartStereoFactor;
-typedef gtsam::SmartProjectionPoseFactor<gtsam::Cal3_S2> SmartMonoFactor;
-
-typedef std::unordered_map<uid_t, SmartMonoFactor::shared_ptr> SmartMonoFactorMap;
-typedef std::unordered_map<uid_t, SmartStereoFactor::shared_ptr> SmartStereoFactorMap;
-typedef std::map<uid_t, gtsam::FactorIndex> LmkToFactorMap;
-
-
-// Waits for a queue item for timeout_sec. Returns whether an item arrived before the timeout.
-template <typename QueueType>
-bool WaitForResultOrTimeout(QueueType& queue, double timeout_sec)
-{
-  double elapsed = 0;
-  const size_t ms_each_wait = (timeout_sec < kWaitForDataMilliseconds) ? \
-                               kWaitForDataMilliseconds / 5 : kWaitForDataMilliseconds;
-  while (queue.Empty() && elapsed < timeout_sec) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(ms_each_wait));
-    elapsed += static_cast<double>(1e-3 * ms_each_wait);
-  }
-
-  return elapsed >= timeout_sec;
-}
-
-
-// The smoother changes its behavior depending on whether vision is available/unavailable.
-enum class SmootherMode { VISION_AVAILABLE, VISION_UNAVAILABLE };
-
-
-// Returns a summary of the smoother update.
-struct SmootherResult final
-{
-  explicit SmootherResult(uid_t keypose_id,
-                          seconds_t timestamp,
-                          const gtsam::Pose3& P_world_body,
-                          bool has_imu_state,
-                          const gtsam::Vector3& v_world_body,
-                          const ImuBias& imu_bias)
-      : keypose_id(keypose_id),
-        timestamp(timestamp),
-        P_world_body(P_world_body),
-        has_imu_state(has_imu_state),
-        v_world_body(v_world_body),
-        imu_bias(imu_bias) {}
-
-  uid_t keypose_id;           // uid_t of the latest keypose (from vision or other).
-  seconds_t timestamp;        // timestamp (sec) of this keypose
-  gtsam::Pose3 P_world_body;  // Pose of the body in the world frame.
-
-  bool has_imu_state = false; // Does the graph contain variables for velocity and IMU bias?
-  gtsam::Vector3 v_world_body = kZeroVelocity;
-  ImuBias imu_bias = kZeroImuBias;
-};
-
-
-struct FilterResult final
-{
-  explicit FilterResult(seconds_t timestamp,
-                        const gtsam::Pose3& P_world_body)
-      : timestamp(timestamp),
-        P_world_body(P_world_body) {}
-
-  seconds_t timestamp;
-  gtsam::Pose3 P_world_body;
-};
-
-
-typedef std::function<void(const SmootherResult&)> SmootherResultCallback;
-typedef std::function<void(const FilterResult&)> FilterResultCallback;
 
 
 class StateEstimator final {
@@ -112,6 +35,7 @@ class StateEstimator final {
 
     StereoFrontend::Params stereo_frontend_params;
     ImuManager::Params imu_manager_params;
+    GtsamInferenceParams inference_params;
 
     int max_size_raw_stereo_queue = 100;      // Images for the stereo frontend to process.
     int max_size_smoother_vo_queue = 100;     // Holds keyframe VO estimates for the smoother to process.
@@ -135,6 +59,7 @@ class StateEstimator final {
     {
       stereo_frontend_params = StereoFrontend::Params(parser.GetYamlNode("StereoFrontend"));
       imu_manager_params = ImuManager::Params(parser.GetYamlNode("ImuManager"));
+      inference_params = GtsamInferenceParams(parser.GetYamlNode("GtsamInferenceParams"));
 
       parser.GetYamlParam("max_size_raw_stereo_queue", &max_size_raw_stereo_queue);
       parser.GetYamlParam("max_size_smoother_vo_queue", &max_size_smoother_vo_queue);
@@ -180,12 +105,11 @@ class StateEstimator final {
   SmootherResult UpdateGraphNoVision();
 
   SmootherResult UpdateGraphWithVision(gtsam::ISAM2& smoother,
-                                      SmartStereoFactorMap& stereo_factors,
-                                      LmkToFactorMap& lmk_to_factor_map,
-                                      const gtsam::SharedNoiseModel& stereo_factor_noise,
-                                      const gtsam::SmartProjectionParams& stereo_factor_params,
-                                      const gtsam::Cal3_S2Stereo::shared_ptr& cal3_stereo,
-                                      const SmootherResult& last_smoother_result);
+                                       SmartStereoFactorMap& stereo_factors,
+                                       LmkToFactorMap& lmk_to_factor_map,
+                                       const gtsam::SmartProjectionParams& stereo_factor_params,
+                                       const gtsam::Cal3_S2Stereo::shared_ptr& cal3_stereo,
+                                       const SmootherResult& last_smoother_result);
 
   // A central place to allocate new "keypose" ids. They are called "keyposes" because they could
   // come from vision OR other data sources (e.g acoustic localization).

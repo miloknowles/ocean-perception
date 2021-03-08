@@ -14,8 +14,6 @@
 namespace bm {
 namespace vio {
 
-static const double kSetSkewToZero = 0.0;
-
 
 StateEstimator::StateEstimator(const Params& params, const StereoCamera& stereo_rig)
     : params_(params),
@@ -145,6 +143,7 @@ static bool MaybeAddImuFactor(uid_t keypose_id,
                               ImuManager& imu_manager,
                               double to_time,
                               const SmootherResult& last_smoother_result,
+                              gtsam::SharedNoiseModel velocity_noise_model,
                               bool predict_keypose_var_with_imu,
                               gtsam::Values& new_values,
                               gtsam::NonlinearFactorGraph& new_factors)
@@ -179,10 +178,6 @@ static bool MaybeAddImuFactor(uid_t keypose_id,
       new_values.insert(keypose_sym, pred_state.pose());
     }
 
-    // TODO(milo): Move to params
-    const auto velocity_noise_model = gtsam::noiseModel::Isotropic::Sigma(3, 0.1);  // m/s
-    const auto bias_noise_model = gtsam::noiseModel::Isotropic::Sigma(6, 1e-3);
-
     new_values.insert(vel_sym, pred_state.velocity());
     new_values.insert(bias_sym, last_smoother_result.imu_bias);
 
@@ -194,7 +189,7 @@ static bool MaybeAddImuFactor(uid_t keypose_id,
       new_values.insert(last_bias_sym, kZeroImuBias);
 
       new_factors.addPrior(last_vel_sym, kZeroVelocity, velocity_noise_model);
-      new_factors.addPrior(last_bias_sym, kZeroImuBias, bias_noise_model);
+      new_factors.addPrior(last_bias_sym, kZeroImuBias, imu_manager.BiasPriorNoiseModel());
     }
 
     const gtsam::CombinedImuFactor imu_factor(last_keypose_sym, last_vel_sym,
@@ -205,7 +200,7 @@ static bool MaybeAddImuFactor(uid_t keypose_id,
 
     // Add a prior on the change in bias.
     new_factors.push_back(gtsam::BetweenFactor<ImuBias>(
-        last_bias_sym, bias_sym, kZeroImuBias, bias_noise_model));
+        last_bias_sym, bias_sym, kZeroImuBias, imu_manager.BiasDriftNoiseModel()));
 
   }
 
@@ -223,7 +218,6 @@ SmootherResult StateEstimator::UpdateGraphWithVision(
     gtsam::ISAM2& smoother,
     SmartStereoFactorMap& stereo_factors,
     LmkToFactorMap& lmk_to_factor_map,
-    const gtsam::SharedNoiseModel& stereo_factor_noise,
     const gtsam::SmartProjectionParams& stereo_factor_params,
     const gtsam::Cal3_S2Stereo::shared_ptr& cal3_stereo,
     const SmootherResult& last_smoother_result)
@@ -270,10 +264,10 @@ SmootherResult StateEstimator::UpdateGraphWithVision(
 
     // Add an odometry factor between the previous KF and current KF.
     const gtsam::Pose3 P_lkf_cam(result.T_lkf_cam);
-    const auto odom3_noise = gtsam::noiseModel::Diagonal::Sigmas(
-        (gtsam::Vector(6) << 0.1, 0.1, 0.1, 0.3, 0.3, 0.3).finished());
+
     new_factors.push_back(gtsam::BetweenFactor<gtsam::Pose3>(
-        last_keypose_sym, keypose_sym, P_lkf_cam, odom3_noise));
+        last_keypose_sym, keypose_sym, P_lkf_cam,
+        params_.inference_params.frontend_vo_noise_model));
 
     graph_has_vo_btw_factor = true;
   }
@@ -292,7 +286,8 @@ SmootherResult StateEstimator::UpdateGraphWithVision(
 
     // NEW SMART FACTOR: Creating smart stereo factor for the first time.
     if (stereo_factors.count(lmk_id) == 0) {
-      stereo_factors.emplace(lmk_id, new SmartStereoFactor(stereo_factor_noise, stereo_factor_params));
+      stereo_factors.emplace(lmk_id, new SmartStereoFactor(
+          params_.inference_params.lmk_stereo_factor_noise_model, stereo_factor_params));
 
       // Indicate that the newest factor refers to lmk_id.
       // NOTE(milo): Add the new factor to the graph. Order matters here!
@@ -319,6 +314,7 @@ SmootherResult StateEstimator::UpdateGraphWithVision(
       smoother_imu_manager_,
       keypose_time,
       last_smoother_result,
+      params_.inference_params.velocity_noise_model,
       !graph_has_vo_btw_factor,
       new_values,
       new_factors);
@@ -391,17 +387,10 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
           stereo_rig_.cx(),
           stereo_rig_.cy()));
 
+  //================================= FACTOR GRAPH HOUSEKEEPING ====================================
   SmartMonoFactorMap lmk_mono_factors;
   SmartStereoFactorMap lmk_stereo_factors;
 
-  const gtsam::noiseModel::Isotropic::shared_ptr lmk_mono_factor_noise =
-      gtsam::noiseModel::Isotropic::Sigma(2, 2.0); // one pixel in u and v
-
-  // TODO(milo): Is this uncertainty for u, v, disp?
-  const gtsam::noiseModel::Isotropic::shared_ptr lmk_stereo_factor_noise =
-      gtsam::noiseModel::Isotropic::Sigma(3, 3.0);
-
-  //================================= FACTOR GRAPH HOUSEKEEPING ====================================
   // Map: landmark_id => smart_factor_index inside iSAM2
   LmkToFactorMap lmk_to_factor_map;
 
@@ -440,19 +429,15 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
     smoother_result_ = SmootherResult(id0, t0, P0_world_body, !no_imu, kZeroVelocity, kZeroImuBias);
 
     // Prior and initial value for the 0th pose.
-    const auto P0_noise = gtsam::noiseModel::Diagonal::Sigmas(
-        (gtsam::Vector(6) << 0.1, 0.1, 0.1, 0.3, 0.3, 0.3).finished());
-    new_factors.addPrior<gtsam::Pose3>(P0_sym, P0_world_body, P0_noise);
+    new_factors.addPrior<gtsam::Pose3>(P0_sym, P0_world_body, params_.inference_params.pose_prior_noise_model);
     new_values.insert(P0_sym, P0_world_body);
 
     // If IMU available, add inertial variables to the graph.
     if (!no_imu) {
-      const auto velocity_noise_model = gtsam::noiseModel::Isotropic::Sigma(3, 0.1);  // m/s
-      const auto bias_noise_model = gtsam::noiseModel::Isotropic::Sigma(6, 1e-3);
       new_values.insert(V0_sym, kZeroVelocity);
       new_values.insert(B0_sym, kZeroImuBias);
-      new_factors.addPrior(V0_sym, kZeroVelocity, velocity_noise_model);
-      new_factors.addPrior(B0_sym, kZeroImuBias, bias_noise_model);
+      new_factors.addPrior(V0_sym, kZeroVelocity, params_.inference_params.velocity_noise_model);
+      new_factors.addPrior(B0_sym, kZeroImuBias, smoother_imu_manager_.BiasPriorNoiseModel());
     }
 
     smoother.update(new_factors, new_values);
@@ -480,7 +465,6 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
           smoother,
           lmk_stereo_factors,
           lmk_to_factor_map,
-          lmk_stereo_factor_noise,
           lmk_stereo_factor_params,
           cal3_stereo,
           smoother_result_);
