@@ -1,0 +1,39 @@
+%YAML:1.0
+
+StereoFrontend:
+  FeatureDetector:
+    max_features_per_frame: 200
+    subpixel_corners: false
+    min_distance_btw_tracked_and_detected_features: 20
+    gftt_quality_level: 0.01
+    gftt_block_size: 5
+    gftt_use_harris_corner_detector: false
+    gftt_k: 0.04
+
+  FeatureTracker:
+    klt_maxiers: 30
+    klt_epsilon: 0.001
+    klt_winsize: 21
+    klt_max_level: 4
+
+  StereoMatcher:
+    templ_cols: 31
+    templ_rows: 11
+    max_disp: 128
+    max_matching_cost: 0.15
+    bidirectional: false
+    subpixel_refinement: false
+
+ImuManager:
+  allowed_misalignment_sec: 0.05
+  max_queue_size: 1000
+
+  # Sensor noise model parameters.
+  accel_noise_sigma:    0.0003924
+  gyro_noise_sigma:     0.000205689024915
+  accel_bias_rw_sigma:  0.004905
+  gyro_bias_rw_sigma:   0.000001454441043
+
+  # Direction of the gravity vector in the world frame.
+  # NOTE(milo): Right now, we use a RDF frame for the IMU, so gravity is +y.
+  n_gravity: [0, 9.81, 0] # m/s^2

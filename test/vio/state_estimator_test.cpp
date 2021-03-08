@@ -8,8 +8,6 @@
 
 #include <gtsam_unstable/nonlinear/IncrementalFixedLagSmoother.h>
 #include <gtsam_unstable/slam/SmartStereoProjectionPoseFactor.h>
-// #include <gtsam_unstable/nonlinear/ConcurrentIncrementalFilter.h>
-// #include <gtsam_unstable/nonlinear/ConcurrentIncrementalSmoother.h>
 
 #include <gtsam/slam/BetweenFactor.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
@@ -44,11 +42,11 @@ TEST(VioTest, TestStateEstimator1)
   const PinholeCamera camera_model(415.876509, 415.876509, 375.5, 239.5, 480, 752);
   const StereoCamera stereo_rig(camera_model, 0.2);
 
-  StateEstimator::Options opt;
-  StateEstimator state_estimator(opt, stereo_rig);
+  StateEstimator::Params params;
+  StateEstimator state_estimator(params, stereo_rig);
 
-  Visualizer3D::Options vizopt;
-  Visualizer3D viz(vizopt, stereo_rig);
+  Visualizer3D::Params viz_params("/home/milo/bluemeadow/catkin_ws/src/auv/config/auv_base/Visualizer3D_params.yaml");
+  Visualizer3D viz(viz_params, stereo_rig);
 
   // std::function<void(const SmootherResult& result)>
   SmootherResultCallback smoother_callback = [&](const SmootherResult& result)
@@ -88,11 +86,11 @@ TEST(VioTest, TestISAM2_SmartStereo)
   const std::string toplevel_folder = "/home/milo/datasets/Unity3D/farmsim/euroc_test2";
   dataset::EurocDataset dataset(toplevel_folder);
 
-  StereoFrontend::Options opt;
+  StereoFrontend::Params params;
 
   const PinholeCamera camera_model(415.876509, 415.876509, 375.5, 239.5, 480, 752);
   const StereoCamera stereo_rig(camera_model, 0.2);
-  StereoFrontend stereo_frontend(opt, stereo_rig);
+  StereoFrontend stereo_frontend(params, stereo_rig);
 
   Matrix4d T_world_lkf = Matrix4d::Identity();
   gtsam::Key lkf_key(0);

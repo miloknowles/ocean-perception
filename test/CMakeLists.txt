@@ -6,11 +6,6 @@ set(TEST_SOURCES
   # core/math_util_test.cpp
   # dataset/euroc_dataset_test.cpp
   # dataset/himb_dataset_test.cpp
-  # vo/feature_matching_test.cpp
-  # vo/point_detector_test.cpp
-  # vo/line_detector_test.cpp
-  # vo/optimization_test.cpp
-  # vo/vo_test.cpp
   # imaging/enhance_test.cpp
   # stereo_matching/sgbm_test.cpp
   # vio/feature_detector_test.cpp
@@ -31,8 +26,6 @@ target_include_directories(${TEST_EXECUTABLE_NAME} PRIVATE ${PROJECT_SOURCE_DIR}
 target_link_libraries(${TEST_EXECUTABLE_NAME}
   gtest
   ${PROJECT_NAME}_core
-  ${PROJECT_NAME}_viz
-  ${PROJECT_NAME}_vo
   ${PROJECT_NAME}_vio
   ${PROJECT_NAME}_dataset
   ${PROJECT_NAME}_imaging

@@ -2,6 +2,7 @@
 
 #include <opencv2/features2d.hpp>
 
+#include "core/params_base.hpp"
 #include "core/macros.hpp"
 #include "core/cv_types.hpp"
 #include "core/eigen_types.hpp"
@@ -12,28 +13,20 @@ namespace vio {
 using namespace core;
 
 
-// Different option for the point detection algorithm.
-// NOTE(milo): For now, only implementing ORB support.
+// Different options for the point detection algorithm.
 enum FeatureAlgorithm { FAST, ORB, GFTT, };
 
 
 class FeatureDetector final {
  public:
   // Parameters to control feature detection (avoids passing them all to Detect()).
-  struct Options final {
-    Options() = default;
+  struct Params final : public ParamsBase
+  {
+    MACRO_PARAMS_STRUCT_CONSTRUCTORS(Params);
 
     FeatureAlgorithm algorithm = FeatureAlgorithm::GFTT;
 
     int max_features_per_frame = 200;
-
-    //============================ ORB ====================================
-    float orb_scale_factor = 1.2;
-    int orb_num_lvl = 2;            // NOTE(milo): Reducing this from 4 to 2 sped things up.
-    int orb_edge_thresh = 10;       // Kimera-VIO uses 10 here
-    int orb_wta_k = 0;              // Kimeria-VIO uses 0
-    int orb_patch_size = 2;         // Kimera-VIO uses 2 here
-    int orb_fast_thresh = 10;
 
     //============================ GFTT ===================================
     int min_distance_btw_tracked_and_detected_features = 20;
@@ -49,17 +42,29 @@ class FeatureDetector final {
     int subpix_zerozone = -1;
     int subpix_maxiters = 10;
     float subpix_epsilon = 0.01;
+
+   private:
+    // Loads in params using a YAML parser.
+    void LoadParams(const YamlParser& parser) override
+    {
+      parser.GetYamlParam("max_features_per_frame", &max_features_per_frame);
+      parser.GetYamlParam("min_distance_btw_tracked_and_detected_features", &min_distance_btw_tracked_and_detected_features);
+      parser.GetYamlParam("gftt_quality_level", &gftt_quality_level);
+      parser.GetYamlParam("gftt_block_size", &gftt_block_size);
+      parser.GetYamlParam("gftt_use_harris_corner_detector", &gftt_use_harris_corner_detector);
+      parser.GetYamlParam("subpixel_corners", &subpixel_corners);
+    }
   };
 
   MACRO_DELETE_COPY_CONSTRUCTORS(FeatureDetector);
 
   // Construct with options.
-  explicit FeatureDetector(const Options& opt);
+  explicit FeatureDetector(const Params& params);
 
   void Detect(const Image1b& img, const VecPoint2f& tracked_kp, VecPoint2f& new_kp);
 
  private:
-  Options opt_;
+  Params params_;
 
   cv::Ptr<cv::Feature2D> feature_detector_;
 };

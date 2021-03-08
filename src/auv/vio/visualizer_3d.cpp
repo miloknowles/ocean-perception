@@ -150,8 +150,8 @@ void Visualizer3D::Start()
 void Visualizer3D::RemoveOldLandmarks()
 {
   // If too many landmarks, remove the oldest ones.
-  if ((int)set_live_lmk_ids_.size() > opt_.max_stored_landmarks) {
-    const int num_to_erase = set_live_lmk_ids_.size() - opt_.max_stored_landmarks;
+  if ((int)set_live_lmk_ids_.size() > params_.max_stored_landmarks) {
+    const int num_to_erase = set_live_lmk_ids_.size() - params_.max_stored_landmarks;
 
     for (int i = 0; i < num_to_erase; ++i) {
       const uid_t lmk_id_to_erase = queue_live_lmk_ids_.front();

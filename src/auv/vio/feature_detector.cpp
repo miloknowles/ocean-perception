@@ -33,27 +33,16 @@ static std::vector<cv::KeyPoint> CvPointToKeyPoint(const VecPoint2f& input)
 }
 
 
-FeatureDetector::FeatureDetector(const Options& opt) : opt_(opt)
+FeatureDetector::FeatureDetector(const Params& params) : params_(params)
 {
-  if (opt_.algorithm == FeatureAlgorithm::ORB) {
-    feature_detector_ = cv::ORB::create(
-        opt_.max_features_per_frame,
-        opt_.orb_scale_factor,
-        opt_.orb_num_lvl,
-        opt_.orb_edge_thresh,
-        kOrbFirstLevel,
-        opt_.orb_wta_k,
-        cv::ORB::HARRIS_SCORE,
-        opt_.orb_patch_size,
-        opt_.orb_fast_thresh);
-  } else if (opt_.algorithm == FeatureAlgorithm::GFTT) {
+  if (params_.algorithm == FeatureAlgorithm::GFTT) {
     feature_detector_ = cv::GFTTDetector::create(
-      opt.max_features_per_frame,
-      opt.gftt_quality_level,
-      opt.min_distance_btw_tracked_and_detected_features,
-      opt.gftt_block_size,
-      opt.gftt_use_harris_corner_detector,
-      opt.gftt_k);
+      params_.max_features_per_frame,
+      params_.gftt_quality_level,
+      params_.min_distance_btw_tracked_and_detected_features,
+      params_.gftt_block_size,
+      params_.gftt_use_harris_corner_detector,
+      params_.gftt_k);
   } else {
     throw std::runtime_error("Unsupported feature detection algorithm!");
   }
@@ -67,7 +56,7 @@ static std::vector<cv::KeyPoint> ANMSRangeTree(std::vector<cv::KeyPoint>& keypoi
                                               int cols,
                                               int rows)
 {
-  if (keypoints.size() <= num_to_keep) {
+  if ((int)keypoints.size() <= num_to_keep) {
     return keypoints;
   }
 
@@ -98,7 +87,7 @@ void FeatureDetector::Detect(const Image1b& img,
   // Only detect keypoints that a minimum distance from existing tracked keypoints.
   cv::Mat mask(img.size(), CV_8U, cv::Scalar(255));
   for (size_t i = 0; i < tracked_kp.size(); ++i) {
-    cv::circle(mask, tracked_kp.at(i), opt_.min_distance_btw_tracked_and_detected_features, cv::Scalar(0), CV_FILLED);
+    cv::circle(mask, tracked_kp.at(i), params_.min_distance_btw_tracked_and_detected_features, cv::Scalar(0), CV_FILLED);
   }
 
   std::vector<cv::KeyPoint> new_kp_cv;
@@ -106,22 +95,20 @@ void FeatureDetector::Detect(const Image1b& img,
 
   // Apply non-maximal suppression to limit the number of new points that are detected.
   // Supposedly, this function will achieve a more "even distribution" of features across the image.
-  const int num_to_keep = std::max(0, opt_.max_features_per_frame - (int)tracked_kp.size());
-  LOG(INFO) << "Has " << tracked_kp.size() << " features, need " << opt_.max_features_per_frame << " features, keeping " << num_to_keep << std::endl;
-  // AdaptiveNonMaximalSuppresion(new_kp_cv, num_to_keep);
+  const int num_to_keep = std::max(0, params_.max_features_per_frame - (int)tracked_kp.size());
 
   new_kp_cv = ANMSRangeTree(new_kp_cv, num_to_keep, 0.1f, img.cols, img.rows);
   new_kp = CvKeyPointToPoint(new_kp_cv);
 
   // Optionally do sub-pixel refinement on keypoint locations.
   // https://docs.opencv.org/master/dd/d1a/group__imgproc__feature.html#ga354e0d7c86d0d9da75de9b9701a9a87e
-  if (opt_.subpixel_corners) {
+  if (params_.subpixel_corners) {
     cv::TermCriteria term_criteria;
     term_criteria.type = cv::TermCriteria::EPS + cv::TermCriteria::COUNT;
-    term_criteria.epsilon = opt_.subpix_epsilon;
-    term_criteria.maxCount = opt_.subpix_maxiters;
-    const cv::Size winsize(opt_.subpix_winsize, opt_.subpix_winsize);
-    const cv::Size zerozone(opt_.subpix_zerozone, opt_.subpix_zerozone);
+    term_criteria.epsilon = params_.subpix_epsilon;
+    term_criteria.maxCount = params_.subpix_maxiters;
+    const cv::Size winsize(params_.subpix_winsize, params_.subpix_winsize);
+    const cv::Size zerozone(params_.subpix_zerozone, params_.subpix_zerozone);
     cv::cornerSubPix(img, new_kp, winsize, zerozone, term_criteria);
   }
 }

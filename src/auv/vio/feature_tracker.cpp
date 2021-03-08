@@ -27,10 +27,10 @@ void FeatureTracker::Track(const Image1b& ref_img,
   // Setup termination criteria for optical flow.
   const cv::TermCriteria kTerminationCriteria(
       cv::TermCriteria::COUNT + cv::TermCriteria::EPS,
-      opt_.klt_maxiters,
-      opt_.klt_epsilon);
+      params_.klt_maxiters,
+      params_.klt_epsilon);
 
-  const cv::Size2i klt_window_size(opt_.klt_winsize, opt_.klt_winsize);
+  const cv::Size2i klt_window_size(params_.klt_winsize, params_.klt_winsize);
 
   // If no initial guesses are provided for the optical flow, nitialize px_cur to previous locations.
   if (px_cur.empty()) {
@@ -44,7 +44,7 @@ void FeatureTracker::Track(const Image1b& ref_img,
                            status,
                            error,
                            klt_window_size,
-                           opt_.klt_max_level,
+                           params_.klt_max_level,
                            kTerminationCriteria,
                            cv::OPTFLOW_USE_INITIAL_FLOW);
 }
