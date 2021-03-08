@@ -135,6 +135,84 @@ void StateEstimator::StereoFrontendLoop()
 }
 
 
+// Preintegrate IMU measurements since the last keypose, and add an IMU factor to the graph.
+// Returns whether preintegration was successful. If so, there will be a factor constraining
+// X_{t-1}, V_{t-1}, B_{t-1} <--- FACTOR ---> X_{t}, V_{t}, B_{t}.
+// If the graph is missing variables for velocity and bias at (t-1), which will occur when IMU is
+// unavailable, then these variables will be initialized with a ZERO-VELOCITY, ZERO-BIAS prior.
+static bool MaybeAddImuFactor(uid_t keypose_id,
+                              uid_t last_keypose_id,
+                              ImuManager& imu_manager,
+                              double to_time,
+                              const SmootherResult& last_smoother_result,
+                              bool predict_keypose_var_with_imu,
+                              gtsam::Values& new_values,
+                              gtsam::NonlinearFactorGraph& new_factors)
+{
+  const double from_time = last_smoother_result.timestamp;
+
+  if (imu_manager.Empty()) {
+    LOG(WARNING) << "Preintegration: IMU queue is empty" << std::endl;
+  } else {
+    LOG(INFO) << "Preintegration: from_time=" << from_time << " to_time=" << to_time << std::endl;
+    LOG(INFO) << "Preintegration: oldest_imu=" << imu_manager.Oldest() << " newest_imu=" << imu_manager.Newest() << std::endl;
+  }
+
+  const PimResult& pim_result = imu_manager.Preintegrate(from_time, to_time);
+
+  const gtsam::Symbol keypose_sym('X', keypose_id);
+  const gtsam::Symbol vel_sym('V', keypose_id);
+  const gtsam::Symbol bias_sym('B', keypose_id);
+
+  const gtsam::Symbol last_keypose_sym('X', last_keypose_id);
+  const gtsam::Symbol last_vel_sym('V', last_keypose_id);
+  const gtsam::Symbol last_bias_sym('B', last_keypose_id);
+
+  if (pim_result.valid) {
+    // NOTE(milo): Gravity is corrected for in predict(), not during preintegration (NavState.cpp).
+    const gtsam::NavState prev_state(last_smoother_result.P_world_body,
+                                     last_smoother_result.v_world_body);
+    const gtsam::NavState pred_state = pim_result.pim.predict(prev_state, last_smoother_result.imu_bias);
+
+    // If no between factor from VO, we can use IMU to get an initial guess on the current pose.
+    if (predict_keypose_var_with_imu) {
+      new_values.insert(keypose_sym, pred_state.pose());
+    }
+
+    // TODO(milo): Move to params
+    const auto velocity_noise_model = gtsam::noiseModel::Isotropic::Sigma(3, 0.1);  // m/s
+    const auto bias_noise_model = gtsam::noiseModel::Isotropic::Sigma(6, 1e-3);
+
+    new_values.insert(vel_sym, pred_state.velocity());
+    new_values.insert(bias_sym, last_smoother_result.imu_bias);
+
+    // If IMU was unavailable at the last state, we initialize it here with a prior.
+    // NOTE(milo): For now we assume zero velocity and zero acceleration for the first pose.
+    if (!last_smoother_result.has_imu_state) {
+      LOG(INFO) << "Last smoother state missing VELOCITY and BIAS variables, will add them" << std::endl;
+      new_values.insert(last_vel_sym, kZeroVelocity);
+      new_values.insert(last_bias_sym, kZeroImuBias);
+
+      new_factors.addPrior(last_vel_sym, kZeroVelocity, velocity_noise_model);
+      new_factors.addPrior(last_bias_sym, kZeroImuBias, bias_noise_model);
+    }
+
+    const gtsam::CombinedImuFactor imu_factor(last_keypose_sym, last_vel_sym,
+                                              keypose_sym, vel_sym,
+                                              last_bias_sym, bias_sym,
+                                              pim_result.pim);
+    new_factors.push_back(imu_factor);
+
+    // Add a prior on the change in bias.
+    new_factors.push_back(gtsam::BetweenFactor<ImuBias>(
+        last_bias_sym, bias_sym, kZeroImuBias, bias_noise_model));
+
+  }
+
+  return pim_result.valid;
+}
+
+
 SmootherResult StateEstimator::UpdateGraphNoVision()
 {
   return SmootherResult(0, 0, gtsam::Pose3::identity(), false, kZeroVelocity, kZeroImuBias);
@@ -166,9 +244,16 @@ SmootherResult StateEstimator::UpdateGraphWithVision(
   std::map<gtsam::FactorIndex, uid_t> map_new_factor_to_lmk_id;
 
   const uid_t keypose_id = GetNextKeyposeId();
+  const seconds_t keypose_time = ConvertToSeconds(result.timestamp);
   const uid_t last_keypose_id = last_smoother_result.keypose_id;
+
   const gtsam::Symbol keypose_sym('X', keypose_id);
+  const gtsam::Symbol vel_sym('V', keypose_id);
+  const gtsam::Symbol bias_sym('B', keypose_id);
+
   const gtsam::Symbol last_keypose_sym('X', last_keypose_id);
+  const gtsam::Symbol last_vel_sym('V', last_keypose_id);
+  const gtsam::Symbol last_bias_sym('B', last_keypose_id);
 
   // Check if the timestamp from the LAST VO keyframe matches the last smoother result. If so, the
   // odometry measurement can be used in the graph.
@@ -228,76 +313,25 @@ SmootherResult StateEstimator::UpdateGraphWithVision(
   }
 
   //=================================== IMU PREINTEGRATION FACTOR ==================================
-  const double from_time = last_smoother_result.timestamp;
-  const double to_time = ConvertToSeconds(result.timestamp);
+  graph_has_imu_btw_factor = MaybeAddImuFactor(
+      keypose_id,
+      last_keypose_id,
+      smoother_imu_manager_,
+      keypose_time,
+      last_smoother_result,
+      !graph_has_vo_btw_factor,
+      new_values,
+      new_factors);
 
-  if (smoother_imu_manager_.Empty()) {
-    LOG(WARNING) << "Preintegration: IMU queue is empty" << std::endl;
-  } else {
-    LOG(INFO) << "Preintegration: from_time=" << from_time << " to_time=" << to_time << std::endl;
-    LOG(INFO) << "Preintegration: oldest_imu=" << smoother_imu_manager_.Oldest() << " newest_imu=" << smoother_imu_manager_.Newest() << std::endl;
-  }
-
-  const PimResult& pim_result = smoother_imu_manager_.Preintegrate(from_time, to_time);
-
-  const gtsam::Symbol vel_sym('V', keypose_id);
-  const gtsam::Symbol bias_sym('B', keypose_id);
-
-  const gtsam::Symbol last_vel_sym('V', last_keypose_id);
-  const gtsam::Symbol last_bias_sym('B', last_keypose_id);
-
-  if (pim_result.valid) {
-    // NOTE(milo): Gravity is corrected for in predict(), not during preintegration (NavState.cpp).
-    const gtsam::NavState prev_state(last_smoother_result.P_world_body,
-                                     last_smoother_result.v_world_body);
-    const gtsam::NavState pred_state = pim_result.pim.predict(prev_state, last_smoother_result.imu_bias);
-
-    // If no between factor from VO, we can use IMU to get an initial guess on the current pose.
-    if (!graph_has_vo_btw_factor) {
-      new_values.insert(keypose_sym, pred_state.pose());
-    }
-
-    // TODO(milo): Move to params
-    const auto velocity_noise_model = gtsam::noiseModel::Isotropic::Sigma(3, 0.1);  // m/s
-    const auto bias_noise_model = gtsam::noiseModel::Isotropic::Sigma(6, 1e-3);
-
-    new_values.insert(vel_sym, pred_state.velocity());
-    new_values.insert(bias_sym, last_smoother_result.imu_bias);
-
-    // If IMU was unavailable at the last state, we initialize it here with a prior.
-    // NOTE(milo): For now we assume zero velocity and zero acceleration for the first pose.
-    if (!last_smoother_result.has_imu_state) {
-      LOG(INFO) << "Last smoother state missing VELOCITY and BIAS, will add them" << std::endl;
-      new_values.insert(last_vel_sym, kZeroVelocity);
-      new_values.insert(last_bias_sym, kZeroImuBias);
-
-      new_factors.addPrior(last_vel_sym, kZeroVelocity, velocity_noise_model);
-      new_factors.addPrior(last_bias_sym, kZeroImuBias, bias_noise_model);
-    }
-
-    // Add the preintegrated imu factor.
-    const gtsam::CombinedImuFactor imu_factor(last_keypose_sym, last_vel_sym,
-                                              keypose_sym, vel_sym,
-                                              last_bias_sym, bias_sym,
-                                              pim_result.pim);
-    new_factors.push_back(imu_factor);
-
-    // Add a prior on the change in bias.
-    new_factors.push_back(gtsam::BetweenFactor<ImuBias>(
-        last_bias_sym, bias_sym, kZeroImuBias, bias_noise_model));
-
-    graph_has_imu_btw_factor = true;
-  }
-  //================================================================================================
-
+  //================================= FACTOR GRAPH SAFETY CHECK ====================================
   if (!graph_has_vo_btw_factor && !graph_has_imu_btw_factor) {
     LOG(FATAL) << "Graph doesn't have a between factor from VO or IMU, so it might be under-constrained" << std::endl;
   }
 
-  //===================================== UPDATE ISAM2 GRAPH =======================================
-  gtsam::ISAM2UpdateParams updateParams;
-  updateParams.newAffectedKeys = std::move(factorNewAffectedKeys);
-  gtsam::ISAM2Result isam_result = smoother.update(new_factors, new_values, updateParams);
+  //==================================== UPDATE FACTOR GRAPH =======================================
+  gtsam::ISAM2UpdateParams update_params;
+  update_params.newAffectedKeys = std::move(factorNewAffectedKeys);
+  gtsam::ISAM2Result isam_result = smoother.update(new_factors, new_values, update_params);
 
   // Housekeeping: figure out what factor index has been assigned to each new factor.
   for (const auto &fct_to_lmk : map_new_factor_to_lmk_id) {
@@ -309,20 +343,18 @@ SmootherResult StateEstimator::UpdateGraphWithVision(
     smoother.update();
   }
 
+  //================================ RETRIEVE VARIABLE ESTIMATES ===================================
   const gtsam::Values& estimate = smoother.calculateBestEstimate();
 
-  SmootherResult smoother_result(
+  const SmootherResult smoother_result(
       keypose_id,
-      ConvertToSeconds(result.timestamp),
+      keypose_time,
       estimate.at<gtsam::Pose3>(keypose_sym),
       graph_has_imu_btw_factor,
       graph_has_imu_btw_factor ? estimate.at<gtsam::Vector3>(vel_sym) : kZeroVelocity,
       graph_has_imu_btw_factor ? estimate.at<ImuBias>(bias_sym) : kZeroImuBias);
 
   smoother_imu_manager_.ResetAndUpdateBias(estimate.at<ImuBias>(bias_sym));
-
-  new_factors.resize(0);
-  new_values.clear();
 
   return smoother_result;
 }
@@ -438,11 +470,13 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
 
     if (is_shutdown_) { break; }  // Timeout could have happened due to shutdown; check that here.
 
+    // VO FAILED --> Create a keypose with IMU/APS measurements.
     if (did_timeout) {
       UpdateGraphNoVision();
 
+    // VO AVAILABLE --> Add a keyframe and smooth.
     } else {
-      const SmootherResult new_result = UpdateGraphWithVision(
+      const SmootherResult& new_result = UpdateGraphWithVision(
           smoother,
           lmk_stereo_factors,
           lmk_to_factor_map,
