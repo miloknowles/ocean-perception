@@ -47,8 +47,8 @@ TEST(VioTest, TestStateEstimator1)
   StateEstimator::Options opt;
   StateEstimator state_estimator(opt, stereo_rig);
 
-  Visualizer3D::Options vizopt;
-  Visualizer3D viz(vizopt, stereo_rig);
+  Visualizer3D::Params viz_params;
+  Visualizer3D viz(viz_params, stereo_rig);
 
   // std::function<void(const SmootherResult& result)>
   SmootherResultCallback smoother_callback = [&](const SmootherResult& result)

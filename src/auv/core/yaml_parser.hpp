@@ -8,18 +8,13 @@
 
 #include <opencv2/core/core.hpp>
 
-#include "core/macros.hpp"
-
 namespace bm {
 namespace core {
 
 
 class YamlParser {
  public:
-  MACRO_DELETE_COPY_CONSTRUCTORS(YamlParser);
-
-  // Parser should always be constructed with a filepath or root_node.
-  YamlParser() = delete;
+  YamlParser() = default;
 
   // Construct with a path to a .yaml file.
   YamlParser(const std::string& filepath) : filepath_(filepath)
@@ -37,17 +32,29 @@ class YamlParser {
 
   // Retrieve a param from the YAML hierarchy and pass it to output.
   template <class ParamType>
-  void GetYamlParam(const std::string& id, ParamType* output)
+  void GetYamlParam(const std::string& id, ParamType* output) const
   {
+    CHECK(!root_node_.empty()) << "GetYamlParam: root_node_ is empty, default constructor probably used" << std::endl;
     GetYamlParamHelper<ParamType>(root_node_, id, output);
+  }
+
+  // Get a YAML node relative to the root. This is used for constructing params that are a subtree.
+  cv::FileNode GetYamlNode(const std::string& id) const
+  {
+    CHECK(!root_node_.empty()) << "GetYamlParam: root_node_ is empty, default constructor probably used" << std::endl;
+    CHECK(!id.empty()) << "GetYamlParam: empty id given" << std::endl;
+    CHECK_NE(id[0], '/') << "Don't use leading slash!" << std::endl;
+    const cv::FileNode& file_handle = root_node_[id];
+    CHECK_NE(file_handle.type(), cv::FileNode::NONE) << "GetYamlParam: Missing id: " << id.c_str() << std::endl;
+    return file_handle;
   }
 
  private:
   // Helper function that allows recursive param-getting from an given root.
   template <class ParamType>
-  void GetYamlParamHelper(const cv::FileNode& root_node, const std::string& id, ParamType* output)
+  void GetYamlParamHelper(const cv::FileNode& root_node, const std::string& id, ParamType* output) const
   {
-    CHECK_NOTNULL(output) << "GetYamlParam: nullptr received" << std::endl;
+    CHECK_NOTNULL(output);
     CHECK(!id.empty()) << "GetYamlParam: empty id given" << std::endl;
     CHECK_NE(id[0], '/') << "Don't use leading slash!" << std::endl;
 
@@ -57,7 +64,7 @@ class YamlParser {
     if (slash_idx == std::string::npos) {
       const cv::FileNode& file_handle = root_node[id];
       CHECK_NE(file_handle.type(), cv::FileNode::NONE) << "GetYamlParam: Missing id: " << id.c_str() << std::endl;
-      file_handle >> output;
+      file_handle >> *output;
 
     // RECURSIVE CASE: id is a map (subtree) with params nested.
     } else {

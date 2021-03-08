@@ -11,6 +11,7 @@
 #include <opencv2/highgui.hpp>
 #include <opencv2/viz.hpp>
 
+#include "core/params_base.hpp"
 #include "core/macros.hpp"
 #include "core/eigen_types.hpp"
 #include "core/cv_types.hpp"
@@ -24,6 +25,7 @@
 namespace bm {
 namespace vio {
 
+using namespace core;
 
 // Used to pass a camera pose (with an optional image) to the visualizer.
 struct CameraPoseData
@@ -43,19 +45,28 @@ struct CameraPoseData
 
 class Visualizer3D final {
  public:
-  struct Options final
+  struct Params : public ParamsBase
   {
-    Options() = default;
+    // Construct with default parameters.
+    Params() : ParamsBase() {}
 
     int store_last_k_poses = 100;
     int max_stored_landmarks = 1000;
-    double stereo_baseline = 0.2;
+
+   private:
+    // Loads in params using a YAML parser.
+    void LoadFromYamlNode(const YamlParser& parser) override
+    {
+      parser.GetYamlParam("store_last_k_poses", &store_last_k_poses);
+      parser.GetYamlParam("max_stored_landmarks", &max_stored_landmarks);
+    }
   };
 
   MACRO_DELETE_COPY_CONSTRUCTORS(Visualizer3D);
 
-  Visualizer3D(const Options& opt, const StereoCamera& stereo_rig)
-      : opt_(opt), stereo_rig_(stereo_rig) {}
+  Visualizer3D(const Params& params, const StereoCamera& stereo_rig)
+      : params_(params), stereo_rig_(stereo_rig) {}
+
   ~Visualizer3D();
 
   // Adds a new camera frustrum at the given pose. If the camera_id already exists, updates its
@@ -82,7 +93,7 @@ class Visualizer3D final {
   void RedrawThread();        // Main thread that handles the Viz3D window.
 
  private:
-  Options opt_;
+  Params params_;
   StereoCamera stereo_rig_;
 
   cv::viz::Viz3d viz_;
