@@ -13,6 +13,10 @@ class ParamsBase {
   // Construct with default params (declared in ParamsDerived).
   ParamsBase() = default;
 
+  // Construct AND parse in one line.
+  ParamsBase(const cv::FileNode& root_node) { Parse(root_node); }
+  ParamsBase(const std::string& filepath) { Parse(filepath); }
+
   // Construct from a root YAML node.
   void Parse(const cv::FileNode& root_node)
   {

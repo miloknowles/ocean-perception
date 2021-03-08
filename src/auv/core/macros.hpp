@@ -12,6 +12,13 @@
   typedef std::weak_ptr<const TypeName> WeakConstPtr;     \
   void definePointerTypedefs##__FILE__##__LINE__(void)
 
+
+// Adapted from Kimera-VIO.
 #define MACRO_DELETE_COPY_CONSTRUCTORS(TypeName) \
   TypeName(const TypeName&) = delete;             \
   void operator=(const TypeName&) = delete
+
+
+#define MACRO_PARAMS_BASE_CONSTRUCTORS(ClassName) \
+  ClassName(const cv::FileNode& root_node) : ParamsBase(root_node) {} \
+  ClassName(const std::string& filepath) : ParamsBase(filepath) {}

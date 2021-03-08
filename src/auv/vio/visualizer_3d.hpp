@@ -49,15 +49,16 @@ class Visualizer3D final {
   {
     // Construct with default parameters.
     Params() : ParamsBase() {}
+    MACRO_PARAMS_BASE_CONSTRUCTORS(Params);
 
-    int store_last_k_poses = 100;
+    int max_stored_poses = 100;
     int max_stored_landmarks = 1000;
 
    private:
     // Loads in params using a YAML parser.
     void LoadFromYamlNode(const YamlParser& parser) override
     {
-      parser.GetYamlParam("store_last_k_poses", &store_last_k_poses);
+      parser.GetYamlParam("max_stored_poses", &max_stored_poses);
       parser.GetYamlParam("max_stored_landmarks", &max_stored_landmarks);
     }
   };

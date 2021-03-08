@@ -67,7 +67,7 @@ static std::vector<cv::KeyPoint> ANMSRangeTree(std::vector<cv::KeyPoint>& keypoi
                                               int cols,
                                               int rows)
 {
-  if (keypoints.size() <= num_to_keep) {
+  if ((int)keypoints.size() <= num_to_keep) {
     return keypoints;
   }
 
