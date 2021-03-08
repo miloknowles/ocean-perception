@@ -2,6 +2,7 @@
 
 #include <vector>
 
+#include "core/params_base.hpp"
 #include "core/macros.hpp"
 #include "core/eigen_types.hpp"
 #include "core/cv_types.hpp"
@@ -14,13 +15,23 @@ using namespace core;
 
 class FeatureTracker final {
  public:
-  struct Options final {
-    Options() = default;
+  struct Params final : public ParamsBase
+  {
+    MACRO_PARAMS_STRUCT_CONSTRUCTORS(Params);
 
     int klt_maxiters = 30;
     float klt_epsilon = 0.001;
     int klt_winsize = 21;
     int klt_max_level = 4;
+
+   private:
+    void LoadParams(const YamlParser& parser) override
+    {
+      parser.GetYamlParam("klt_maxiters", &klt_maxiters);
+      parser.GetYamlParam("klt_epsilon", &klt_epsilon);
+      parser.GetYamlParam("klt_winsize", &klt_winsize);
+      parser.GetYamlParam("klt_max_level", &klt_max_level);
+    }
   };
 
   MACRO_DELETE_COPY_CONSTRUCTORS(FeatureTracker);
@@ -28,7 +39,7 @@ class FeatureTracker final {
   FeatureTracker() = delete;
 
   // Construct with options.
-  explicit FeatureTracker(const Options& opt) : opt_(opt) {}
+  explicit FeatureTracker(const Params& params) : params_(params) {}
 
   // Track points from ref_img to cur_img using Lucas-Kanade optical flow.
   // If px_cur is provided, these locations are used as an initial guess for the flow.
@@ -41,7 +52,7 @@ class FeatureTracker final {
              std::vector<float>& error);
 
  private:
-  Options opt_;
+  Params params_;
 };
 
 

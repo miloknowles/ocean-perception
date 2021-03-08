@@ -3,6 +3,7 @@
 #include <vector>
 #include <unordered_map>
 
+#include "core/params_base.hpp"
 #include "core/macros.hpp"
 #include "core/cv_types.hpp"
 #include "core/eigen_types.hpp"
@@ -27,14 +28,13 @@ typedef std::unordered_map<uid_t, VecLandmarkObservation> FeatureTracks;
 class StereoFrontend final {
  public:
   // Parameters that control the frontend.
-  struct Options final
+  struct Params final : public ParamsBase
   {
-    Options() = default;
+    MACRO_PARAMS_STRUCT_CONSTRUCTORS(Params);
 
-    // TODO(milo): Figure out how to parse this within the YAML hierarchy.
-    FeatureDetector::Options detector_options;
-    FeatureTracker::Options tracker_options;
-    StereoMatcher::Options matcher_options;
+    FeatureDetector::Params detector_params;
+    FeatureTracker::Params tracker_params;
+    StereoMatcher::Params matcher_params;
 
     double stereo_max_depth = 100.0;
     double stereo_min_depth = 0.5;
@@ -54,6 +54,23 @@ class StereoFrontend final {
 
     // Trigger a keyframe at least every k frames.
     int trigger_keyframe_k = 10;
+
+   private:
+    void LoadParams(const YamlParser& parser) override
+    {
+      // Each sub-module has a subtree in the params.yaml.
+      detector_params = FeatureDetector::Params(parser.GetYamlNode("FeatureDetector"));
+      tracker_params = FeatureTracker::Params(parser.GetYamlNode("FeatureTracker"));
+      matcher_params = StereoMatcher::Params(parser.GetYamlNode("StereoMatcher"));
+
+      parser.GetYamlParam("stereo_max_depth", &stereo_max_depth);
+      parser.GetYamlParam("stereo_min_depth", &stereo_min_depth);
+      parser.GetYamlParam("max_avg_reprojection_error", &max_avg_reprojection_error);
+      parser.GetYamlParam("lost_point_lifespan", &lost_point_lifespan);
+      parser.GetYamlParam("tracked_point_lifespan", &tracked_point_lifespan);
+      parser.GetYamlParam("trigger_keyframe_min_lmks", &trigger_keyframe_min_lmks);
+      parser.GetYamlParam("trigger_keyframe_k", &trigger_keyframe_k);
+    }
   };
 
   // https://stackoverflow.com/questions/3643681/how-do-flags-work-in-c
@@ -90,8 +107,8 @@ class StereoFrontend final {
 
   MACRO_DELETE_COPY_CONSTRUCTORS(StereoFrontend);
 
-  // Construct with options.
-  explicit StereoFrontend(const Options& opt, const StereoCamera& stereo_rig);
+  // Construct with params.
+  explicit StereoFrontend(const Params& params, const StereoCamera& stereo_rig);
 
   // Track known visual landmarks into the current stereo pair, possibly initializing new ones.
   // T_prev_cur_prior could be an initial guess on the odometry from IMU.
@@ -125,7 +142,7 @@ class StereoFrontend final {
   //                            Vector3d& t_prev_cur);
 
  private:
-  Options opt_;
+  Params params_;
   StereoCamera stereo_rig_;
 
   uid_t next_landmark_id_ = 0;

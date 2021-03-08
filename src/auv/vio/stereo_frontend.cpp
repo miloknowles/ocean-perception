@@ -12,12 +12,12 @@ namespace bm {
 namespace vio {
 
 
-StereoFrontend::StereoFrontend(const Options& opt, const StereoCamera& stereo_rig)
-    : opt_(opt),
+StereoFrontend::StereoFrontend(const Params& params, const StereoCamera& stereo_rig)
+    : params_(params),
       stereo_rig_(stereo_rig),
-      detector_(opt.detector_options),
-      tracker_(opt.tracker_options),
-      matcher_(opt.matcher_options)
+      detector_(params_.detector_params),
+      tracker_(params_.tracker_params),
+      matcher_(params_.matcher_params)
 {
   LOG(INFO) << "Constructed StereoFrontend!" << std::endl;
 }
@@ -38,7 +38,7 @@ void StereoFrontend::KillOffLostLandmarks(uid_t cur_camera_id)
 
     const int frames_since_last_seen = (int)cur_camera_id - observations.back().camera_id;
 
-    if (frames_since_last_seen > opt_.lost_point_lifespan) {
+    if (frames_since_last_seen > params_.lost_point_lifespan) {
       lmk_ids_to_kill.emplace_back(lmk_id);
     }
   }
@@ -60,7 +60,7 @@ void StereoFrontend::KillOffOldLandmarks()
     // NOTE(milo): Observations should be sorted in order of INCREASING camera_id.
     const VecLandmarkObservation& observations = item.second;
 
-    if ((int)observations.size() >= opt_.tracked_point_lifespan) {
+    if ((int)observations.size() >= params_.tracked_point_lifespan) {
       lmk_ids_to_kill.emplace_back(lmk_id);
     }
   }
@@ -148,8 +148,8 @@ StereoFrontend::Result StereoFrontend::Track(const StereoImage& stereo_pair,
   // NOTE(milo): If this is the first image, we will have no tracks, triggering a keyframe,
   // causing new keypoints to be detected as desired.
   const bool is_keyframe = force_keyframe ||
-                           ((int)good_lmk_ids.size() < opt_.trigger_keyframe_min_lmks) ||
-                           (int)(stereo_pair.camera_id - prev_keyframe_id_) >= opt_.trigger_keyframe_k;
+                           ((int)good_lmk_ids.size() < params_.trigger_keyframe_min_lmks) ||
+                           (int)(stereo_pair.camera_id - prev_keyframe_id_) >= params_.trigger_keyframe_k;
   result.is_keyframe = is_keyframe;
 
   //===================== KEYFRAME POSE ESTIMATION =============================
@@ -179,7 +179,7 @@ StereoFrontend::Result StereoFrontend::Track(const StereoImage& stereo_pair,
 
       // NOTE(milo): For now, we consider a track invalid if we can't triangulate w/ stereo.
       // TODO(milo): Add monocular measurements also, since the backend can handle them.
-      const double min_disp = stereo_rig_.DepthToDisp(opt_.stereo_max_depth);
+      const double min_disp = stereo_rig_.DepthToDisp(params_.stereo_max_depth);
       if (disp <= min_disp) {
         continue;
       }
@@ -219,7 +219,7 @@ StereoFrontend::Result StereoFrontend::Track(const StereoImage& stereo_pair,
 
     // NOTE(milo): For now, we consider a track invalid if we can't triangulate w/ stereo.
     // TODO(milo): Add monocular measurements also, since the backend can handle them.
-    const double min_disp = stereo_rig_.DepthToDisp(opt_.stereo_max_depth);
+    const double min_disp = stereo_rig_.DepthToDisp(params_.stereo_max_depth);
     if (disp <= min_disp) {
       continue;
     }
@@ -284,7 +284,7 @@ StereoFrontend::Result StereoFrontend::Track(const StereoImage& stereo_pair,
       3.0);
 
   // Returning -1 indicates an error in LM optimization.
-  if (iters < 0 || result.avg_reprojection_err > opt_.max_avg_reprojection_error) {
+  if (iters < 0 || result.avg_reprojection_err > params_.max_avg_reprojection_error) {
     LOG(WARNING) << "LM optimization failed. iters=" << iters << " avg_reprojection_err=" << result.avg_reprojection_err << std::endl;
     result.status |= StereoFrontend::Status::ODOM_ESTIMATION_FAILED;
   }

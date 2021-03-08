@@ -8,10 +8,13 @@
 
 #include <opencv2/core/core.hpp>
 
+#include "core/eigen_types.hpp"
+
 namespace bm {
 namespace core {
 
 
+// Class for parsing a YAML file, using OpenCV's FileStorage module.
 class YamlParser {
  public:
   YamlParser() = default;
@@ -34,27 +37,23 @@ class YamlParser {
   template <class ParamType>
   void GetYamlParam(const std::string& id, ParamType* output) const
   {
-    CHECK(!root_node_.empty()) << "GetYamlParam: root_node_ is empty, default constructor probably used" << std::endl;
-    GetYamlParamHelper<ParamType>(root_node_, id, output);
+    CHECK_NOTNULL(output);
+    CHECK(!root_node_.empty()) << "GetYamlParam: root_node_ is empty. Was the parser constructed?" << std::endl;
+    const cv::FileNode& node = GetYamlNodeHelper(root_node_, id);
+    node >> *output;
   }
 
   // Get a YAML node relative to the root. This is used for constructing params that are a subtree.
   cv::FileNode GetYamlNode(const std::string& id) const
   {
-    CHECK(!root_node_.empty()) << "GetYamlParam: root_node_ is empty, default constructor probably used" << std::endl;
-    CHECK(!id.empty()) << "GetYamlParam: empty id given" << std::endl;
-    CHECK_NE(id[0], '/') << "Don't use leading slash!" << std::endl;
-    const cv::FileNode& file_handle = root_node_[id];
-    CHECK_NE(file_handle.type(), cv::FileNode::NONE) << "GetYamlParam: Missing id: " << id.c_str() << std::endl;
-    return file_handle;
+    CHECK(!root_node_.empty()) << "GetYamlParam: root_node_ is empty. Was the parser constructed?" << std::endl;
+    return GetYamlNodeHelper(root_node_, id);
   }
 
  private:
-  // Helper function that allows recursive param-getting from an given root.
-  template <class ParamType>
-  void GetYamlParamHelper(const cv::FileNode& root_node, const std::string& id, ParamType* output) const
+  // Recursively finds a node with "id", starting from the "root_node".
+  cv::FileNode GetYamlNodeHelper(const cv::FileNode& root_node, const std::string& id) const
   {
-    CHECK_NOTNULL(output);
     CHECK(!id.empty()) << "GetYamlParam: empty id given" << std::endl;
     CHECK_NE(id[0], '/') << "Don't use leading slash!" << std::endl;
 
@@ -64,7 +63,7 @@ class YamlParser {
     if (slash_idx == std::string::npos) {
       const cv::FileNode& file_handle = root_node[id];
       CHECK_NE(file_handle.type(), cv::FileNode::NONE) << "GetYamlParam: Missing id: " << id.c_str() << std::endl;
-      file_handle >> *output;
+      return file_handle;
 
     // RECURSIVE CASE: id is a map (subtree) with params nested.
     } else {
@@ -78,7 +77,7 @@ class YamlParser {
       CHECK(!subtree_relative_id.empty())
           << "GetYamlParam: no recursive id within subtree: " << subtree_root_str
           << "Make sure id doesn't have a trailing slash." << std::endl;
-      GetYamlParamHelper<ParamType>(subtree_root, subtree_relative_id, output);
+      return GetYamlNodeHelper(subtree_root, subtree_relative_id);
     }
   }
 
@@ -87,6 +86,18 @@ class YamlParser {
   cv::FileStorage fs_;
   cv::FileNode root_node_;
 };
+
+
+// Convert a YAML list to an Eigen vector type.
+template <typename VectorType>
+void YamlToVector(const cv::FileNode& node, VectorType& vout)
+{
+  CHECK(node.isSeq()) << "Trying to parse a Vector from a YAML non-sequence" << std::endl;
+  CHECK((int)node.size() == vout.rows());
+  for (int i = 0; i < vout.rows(); ++i) {
+    vout(i) = node[i];
+  }
+}
 
 
 }

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/params_base.hpp"
 #include "core/macros.hpp"
 #include "core/eigen_types.hpp"
 #include "core/imu_measurement.hpp"
@@ -37,14 +38,14 @@ struct PimResult final
 
 class ImuManager final {
  public:
-  struct Options final
+  struct Params final : public ParamsBase
   {
-    Options() = default;
+    MACRO_PARAMS_STRUCT_CONSTRUCTORS(Params);
 
     // Say that an IMU measurement is "synchronized" with a timestamp if it's within this epsilon.
     // FarmSim IMU comes in at 50 Hz, so using slightly > 0.02 sec epsilon.
     double allowed_misalignment_sec = 0.05;
-    size_t max_queue_size = 1000;   // At 100Hz, collects 10 sec of measurements.
+    int max_queue_size = 1000;   // At 100Hz, collects 10 sec of measurements.
 
     // Sensor noise model parameters.
     double accel_noise_sigma =    0.0003924;
@@ -55,12 +56,24 @@ class ImuManager final {
     // Direction of the gravity vector in the world frame.
     // NOTE(milo): Right now, we use a RDF frame for the IMU, so gravity is +y.
     gtsam::Vector3 n_gravity = gtsam::Vector3(0, 9.81, 0); // m/s^2
+
+   private:
+    // Loads in params using a YAML parser.
+    void LoadParams(const YamlParser& parser) override
+    {
+      parser.GetYamlParam("allowed_misalignment_sec", &allowed_misalignment_sec);
+      parser.GetYamlParam("max_queue_size", &max_queue_size);
+      parser.GetYamlParam("accel_noise_sigma", &accel_noise_sigma);
+      parser.GetYamlParam("accel_bias_rw_sigma", &accel_bias_rw_sigma);
+      parser.GetYamlParam("gyro_bias_rw_sigma", &gyro_bias_rw_sigma);
+      YamlToVector<gtsam::Vector3>(parser.GetYamlNode("n_gravity"), n_gravity);
+    }
   };
 
   MACRO_DELETE_COPY_CONSTRUCTORS(ImuManager);
 
   // Construct with options that control the noise model.
-  explicit ImuManager(const Options& opt);
+  explicit ImuManager(const Params& params);
 
   // Add new IMU data to the queue.
   void Push(const ImuMeasurement& imu);
@@ -85,7 +98,7 @@ class ImuManager final {
   seconds_t Oldest() { return ConvertToSeconds(queue_.PeekFront().timestamp); }
 
  private:
-  Options opt_;
+  Params params_;
   boost::shared_ptr<PimC::Params> pim_params_;
   ThreadsafeQueue<ImuMeasurement> queue_;
   PimC pim_;

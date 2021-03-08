@@ -45,18 +45,16 @@ struct CameraPoseData
 
 class Visualizer3D final {
  public:
-  struct Params : public ParamsBase
+  struct Params final : public ParamsBase
   {
-    // Construct with default parameters.
-    Params() : ParamsBase() {}
-    MACRO_PARAMS_BASE_CONSTRUCTORS(Params);
+    MACRO_PARAMS_STRUCT_CONSTRUCTORS(Params);
 
     int max_stored_poses = 100;
     int max_stored_landmarks = 1000;
 
    private:
     // Loads in params using a YAML parser.
-    void LoadFromYamlNode(const YamlParser& parser) override
+    void LoadParams(const YamlParser& parser) override
     {
       parser.GetYamlParam("max_stored_poses", &max_stored_poses);
       parser.GetYamlParam("max_stored_landmarks", &max_stored_landmarks);

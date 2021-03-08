@@ -19,6 +19,7 @@
   void operator=(const TypeName&) = delete
 
 
-#define MACRO_PARAMS_BASE_CONSTRUCTORS(ClassName) \
-  ClassName(const cv::FileNode& root_node) : ParamsBase(root_node) {} \
-  ClassName(const std::string& filepath) : ParamsBase(filepath) {}
+#define MACRO_PARAMS_STRUCT_CONSTRUCTORS(ClassName) \
+  ClassName() : ParamsBase() {} \
+  ClassName(const cv::FileNode& root_node) : ParamsBase() { Parse(root_node); } \
+  ClassName(const std::string& filepath) : ParamsBase() { Parse(filepath); }

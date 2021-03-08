@@ -20,16 +20,16 @@ typedef gtsam::PreintegratedImuMeasurements PIM;
 typedef gtsam::PreintegratedCombinedMeasurements CombinedPIM;
 
 
-StateEstimator::StateEstimator(const Options& opt, const StereoCamera& stereo_rig)
-    : opt_(opt),
+StateEstimator::StateEstimator(const Params& params, const StereoCamera& stereo_rig)
+    : params_(params),
       stereo_rig_(stereo_rig),
       is_shutdown_(false),
-      stereo_frontend_(opt_.stereo_frontend_options, stereo_rig),
-      raw_stereo_queue_(opt_.max_size_raw_stereo_queue, true),
-      smoother_vo_queue_(opt_.max_size_smoother_vo_queue, true),
-      smoother_imu_manager_(opt_.imu_manager_options),
-      filter_vo_queue_(opt_.max_size_filter_vo_queue, true),
-      filter_imu_queue_(opt_.max_size_filter_imu_queue, true)
+      stereo_frontend_(params_.stereo_frontend_params, stereo_rig),
+      raw_stereo_queue_(params_.max_size_raw_stereo_queue, true),
+      smoother_vo_queue_(params_.max_size_smoother_vo_queue, true),
+      smoother_imu_manager_(params_.imu_manager_params),
+      filter_vo_queue_(params_.max_size_filter_vo_queue, true),
+      filter_imu_queue_(params_.max_size_filter_imu_queue, true)
 {
 }
 
@@ -128,7 +128,7 @@ void StateEstimator::StereoFrontendLoop()
     const bool tracking_failed = (result.status & StereoFrontend::Status::ODOM_ESTIMATION_FAILED) ||
                                  (result.status & StereoFrontend::Status::FEW_TRACKED_FEATURES);
 
-    const bool vision_reliable_now = (int)result.lmk_obs.size() >= opt_.reliable_vision_min_lmks;
+    const bool vision_reliable_now = (int)result.lmk_obs.size() >= params_.reliable_vision_min_lmks;
 
     // CASE 1: If this is a reliable keyframe, send to the smoother.
     // NOTE: This means that we will NOT send the first result to the smoother!
@@ -320,7 +320,7 @@ SmootherResult StateEstimator::UpdateGraphWithVision(
   }
 
   // (Optional) run the smoother a few more times to reduce error.
-  for (int i = 0; i < opt_.ISAM2_extra_smoothing_iters; ++i) {
+  for (int i = 0; i < params_.ISAM2_extra_smoothing_iters; ++i) {
     smoother.update();
   }
 
@@ -448,7 +448,7 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
     // Wait for a visual odometry measurement to arrive. If vision hasn't come in recently, don't
     // wait as long, since it is probably unreliable.
     const double wait_sec = (smoother_mode == SmootherMode::VISION_AVAILABLE) ? \
-        opt_.smoother_wait_vision_available : opt_.smoother_wait_vision_unavailable;
+        params_.smoother_wait_vision_available : params_.smoother_wait_vision_unavailable;
     const bool did_timeout = WaitForResultOrTimeout<ThreadsafeQueue<StereoFrontend::Result>>(smoother_vo_queue_, wait_sec);
 
     if (is_shutdown_) { break; }  // Timeout could have happened due to shutdown; check that here.

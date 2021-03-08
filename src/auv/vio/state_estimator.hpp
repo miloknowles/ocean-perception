@@ -3,6 +3,7 @@
 #include <thread>
 #include <atomic>
 
+#include "core/params_base.hpp"
 #include "core/macros.hpp"
 #include "core/eigen_types.hpp"
 #include "core/cv_types.hpp"
@@ -105,12 +106,12 @@ typedef std::function<void(const FilterResult&)> FilterResultCallback;
 
 class StateEstimator final {
  public:
-  struct Options final
+  struct Params final : public ParamsBase
   {
-    Options() = default;
+    MACRO_PARAMS_STRUCT_CONSTRUCTORS(Params);
 
-    StereoFrontend::Options stereo_frontend_options;
-    ImuManager::Options imu_manager_options;
+    StereoFrontend::Params stereo_frontend_params;
+    ImuManager::Params imu_manager_params;
 
     int max_size_raw_stereo_queue = 100;      // Images for the stereo frontend to process.
     int max_size_smoother_vo_queue = 100;     // Holds keyframe VO estimates for the smoother to process.
@@ -128,11 +129,18 @@ class StateEstimator final {
 
     // If vision is unavailable, don't waste time waiting around for it.
     double smoother_wait_vision_unavailable = 0.1; // sec
+
+   private:
+    void LoadParams(const YamlParser& parser) override
+    {
+      stereo_frontend_params = StereoFrontend::Params(parser.GetYamlNode("StereoFrontend"));
+      imu_manager_params = ImuManager::Params(parser.GetYamlNode("ImuManager"));
+    }
   };
 
   MACRO_DELETE_COPY_CONSTRUCTORS(StateEstimator);
 
-  StateEstimator(const Options& opt, const StereoCamera& stereo_rig);
+  StateEstimator(const Params& params, const StereoCamera& stereo_rig);
 
   void ReceiveStereo(const StereoImage& stereo_pair);
   void ReceiveImu(const ImuMeasurement& imu_data);
@@ -176,7 +184,7 @@ class StateEstimator final {
   uid_t GetPrevKeyposeId() { return next_kf_id_ - 1; }
 
  private:
-  Options opt_;
+  Params params_;
   StereoCamera stereo_rig_;
   std::atomic_bool is_shutdown_;  // Set this to trigger a *graceful* shutdown.
 
