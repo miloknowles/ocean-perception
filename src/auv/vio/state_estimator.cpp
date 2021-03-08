@@ -208,9 +208,65 @@ static bool MaybeAddImuFactor(uid_t keypose_id,
 }
 
 
-SmootherResult StateEstimator::UpdateGraphNoVision()
+SmootherResult StateEstimator::UpdateGraphNoVision(
+    gtsam::ISAM2& smoother,
+    ImuManager& imu_manager,
+    const SmootherResult& last_smoother_result)
 {
-  return SmootherResult(0, 0, gtsam::Pose3::identity(), false, kZeroVelocity, kZeroImuBias);
+  CHECK(!imu_manager.Empty()) << "IMU queue shouldn't be empty" << std::endl;
+  // return SmootherResult(0, 0, gtsam::Pose3::identity(), false, kZeroVelocity, kZeroImuBias);
+
+  gtsam::NonlinearFactorGraph new_factors;
+  gtsam::Values new_values;
+
+  const uid_t keypose_id = GetNextKeyposeId();
+  const seconds_t keypose_time = imu_manager.Newest();
+  const uid_t last_keypose_id = last_smoother_result.keypose_id;
+
+  const gtsam::Symbol keypose_sym('X', keypose_id);
+  const gtsam::Symbol vel_sym('V', keypose_id);
+  const gtsam::Symbol bias_sym('B', keypose_id);
+
+  const gtsam::Symbol last_keypose_sym('X', last_keypose_id);
+  const gtsam::Symbol last_vel_sym('V', last_keypose_id);
+  const gtsam::Symbol last_bias_sym('B', last_keypose_id);
+
+  //=================================== IMU PREINTEGRATION FACTOR ==================================
+  const bool did_add_imu_factor = MaybeAddImuFactor(
+      keypose_id,
+      last_keypose_id,
+      smoother_imu_manager_,
+      keypose_time,
+      last_smoother_result,
+      params_.inference_params.velocity_noise_model,
+      true,
+      new_values,
+      new_factors);
+
+  CHECK(did_add_imu_factor) << "IMU factor should have been added" << std::endl;
+
+  //==================================== UPDATE FACTOR GRAPH =======================================
+  gtsam::ISAM2Result isam_result = smoother.update(new_factors, new_values);
+
+  // (Optional) run the smoother a few more times to reduce error.
+  for (int i = 0; i < params_.extra_smoothing_iters; ++i) {
+    smoother.update();
+  }
+
+  //================================ RETRIEVE VARIABLE ESTIMATES ===================================
+  const gtsam::Values& estimate = smoother.calculateBestEstimate();
+
+  const SmootherResult smoother_result(
+      keypose_id,
+      keypose_time,
+      estimate.at<gtsam::Pose3>(keypose_sym),
+      true,
+      estimate.at<gtsam::Vector3>(vel_sym),
+      estimate.at<ImuBias>(bias_sym));
+
+  imu_manager.ResetAndUpdateBias(estimate.at<ImuBias>(bias_sym));
+
+  return smoother_result;
 }
 
 
@@ -356,6 +412,21 @@ SmootherResult StateEstimator::UpdateGraphWithVision(
 }
 
 
+void StateEstimator::UpdateSmootherResult(const SmootherResult& new_result)
+{
+  LOG(INFO) << "Smoother updated pose:\n" << new_result.P_world_body << std::endl;
+  mutex_smoother_result_.lock();
+  smoother_result_ = new_result;
+  mutex_smoother_result_.unlock();
+
+  smoother_update_flag_.store(true); // Tell the filter to update with this result!
+
+  for (const SmootherResultCallback& cb : smoother_result_callbacks_) {
+    cb(smoother_result_);
+  }
+}
+
+
 void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_body)
 {
   //======================================= ISAM2 SETUP ============================================
@@ -405,7 +476,8 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
     smoother_imu_manager_.DiscardBefore(t0);
     const bool no_imu = smoother_imu_manager_.Empty();
 
-    if (no_vo && no_imu) {
+    if (no_vo && no_imu) {  mutex_smoother_result_.unlock();
+
       LOG(INFO) << "No VO or IMU available, waiting to initialize Smoother" << std::endl;
       continue;
     }
@@ -457,7 +529,17 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
 
     // VO FAILED --> Create a keypose with IMU/APS measurements.
     if (did_timeout) {
-      UpdateGraphNoVision();
+      const bool imu_is_available = smoother_imu_manager_.Empty() &&
+                                   (smoother_imu_manager_.Newest() > smoother_result_.timestamp);
+      if (imu_is_available) {
+        const SmootherResult& new_result = UpdateGraphNoVision(
+            smoother,
+            smoother_imu_manager_,
+            smoother_result_);
+        UpdateSmootherResult(new_result);
+      } else {
+        LOG(WARNING) << "No vision or IMU available! Could not update smoother." << std::endl;
+      }
 
     // VO AVAILABLE --> Add a keyframe and smooth.
     } else {
@@ -468,18 +550,7 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
           lmk_stereo_factor_params,
           cal3_stereo,
           smoother_result_);
-
-      // Get the pose of the latest keyframe (keypose).
-      LOG(INFO) << "Smoother updated pose:\n" << new_result.P_world_body << std::endl;
-      mutex_smoother_result_.lock();
-      smoother_result_ = new_result;
-      mutex_smoother_result_.unlock();
-
-      smoother_update_flag_.store(true); // Tell the filter to update with this result!
-
-      for (const SmootherResultCallback& cb : smoother_result_callbacks_) {
-        cb(smoother_result_);
-      }
+      UpdateSmootherResult(new_result);
     }
   } // end while (!is_shutdown)
 

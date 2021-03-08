@@ -102,7 +102,9 @@ class StateEstimator final {
   void SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_body);
   void FilterLoop();
 
-  SmootherResult UpdateGraphNoVision();
+  SmootherResult UpdateGraphNoVision(gtsam::ISAM2& smoother,
+                                     ImuManager& imu_manager,
+                                     const SmootherResult& last_smoother_result);
 
   SmootherResult UpdateGraphWithVision(gtsam::ISAM2& smoother,
                                        SmartStereoFactorMap& stereo_factors,
@@ -110,6 +112,9 @@ class StateEstimator final {
                                        const gtsam::SmartProjectionParams& stereo_factor_params,
                                        const gtsam::Cal3_S2Stereo::shared_ptr& cal3_stereo,
                                        const SmootherResult& last_smoother_result);
+
+  // Updates the smoother_result_ (threadsafe), and calls any stored smoother callbacks.
+  void UpdateSmootherResult(const SmootherResult& result);
 
   // A central place to allocate new "keypose" ids. They are called "keyposes" because they could
   // come from vision OR other data sources (e.g acoustic localization).
