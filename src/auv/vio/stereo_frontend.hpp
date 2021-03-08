@@ -69,15 +69,18 @@ class StereoFrontend final {
   struct Result final
   {
     explicit Result(timestamp_t timestamp,
+                    timestamp_t timestamp_lkf,
                     uid_t camera_id,
                     uid_t camera_id_lkf)
         : timestamp(timestamp),
+          timestamp_lkf(timestamp_lkf),
           camera_id(camera_id),
           camera_id_lkf(camera_id_lkf) {}
 
     bool is_keyframe = false;                         // Did this image trigger a keyframe?
     int status = 0;                                   // Contains several flags about parts of the VO pipeline.
     timestamp_t timestamp;                            // Timestamp of the image with camera_id.
+    timestamp_t timestamp_lkf;
     uid_t camera_id;
     uid_t camera_id_lkf;
     std::vector<LandmarkObservation> lmk_obs;         // List of landmarks observed in this image.
@@ -133,6 +136,7 @@ class StereoFrontend final {
 
   uid_t prev_keyframe_id_ = 0;
   uid_t prev_camera_id_ = 0;
+  timestamp_t timestamp_lkf_ = 0;
   Image1b prev_left_image_;
   FeatureTracks live_tracks_;
 

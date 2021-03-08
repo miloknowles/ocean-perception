@@ -3,17 +3,6 @@
 #include <thread>
 #include <atomic>
 
-#include <gtsam/navigation/NavState.h>
-#include <gtsam/nonlinear/NonlinearFactorGraph.h>
-#include <gtsam/nonlinear/Values.h>
-#include <gtsam/inference/Key.h>
-#include <gtsam/geometry/Pose3.h>
-#include <gtsam/geometry/Cal3_S2.h>
-#include <gtsam/geometry/Cal3_S2Stereo.h>
-#include <gtsam/nonlinear/ISAM2.h>
-#include <gtsam/slam/SmartProjectionPoseFactor.h>
-#include <gtsam_unstable/slam/SmartStereoProjectionPoseFactor.h>
-
 #include "core/macros.hpp"
 #include "core/eigen_types.hpp"
 #include "core/cv_types.hpp"
@@ -22,6 +11,19 @@
 #include "core/imu_measurement.hpp"
 #include "vio/stereo_frontend.hpp"
 #include "vio/state_estimate_3d.hpp"
+#include "vio/imu_manager.hpp"
+
+#include <gtsam/navigation/NavState.h>
+#include <gtsam/nonlinear/NonlinearFactorGraph.h>
+#include <gtsam/nonlinear/Values.h>
+#include <gtsam/inference/Key.h>
+#include <gtsam/inference/Symbol.h>
+#include <gtsam/geometry/Pose3.h>
+#include <gtsam/geometry/Cal3_S2.h>
+#include <gtsam/geometry/Cal3_S2Stereo.h>
+#include <gtsam/nonlinear/ISAM2.h>
+#include <gtsam/slam/SmartProjectionPoseFactor.h>
+#include <gtsam_unstable/slam/SmartStereoProjectionPoseFactor.h>
 
 namespace bm {
 namespace vio {
@@ -29,10 +31,10 @@ namespace vio {
 using namespace core;
 
 static const size_t kWaitForDataMilliseconds = 100;
+static const gtsam::Vector3 kZeroVelocity = gtsam::Vector3::Zero();
 
 typedef gtsam::SmartStereoProjectionPoseFactor SmartStereoFactor;
 typedef gtsam::SmartProjectionPoseFactor<gtsam::Cal3_S2> SmartMonoFactor;
-typedef gtsam::PinholePose<gtsam::Cal3_S2> Camera;
 
 typedef std::unordered_map<uid_t, SmartMonoFactor::shared_ptr> SmartMonoFactorMap;
 typedef std::unordered_map<uid_t, SmartStereoFactor::shared_ptr> SmartStereoFactorMap;
@@ -62,30 +64,38 @@ enum class SmootherMode { VISION_AVAILABLE, VISION_UNAVAILABLE };
 // Returns a summary of the smoother update.
 struct SmootherResult final
 {
-  explicit SmootherResult(bool added_keypose,
-                          const gtsam::Key& new_keypose_key,
-                          const gtsam::Pose3& T_world_keypose,
-                          double new_keypose_time)
-      : added_keypose(added_keypose),
-        new_keypose_key(new_keypose_key),
-        T_world_keypose(T_world_keypose),
-        new_keypose_time(new_keypose_time) {}
+  explicit SmootherResult(uid_t keypose_id,
+                          seconds_t timestamp,
+                          const gtsam::Pose3& P_world_body,
+                          bool has_imu_state,
+                          const gtsam::Vector3& v_world_body,
+                          const ImuBias& imu_bias)
+      : keypose_id(keypose_id),
+        timestamp(timestamp),
+        P_world_body(P_world_body),
+        has_imu_state(has_imu_state),
+        v_world_body(v_world_body),
+        imu_bias(imu_bias) {}
 
-  bool added_keypose = false;
-  gtsam::Key new_keypose_key;
-  gtsam::Pose3 T_world_keypose;
-  double new_keypose_time;
+  uid_t keypose_id;           // uid_t of the latest keypose (from vision or other).
+  seconds_t timestamp;        // timestamp (sec) of this keypose
+  gtsam::Pose3 P_world_body;  // Pose of the body in the world frame.
+
+  bool has_imu_state = false; // Does the graph contain variables for velocity and IMU bias?
+  gtsam::Vector3 v_world_body = kZeroVelocity;
+  ImuBias imu_bias = kZeroImuBias;
 };
 
 
 struct FilterResult final
 {
-  FilterResult(double T_world_cam_time,
-               const gtsam::Pose3& T_world_cam)
-      : T_world_cam_time(T_world_cam_time), T_world_cam(T_world_cam) {}
+  explicit FilterResult(seconds_t timestamp,
+                        const gtsam::Pose3& P_world_body)
+      : timestamp(timestamp),
+        P_world_body(P_world_body) {}
 
-  double T_world_cam_time;
-  gtsam::Pose3 T_world_cam;
+  seconds_t timestamp;
+  gtsam::Pose3 P_world_body;
 };
 
 
@@ -100,9 +110,10 @@ class StateEstimator final {
     Options() = default;
 
     StereoFrontend::Options stereo_frontend_options;
+    ImuManager::Options imu_manager_options;
 
-    int max_size_raw_stereo_queue = 40;      // Images for the stereo frontend to process.
-    int max_size_smoother_vo_queue = 20;     // Holds keyframe VO estiamtes for the smoother to process.
+    int max_size_raw_stereo_queue = 100;      // Images for the stereo frontend to process.
+    int max_size_smoother_vo_queue = 100;     // Holds keyframe VO estimates for the smoother to process.
     int max_size_smoother_imu_queue = 1000;  // Holds IMU measurements for the smoother to process.
     int max_size_filter_vo_queue = 100;      // Holds all VO estimates for the filter to process.
     int max_size_filter_imu_queue = 1000;    // Holds IMU measurements for the filter to process.
@@ -131,6 +142,9 @@ class StateEstimator final {
   void RegisterSmootherResultCallback(const SmootherResultCallback& cb);
   void RegisterFilterResultCallback(const FilterResultCallback& cb);
 
+  // Initialize the state estimator pose from an external source of localization.
+  void Initialize(seconds_t t0, const gtsam::Pose3 P0_world_body);
+
   // This call blocks until all queued stereo pairs have been processed.
   void BlockUntilFinished();
 
@@ -141,7 +155,8 @@ class StateEstimator final {
   // Tracks features from stereo images, and decides what to do with the results.
   void StereoFrontendLoop();
 
-  void SmootherLoop();
+  // Smart the backend smoother with an initial timestamp and pose.
+  void SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_body);
 
   SmootherResult UpdateGraphNoVision();
 
@@ -151,14 +166,9 @@ class StateEstimator final {
                                       const gtsam::SharedNoiseModel& stereo_factor_noise,
                                       const gtsam::SmartProjectionParams& stereo_factor_params,
                                       const gtsam::Cal3_S2Stereo::shared_ptr& cal3_stereo,
-                                      const gtsam::Pose3& T_world_lkf);
+                                      const SmootherResult& last_smoother_result);
 
   void FilterLoop();
-
-  void HandleReinitializeVision(const gtsam::Key& current_cam_key,
-                                const StereoFrontend::Result& result,
-                                gtsam::NonlinearFactorGraph& new_factors,
-                                gtsam::Values& new_values);
 
   // A central place to allocate new "keypose" ids. They are called "keyposes" because they could
   // come from vision OR other data sources (e.g acoustic localization).
@@ -175,11 +185,12 @@ class StateEstimator final {
   std::thread stereo_frontend_thread_;
   std::thread smoother_thread_;
   std::thread filter_thread_;
+  std::thread init_thread_;
 
   //================================================================================================
   // After solving the factor graph, the smoother updates this pose.
   std::mutex mutex_smoother_result_;
-  SmootherResult smoother_result_{false, gtsam::Key(0), gtsam::Pose3::identity(), -1};
+  SmootherResult smoother_result_{0, 0, gtsam::Pose3::identity(), false, kZeroVelocity, kZeroImuBias};
   std::atomic_bool trigger_sync_filter_{false};
   //================================================================================================
 
@@ -192,7 +203,8 @@ class StateEstimator final {
 
   ThreadsafeQueue<StereoImage> raw_stereo_queue_;
   ThreadsafeQueue<StereoFrontend::Result> smoother_vo_queue_;
-  ThreadsafeQueue<ImuMeasurement> smoother_imu_queue_;
+  // ThreadsafeQueue<ImuMeasurement> smoother_imu_queue_;
+  ImuManager smoother_imu_manager_;
 
   ThreadsafeQueue<StereoFrontend::Result> filter_vo_queue_;
   ThreadsafeQueue<ImuMeasurement> filter_imu_queue_;

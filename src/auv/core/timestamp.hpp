@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <limits>
 
 namespace bm {
 namespace core {
@@ -25,6 +26,11 @@ inline timestamp_t ConvertToNanoseconds(seconds_t s)
   return static_cast<timestamp_t>(1e9 * s);
 }
 
+static const timestamp_t kMinTimestamp = std::numeric_limits<timestamp_t>::min();
+static const timestamp_t kMaxTimestamp = std::numeric_limits<timestamp_t>::max();
+
+static const seconds_t kMinSeconds = std::numeric_limits<seconds_t>::min();
+static const seconds_t kMaxSeconds = std::numeric_limits<seconds_t>::max();
 
 }
 }

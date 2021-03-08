@@ -53,13 +53,13 @@ TEST(VioTest, TestStateEstimator1)
   // std::function<void(const SmootherResult& result)>
   SmootherResultCallback smoother_callback = [&](const SmootherResult& result)
   {
-    const core::uid_t cam_id = static_cast<core::uid_t>(result.new_keypose_key);
-    viz.AddCameraPose(cam_id, Image1b(), result.T_world_keypose.matrix(), true);
+    const core::uid_t cam_id = static_cast<core::uid_t>(result.keypose_id);
+    viz.AddCameraPose(cam_id, Image1b(), result.P_world_body.matrix(), true);
   };
 
   FilterResultCallback filter_callback = [&](const FilterResult& result)
   {
-    viz.AddCameraPose(0, Image1b(), result.T_world_cam.matrix(), false);
+    viz.AddCameraPose(0, Image1b(), result.P_world_body.matrix(), false);
   };
 
   viz.Start();
@@ -67,9 +67,11 @@ TEST(VioTest, TestStateEstimator1)
   state_estimator.RegisterSmootherResultCallback(smoother_callback);
   state_estimator.RegisterFilterResultCallback(filter_callback);
 
-  // Matrix4d T_world_lkf = Matrix4d::Identity();
-
   dataset.RegisterStereoCallback(std::bind(&StateEstimator::ReceiveStereo, &state_estimator, std::placeholders::_1));
+  dataset.RegisterImuCallback(std::bind(&StateEstimator::ReceiveImu, &state_estimator, std::placeholders::_1));
+
+  state_estimator.Initialize(0, gtsam::Pose3::identity());
+
   dataset.Playback(10.0f, false);
 
   state_estimator.BlockUntilFinished();

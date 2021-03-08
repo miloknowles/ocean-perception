@@ -80,6 +80,22 @@ class ThreadsafeQueue {
 
   bool Empty() { return Size() == 0; }
 
+  const Item& PeekFront()
+  {
+    lock_.lock();
+    const Item& item = q_.front();
+    lock_.unlock();
+    return item;
+  }
+
+  const Item& PeekBack()
+  {
+    lock_.lock();
+    const Item& item = q_.back();
+    lock_.unlock();
+    return item;
+  }
+
  private:
   size_t max_queue_size_ = 0;
   bool drop_oldest_if_full_ = true;

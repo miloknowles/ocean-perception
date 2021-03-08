@@ -91,7 +91,7 @@ StereoFrontend::Result StereoFrontend::Track(const StereoImage& stereo_pair,
                                              const Matrix4d& T_prev_cur_prior,
                                              bool force_keyframe)
 {
-  StereoFrontend::Result result(stereo_pair.timestamp, stereo_pair.camera_id, prev_keyframe_id_);
+  StereoFrontend::Result result(stereo_pair.timestamp, timestamp_lkf_, stereo_pair.camera_id, prev_keyframe_id_);
 
   std::vector<uid_t> live_lmk_ids;
   std::vector<uid_t> live_cam_ids;
@@ -197,6 +197,7 @@ StereoFrontend::Result StereoFrontend::Track(const StereoImage& stereo_pair,
     }
 
     prev_keyframe_id_ = stereo_pair.camera_id;
+    timestamp_lkf_ = stereo_pair.timestamp;
   }
 
   //============================ STEREO MATCHING ===============================
