@@ -1,6 +1,7 @@
 enable_testing()
 
 set(TEST_SOURCES
+  core/params_base_test.cpp
   # core/stereo_camera_test.cpp
   # core/grid_lookup_test.cpp
   # core/math_util_test.cpp

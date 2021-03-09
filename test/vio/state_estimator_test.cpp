@@ -42,7 +42,7 @@ TEST(VioTest, TestStateEstimator1)
   const PinholeCamera camera_model(415.876509, 415.876509, 375.5, 239.5, 480, 752);
   const StereoCamera stereo_rig(camera_model, 0.2);
 
-  StateEstimator::Params params;
+  StateEstimator::Params params("/home/milo/bluemeadow/catkin_ws/src/auv/config/auv_base/StateEstimator_params.yaml");
   StateEstimator state_estimator(params, stereo_rig);
 
   Visualizer3D::Params viz_params("/home/milo/bluemeadow/catkin_ws/src/auv/config/auv_base/Visualizer3D_params.yaml");

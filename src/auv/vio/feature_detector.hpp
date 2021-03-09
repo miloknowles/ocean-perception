@@ -52,7 +52,6 @@ class FeatureDetector final {
       parser.GetYamlParam("gftt_quality_level", &gftt_quality_level);
       parser.GetYamlParam("gftt_block_size", &gftt_block_size);
       parser.GetYamlParam("gftt_use_harris_corner_detector", &gftt_use_harris_corner_detector);
-      parser.GetYamlParam("subpixel_corners", &subpixel_corners);
     }
   };
 

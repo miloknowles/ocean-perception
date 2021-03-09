@@ -471,13 +471,13 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
   //================================== SMOOTHER INITIALIZATION =====================================
   bool initialized = false;
   while (!initialized) {
-    const bool no_vo = WaitForResultOrTimeout<ThreadsafeQueue<StereoFrontend::Result>>(smoother_vo_queue_, 5.0);
+    const bool no_vo = WaitForResultOrTimeout<ThreadsafeQueue<StereoFrontend::Result>>(
+        smoother_vo_queue_, params_.smoother_init_wait_vision_sec);
 
     smoother_imu_manager_.DiscardBefore(t0);
     const bool no_imu = smoother_imu_manager_.Empty();
 
-    if (no_vo && no_imu) {  mutex_smoother_result_.unlock();
-
+    if (no_vo && no_imu) {
       LOG(INFO) << "No VO or IMU available, waiting to initialize Smoother" << std::endl;
       continue;
     }
@@ -513,6 +513,7 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
     }
 
     smoother.update(new_factors, new_values);
+    smoother_mode = no_vo ? SmootherMode::VISION_UNAVAILABLE : SmootherMode::VISION_AVAILABLE;
     initialized = true;
     LOG(INFO) << "Smoother initialized at t=" << t0 << "\n" << "P0:" << P0_world_body << std::endl;
   }
