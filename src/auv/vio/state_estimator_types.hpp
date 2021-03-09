@@ -44,8 +44,21 @@ static const ImuBias kZeroImuBias = ImuBias(gtsam::Vector3::Zero(), gtsam::Vecto
 static const gtsam::Vector3 kZeroVelocity = gtsam::Vector3::Zero();
 static const double kSetSkewToZero = 0.0;
 
+
 // The smoother changes its behavior depending on whether vision is available/unavailable.
 enum class SmootherMode { VISION_AVAILABLE, VISION_UNAVAILABLE };
+inline std::string to_string(const SmootherMode& m)
+{
+  switch (m) {
+    case SmootherMode::VISION_AVAILABLE:
+      return "VISION_AVAILABLE";
+    case SmootherMode::VISION_UNAVAILABLE:
+      return "VISION_UNAVAILABLE";
+    default:
+      throw std::runtime_error("Unknkown SmootherMode");
+      return "ERROR";
+  }
+}
 
 
 // Parameters for the backend smoother/filter inside of the state estimator.

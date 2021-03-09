@@ -9,11 +9,12 @@ max_size_filter_imu_queue: 1000
 
 reliable_vision_min_lmks: 12
 max_sec_btw_keyframes: 5.0
+min_sec_btw_keyframes: 0.5
 
 extra_smoothing_iters: 2
-smoother_init_wait_vision_sec: 5.0
-smoother_wait_vision_available: 5.0
-smoother_wait_vision_unavailable: 0.1
+smoother_init_wait_vision_sec: 3.0
+smoother_wait_vision_available: 3.0
+smoother_wait_vision_unavailable: 0.001
 
 #===============================================================================
 GtsamInferenceParams:

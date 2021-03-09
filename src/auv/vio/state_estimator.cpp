@@ -77,7 +77,7 @@ void StateEstimator::BlockUntilFinished()
 
 void StateEstimator::Shutdown()
 {
-  is_shutdown_ = true;
+  is_shutdown_.store(true);
   if (stereo_frontend_thread_.joinable()) {
     stereo_frontend_thread_.join();
   }
@@ -516,23 +516,28 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
     smoother_mode = no_vo ? SmootherMode::VISION_UNAVAILABLE : SmootherMode::VISION_AVAILABLE;
     initialized = true;
     LOG(INFO) << "Smoother initialized at t=" << t0 << "\n" << "P0:" << P0_world_body << std::endl;
+    LOG(INFO) << "Smoother mode: " << to_string(smoother_mode) << std::endl;
   }
   //================================================================================================
 
   while (!is_shutdown_) {
     // Wait for a visual odometry measurement to arrive. If vision hasn't come in recently, don't
     // wait as long, since it is probably unreliable.
-    const double wait_sec = (smoother_mode == SmootherMode::VISION_AVAILABLE) ? \
-        params_.smoother_wait_vision_available : params_.smoother_wait_vision_unavailable;
+    const double wait_sec =
+        (smoother_mode == SmootherMode::VISION_AVAILABLE) ? \
+        params_.smoother_wait_vision_available :
+        params_.smoother_wait_vision_unavailable;
+
     const bool did_timeout = WaitForResultOrTimeout<ThreadsafeQueue<StereoFrontend::Result>>(smoother_vo_queue_, wait_sec);
 
     if (is_shutdown_) { break; }  // Timeout could have happened due to shutdown; check that here.
 
     // VO FAILED --> Create a keypose with IMU/APS measurements.
     if (did_timeout) {
-      const bool imu_is_available = smoother_imu_manager_.Empty() &&
+      const bool imu_is_available = !smoother_imu_manager_.Empty() &&
                                    (smoother_imu_manager_.Newest() > smoother_result_.timestamp);
-      if (imu_is_available) {
+      const seconds_t time_since_last_keypose = (smoother_imu_manager_.Newest() - smoother_result_.timestamp);
+      if (imu_is_available && (time_since_last_keypose > params_.min_sec_btw_keyframes)) {
         const SmootherResult& new_result = UpdateGraphNoVision(
             smoother,
             smoother_imu_manager_,

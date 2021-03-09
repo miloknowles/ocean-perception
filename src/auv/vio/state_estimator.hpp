@@ -45,16 +45,17 @@ class StateEstimator final {
 
     int reliable_vision_min_lmks = 12;
     double max_sec_btw_keyframes = 5.0;
+    double min_sec_btw_keyframes = 0.5;
 
     int extra_smoothing_iters = 2;
 
-    double smoother_init_wait_vision_sec = 5.0;
+    double smoother_init_wait_vision_sec = 3.0;
 
     // If vision is available, wait longer for stereo measurements to come in.
-    double smoother_wait_vision_available = 5.0; // sec
+    double smoother_wait_vision_available = 3.0; // sec
 
     // If vision is unavailable, don't waste time waiting around for it.
-    double smoother_wait_vision_unavailable = 0.1; // sec
+    double smoother_wait_vision_unavailable = 0.001; // sec
 
    private:
     void LoadParams(const YamlParser& parser) override
@@ -70,6 +71,7 @@ class StateEstimator final {
       parser.GetYamlParam("max_size_filter_imu_queue", &max_size_filter_imu_queue);
       parser.GetYamlParam("reliable_vision_min_lmks", &reliable_vision_min_lmks);
       parser.GetYamlParam("max_sec_btw_keyframes", &max_sec_btw_keyframes);
+      parser.GetYamlParam("min_sec_btw_keyframes", &min_sec_btw_keyframes);
       parser.GetYamlParam("extra_smoothing_iters", &extra_smoothing_iters);
       parser.GetYamlParam("smoother_init_wait_vision_sec", &smoother_init_wait_vision_sec);
       parser.GetYamlParam("smoother_wait_vision_available", &smoother_wait_vision_available);
