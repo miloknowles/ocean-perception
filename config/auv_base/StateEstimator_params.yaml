@@ -46,11 +46,11 @@ StereoFrontend:
 
   FeatureDetector:
     max_features_per_frame: 200
-    subpixel_corners: false
+    subpixel_corners: 0 # bool
     min_distance_btw_tracked_and_detected_features: 20
     gftt_quality_level: 0.01
     gftt_block_size: 5
-    gftt_use_harris_corner_detector: false
+    gftt_use_harris_corner_detector: 0 # bool
     gftt_k: 0.04
 
   FeatureTracker:
@@ -64,8 +64,8 @@ StereoFrontend:
     templ_rows: 11
     max_disp: 128
     max_matching_cost: 0.15
-    bidirectional: false
-    subpixel_refinement: false
+    bidirectional: 0 # bool
+    subpixel_refinement: 0 # bool
 
 #===============================================================================
 ImuManager:
