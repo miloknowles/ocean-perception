@@ -55,7 +55,9 @@ class ImuManager final {
     {
       parser.GetYamlParam("allowed_misalignment_sec", &allowed_misalignment_sec);
       parser.GetYamlParam("max_queue_size", &max_queue_size);
+
       parser.GetYamlParam("accel_noise_sigma", &accel_noise_sigma);
+      parser.GetYamlParam("gyro_noise_sigma", &gyro_noise_sigma);
       parser.GetYamlParam("accel_bias_rw_sigma", &accel_bias_rw_sigma);
       parser.GetYamlParam("gyro_bias_rw_sigma", &gyro_bias_rw_sigma);
 
@@ -64,7 +66,6 @@ class ImuManager final {
       parser.GetYamlParam("bias_drift_noise_model_sigma", &bias_drift_noise_model_sigma);
       bias_prior_noise_model = IsotropicModel::Sigma(6, bias_prior_noise_model_sigma);
       bias_drift_noise_model = IsotropicModel::Sigma(6, bias_drift_noise_model_sigma);
-
       YamlToVector<gtsam::Vector3>(parser.GetYamlNode("n_gravity"), n_gravity);
     }
   };
@@ -101,7 +102,7 @@ class ImuManager final {
 
  private:
   Params params_;
-  boost::shared_ptr<PimC::Params> pim_params_;
+  PimC::Params pim_params_;
   ThreadsafeQueue<ImuMeasurement> queue_;
   PimC pim_;
 };
