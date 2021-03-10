@@ -34,7 +34,10 @@ struct CameraPoseData
                  const Image1b& left_image,
                  const Matrix4d& T_world_cam,
                  bool is_keyframe)
-      : cam_id(cam_id), left_image(left_image), T_world_cam(T_world_cam), is_keyframe(is_keyframe) {}
+      : cam_id(cam_id),
+        left_image(left_image),
+        T_world_cam(T_world_cam),
+        is_keyframe(is_keyframe) {}
 
   uid_t cam_id;
   Image1b left_image;

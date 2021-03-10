@@ -39,23 +39,17 @@ class StateEstimator final {
 
     int max_size_raw_stereo_queue = 100;      // Images for the stereo frontend to process.
     int max_size_smoother_vo_queue = 100;     // Holds keyframe VO estimates for the smoother to process.
-    int max_size_smoother_imu_queue = 1000;  // Holds IMU measurements for the smoother to process.
-    int max_size_filter_vo_queue = 100;      // Holds all VO estimates for the filter to process.
-    int max_size_filter_imu_queue = 1000;    // Holds IMU measurements for the filter to process.
+    int max_size_smoother_imu_queue = 1000;   // Holds IMU measurements for the smoother to process.
+    int max_size_filter_vo_queue = 100;       // Holds all VO estimates for the filter to process.
+    int max_size_filter_imu_queue = 1000;     // Holds IMU measurements for the filter to process.
 
-    int reliable_vision_min_lmks = 12;
-    double max_sec_btw_keyframes = 5.0;
-    double min_sec_btw_keyframes = 0.5;
+    int reliable_vision_min_lmks = 12;        // Vision is "unreliable" if not many features can be detected.
+    double max_sec_btw_keyposes = 2.0;        // If a keypose hasn't been triggered in this long, trigger it!
+    double min_sec_btw_keyposes = 0.5;        // Don't trigger a keypose if it hasn't been long since the last one.
 
-    int extra_smoothing_iters = 2;
+    int extra_smoothing_iters = 2;            // More smoothing iters --> better accuracy.
 
-    double smoother_init_wait_vision_sec = 3.0;
-
-    // If vision is available, wait longer for stereo measurements to come in.
-    double smoother_wait_vision_available = 3.0; // sec
-
-    // If vision is unavailable, don't waste time waiting around for it.
-    double smoother_wait_vision_unavailable = 0.001; // sec
+    double smoother_init_wait_vision_sec = 3.0;   // Wait this long for VO to arrive during initialization.
 
    private:
     void LoadParams(const YamlParser& parser) override
@@ -70,12 +64,10 @@ class StateEstimator final {
       parser.GetYamlParam("max_size_filter_vo_queue", &max_size_filter_vo_queue);
       parser.GetYamlParam("max_size_filter_imu_queue", &max_size_filter_imu_queue);
       parser.GetYamlParam("reliable_vision_min_lmks", &reliable_vision_min_lmks);
-      parser.GetYamlParam("max_sec_btw_keyframes", &max_sec_btw_keyframes);
-      parser.GetYamlParam("min_sec_btw_keyframes", &min_sec_btw_keyframes);
+      parser.GetYamlParam("max_sec_btw_keyposes", &max_sec_btw_keyposes);
+      parser.GetYamlParam("min_sec_btw_keyposes", &min_sec_btw_keyposes);
       parser.GetYamlParam("extra_smoothing_iters", &extra_smoothing_iters);
       parser.GetYamlParam("smoother_init_wait_vision_sec", &smoother_init_wait_vision_sec);
-      parser.GetYamlParam("smoother_wait_vision_available", &smoother_wait_vision_available);
-      parser.GetYamlParam("smoother_wait_vision_unavailable", &smoother_wait_vision_unavailable);
     }
   };
 
@@ -136,7 +128,6 @@ class StateEstimator final {
   std::thread stereo_frontend_thread_;
   std::thread smoother_thread_;
   std::thread filter_thread_;
-  std::thread init_thread_;
 
   //================================================================================================
   // After solving the factor graph, the smoother updates this pose.

@@ -50,6 +50,8 @@ PimResult ImuManager::Preintegrate(seconds_t from_time, seconds_t to_time)
     imu = queue_.Pop();
   }
 
+  const gtsam::Vector3 w_from = imu.w;
+
   const double earliest_imu_sec = ConvertToSeconds(imu.timestamp);
 
   // FAIL: No measurement close to (specified) from_time.
@@ -75,6 +77,7 @@ PimResult ImuManager::Preintegrate(seconds_t from_time, seconds_t to_time)
   }
 
   const double latest_imu_sec = ConvertToSeconds(imu.timestamp);
+  const gtsam::Vector3 w_to = imu.w;
 
   // FAIL: No measurement close to (specified) to_time.
   const double offset_to_sec = (to_time != kMaxSeconds) ? std::fabs(latest_imu_sec - to_time) : 0.0;
@@ -88,7 +91,9 @@ PimResult ImuManager::Preintegrate(seconds_t from_time, seconds_t to_time)
     pim_.integrateMeasurement(imu.a, imu.w, offset_to_sec);
   }
 
-  const PimResult out = PimResult(true, earliest_imu_sec, latest_imu_sec, pim_);
+  PimResult out = PimResult(true, earliest_imu_sec, latest_imu_sec, pim_);
+  out.w_from_unbiased = pim_.biasHat().correctGyroscope(w_from);
+  out.w_to_unbiased = pim_.biasHat().correctGyroscope(w_to);
   pim_.resetIntegration();
 
   return out;

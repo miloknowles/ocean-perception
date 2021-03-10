@@ -22,6 +22,10 @@ struct PimResult final
   seconds_t from_time;
   seconds_t to_time;
   PimC pim;
+
+  // Angular velocity at the start and end timestamps, with bias subtracted off.
+  gtsam::Vector3 w_from_unbiased = gtsam::Vector3::Zero();
+  gtsam::Vector3 w_to_unbiased = gtsam::Vector3::Zero();
 };
 
 
@@ -99,6 +103,8 @@ class ImuManager final {
 
   gtsam::SharedNoiseModel BiasPriorNoiseModel() const { return params_.bias_prior_noise_model; }
   gtsam::SharedNoiseModel BiasDriftNoiseModel() const { return params_.bias_drift_noise_model; }
+
+  gtsam::SharedNoiseModel GyroMeasurementNoiseModel() const { return IsotropicModel::Sigma(3, params_.gyro_noise_sigma); }
 
  private:
   Params params_;

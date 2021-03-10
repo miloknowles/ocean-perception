@@ -521,12 +521,13 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
   //================================================================================================
 
   while (!is_shutdown_) {
-    // Wait for a visual odometry measurement to arrive. If vision hasn't come in recently, don't
+    // Wait for a visual odometry measurement to arrive, based on the expected time btw keyframes.
+    // If vision hasn't come in recently, don't
     // wait as long, since it is probably unreliable.
     const double wait_sec =
         (smoother_mode == SmootherMode::VISION_AVAILABLE) ? \
-        params_.smoother_wait_vision_available :
-        params_.smoother_wait_vision_unavailable;
+        params_.max_sec_btw_keyposes + 0.1:       // Add a small epsilon to account for latency.
+        0.005;  // This should be a tiny delay to process IMU ASAP.
 
     const bool did_timeout = WaitForResultOrTimeout<ThreadsafeQueue<StereoFrontend::Result>>(smoother_vo_queue_, wait_sec);
 
@@ -537,7 +538,7 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
       const bool imu_is_available = !smoother_imu_manager_.Empty() &&
                                    (smoother_imu_manager_.Newest() > smoother_result_.timestamp);
       const seconds_t time_since_last_keypose = (smoother_imu_manager_.Newest() - smoother_result_.timestamp);
-      if (imu_is_available && (time_since_last_keypose > params_.min_sec_btw_keyframes)) {
+      if (imu_is_available && (time_since_last_keypose > params_.min_sec_btw_keyposes)) {
         const SmootherResult& new_result = UpdateGraphNoVision(
             smoother,
             smoother_imu_manager_,
