@@ -75,13 +75,13 @@ class StateFilter final {
   void PredictAndUpdate();
 
   void Reinitialize(seconds_t timestamp,
-                            const gtsam::Pose3& P_world_body,
-                            const gtsam::Vector3& v_world_body,
-                            const ImuBias& imu_bias,
-                            const gtsam::SharedNoiseModel& P_prior_noise_model,
-                            const gtsam::SharedNoiseModel& v_prior_noise_model,
-                            const gtsam::SharedNoiseModel& imu_bias_prior_noise_model,
-                            bool rebase = true);
+                    const gtsam::Pose3& P_world_body,
+                    const gtsam::Vector3& v_world_body,
+                    const ImuBias& imu_bias,
+                    const gtsam::SharedNoiseModel& P_prior_noise_model,
+                    const gtsam::SharedNoiseModel& v_prior_noise_model,
+                    const gtsam::SharedNoiseModel& imu_bias_prior_noise_model,
+                    bool rebase = true);
  private:
   uid_t GetNextStateId() { return next_state_id_++; }
 

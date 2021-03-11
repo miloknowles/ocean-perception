@@ -147,7 +147,7 @@ void StateFilter::PredictAndUpdate()
     const gtsam::Pose3& P_init_cam = odom_manager_.GetRelativePose(init_timestamp, new_timestamp);
     const gtsam::Pose3 P_world_body = P_world_init * P_init_cam * params_.P_body_cam.inverse();
 
-    // gtsam::PriorFactor<gtsam::Vector3> t_prior_factor(new_state_key, )
+    // gtsam::PriorFactor<gtsam::Vector3> t_prior_factor(new_state_key,   )
   }
 }
 

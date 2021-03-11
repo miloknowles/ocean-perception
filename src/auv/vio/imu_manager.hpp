@@ -83,6 +83,7 @@ class ImuManager final {
   void Push(const ImuMeasurement& imu);
 
   bool Empty() { return queue_.Empty(); }
+  ImuMeasurement Pop() { return queue_.Pop(); }
 
   // Preintegrate queued IMU measurements, optionally within a time range [from_time, to_time].
   // If not time range is given, all available result are integrated. Integration is reset inside
@@ -104,7 +105,25 @@ class ImuManager final {
   gtsam::SharedNoiseModel BiasPriorNoiseModel() const { return params_.bias_prior_noise_model; }
   gtsam::SharedNoiseModel BiasDriftNoiseModel() const { return params_.bias_drift_noise_model; }
 
-  gtsam::SharedNoiseModel GyroMeasurementNoiseModel() const { return IsotropicModel::Sigma(3, params_.gyro_noise_sigma); }
+  Vector3d CorrectGyro(const Vector3d& w) const
+  {
+    return pim_.biasHat().correctGyroscope(w);
+  }
+
+  Vector3d CorrectAcc(const Vector3d& a) const
+  {
+    return pim_.biasHat().correctAccelerometer(a);
+  }
+
+  gtsam::SharedNoiseModel GyroMeasurementNoiseModel() const
+  {
+    return IsotropicModel::Sigma(3, params_.gyro_noise_sigma);
+  }
+
+  gtsam::SharedNoiseModel AccMeasurementNoiseModel() const
+  {
+    return IsotropicModel::Sigma(3, params_.accel_noise_sigma);
+  }
 
  private:
   Params params_;

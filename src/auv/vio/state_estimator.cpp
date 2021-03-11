@@ -7,7 +7,7 @@
 #include <gtsam/navigation/CombinedImuFactor.h>
 
 #include "vio/state_estimator.hpp"
-#include "vio/pose_history.hpp"
+#include "vio/item_history.hpp"
 #include "core/timer.hpp"
 
 
@@ -568,7 +568,7 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
 // NOTE(milo): For now, this thread does nothing. It just keeps up with queues.
 void StateEstimator::FilterLoop()
 {
-  PoseHistory<double> pose_history;
+  ItemHistory<double, gtsam::Pose3> pose_history;
 
   gtsam::Pose3 T_world_lkf;
 
