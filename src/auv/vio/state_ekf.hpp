@@ -74,12 +74,6 @@ class StateEkf final {
   {
     MACRO_PARAMS_STRUCT_CONSTRUCTORS(Params);
 
-    ImuManager::Params imu_manager_params;
-
-    // Control size of sensor data queues.
-    int odom_max_queue_size = 100;
-    int imu_max_queue_size = 1000;
-
     // Process noise standard deviations.
     double sigma_Q_t = 1e-2;
     double sigma_Q_v = 1e-3;
@@ -91,22 +85,23 @@ class StateEkf final {
     double sigma_R_imu_a = 0.0003924;
     double sigma_R_imu_w = 0.000205689024915;
 
+    Vector3d n_gravity = Vector3d(0, 9.81, 0);
+
    private:
     void LoadParams(const YamlParser& parser) override
     {
-      parser.GetYamlParam("odom_max_queue_size", &odom_max_queue_size);
-      parser.GetYamlParam("imu_max_queue_size", &imu_max_queue_size);
     }
   };
 
   // Construct with parameters.
   StateEkf(const Params& params);
 
-  // Main function for the EKF: simulate the forward dynamics of the state, then update with any
-  // available sensor measurements.
+  // Main function for the EKF.
+  // Simulate the forward dynamics of the state, then update with a single IMU measurement. If the
+  // IMU timestamp is the same or before the current state timestamp, skips the prediction step.
   // [1] https://bicr.atr.jp//~aude/publications/ras99.pdf
   // [2] https://en.wikipedia.org/wiki/Extended_Kalman_filter
-  bool PredictAndUpdate();
+  StateStamped PredictAndUpdate(const ImuMeasurement& imu);
 
   // Retrieve the current state.
   StateStamped GetState() const { return state_; }
@@ -114,18 +109,11 @@ class StateEkf final {
   // Initialize at a state, and set the IMU bias.
   void Initialize(const StateStamped& state, const ImuBias& imu_bias);
 
-  // Wrapper for pushing IMU data onto the IMU manager's queue.
-  void Push(const ImuMeasurement& imu_data)
-  {
-    imu_manager_.Push(std::move(imu_data));
-  }
-
  private:
   Params params_;
 
-  ImuManager imu_manager_;
   StateStamped state_;
-
+  ImuBias imu_bias_;
   bool is_initialized_ = false;
 
   // Process noise.

@@ -120,7 +120,6 @@ static State UpdateImu(const State& x,
 
 StateEkf::StateEkf(const Params& params)
     : params_(params),
-      imu_manager_(params.imu_manager_params),
       state_(0, State())
 {
   // IMU measurement noise: [ wx wy wz ax ay az ]
@@ -139,34 +138,28 @@ StateEkf::StateEkf(const Params& params)
 void StateEkf::Initialize(const StateStamped& state, const ImuBias& imu_bias)
 {
   state_ = state;
-  imu_manager_.ResetAndUpdateBias(imu_bias);
+  imu_bias_ = imu_bias;
   is_initialized_ = true;
 }
 
 
-bool StateEkf::PredictAndUpdate()
+StateStamped StateEkf::PredictAndUpdate(const ImuMeasurement& imu)
 {
-  // If no IMU measurements, don't update.
-  imu_manager_.DiscardBefore(state_.timestamp);
-  if (imu_manager_.Empty()) {
-    return false;
-  }
-
-  ImuMeasurement imu = imu_manager_.Pop();
   const seconds_t t_new = ConvertToSeconds(imu.timestamp);
   const seconds_t dt = (t_new - state_.timestamp);
 
   // PREDICT STEP: Simulate the system forward to the current timestep.
-  const State& x_new = Predict(state_.state, dt, Q_);
+  const State& x_new = (dt > 0) ? Predict(state_.state, dt, Q_) : state_.state;
 
   // UPDATE STEP: Compute redidual errors, Kalman gain, and apply update.
-  imu.a = imu_manager_.CorrectAcc(imu.a);
-  imu.w = imu_manager_.CorrectGyro(imu.w);
+  ImuMeasurement imu_c = imu;
+  imu_c.a = imu_bias_.correctAccelerometer(imu.a);
+  imu_c.w = imu_bias_.correctGyroscope(imu.w);
 
-  const State& x_update = UpdateImu(x_new, imu, params_.imu_manager_params.n_gravity, R_imu_);
+  const State& xu = UpdateImu(x_new, imu_c, params_.n_gravity, R_imu_);
 
   state_.timestamp = t_new;
-  state_.state = x_update;
+  state_.state = xu;
 
   return true;
 }

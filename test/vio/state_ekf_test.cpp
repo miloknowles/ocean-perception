@@ -31,8 +31,7 @@ TEST(VioTest, TestEkf_01)
 
   // Update #1
   ImuMeasurement imu0(ConvertToNanoseconds(5.5), Vector3d(0, 0, 0), Vector3d(1.0, -9.81, 0));
-  ekf.Push(imu0);
-  ekf.PredictAndUpdate();
+  ekf.PredictAndUpdate(imu0);
   s = ekf.GetState();
   s.Print();
 }
@@ -55,16 +54,15 @@ TEST(VioTest, TestEkf_02)
            Vector3d::Zero(),          // w
            S0);                       // cov
 
-  StateStamped ss0(5.0, s0);
+  StateStamped ss0(ConvertToSeconds(dataset.FirstTimestamp()), s0);
 
   ekf.Initialize(ss0, ImuBias());
 
   auto callback = [&](const ImuMeasurement& imu_data)
   {
-    ekf.Push(imu_data);
-    ekf.PredictAndUpdate();
+    ekf.PredictAndUpdate(imu_data);
     const StateStamped& ss = ekf.GetState();
-    ss.Print();
+    // ss.Print();
   };
 
   dataset.RegisterImuCallback(callback);
