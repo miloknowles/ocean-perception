@@ -576,8 +576,11 @@ void StateEstimator::FilterLoop(seconds_t t0, const gtsam::Pose3& P0_world_body)
       ImuBias());
 
   while (!is_shutdown_) {
-    // filter_imu_manager_.DiscardBefore(filter_state_.timestamp);
+    if (!filter_vo_queue_.Empty()) {
+      filter_vo_queue_.Pop(); // Keep clearing this queue for now.
+    }
 
+    filter_imu_manager_.DiscardBefore(filter_state_.timestamp);
     if (!filter_imu_manager_.Empty()) {
       mutex_filter_result_.lock();
       filter_state_ = filter.PredictAndUpdate(filter_imu_manager_.Pop());

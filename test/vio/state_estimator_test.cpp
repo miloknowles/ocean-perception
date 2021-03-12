@@ -69,7 +69,7 @@ TEST(VioTest, TestStateEstimator1)
   state_estimator.RegisterSmootherResultCallback(smoother_callback);
   state_estimator.RegisterFilterResultCallback(filter_callback);
 
-  // dataset.RegisterStereoCallback(std::bind(&StateEstimator::ReceiveStereo, &state_estimator, std::placeholders::_1));
+  dataset.RegisterStereoCallback(std::bind(&StateEstimator::ReceiveStereo, &state_estimator, std::placeholders::_1));
   dataset.RegisterImuCallback(std::bind(&StateEstimator::ReceiveImu, &state_estimator, std::placeholders::_1));
 
   state_estimator.Initialize(ConvertToSeconds(dataset.FirstTimestamp()), gtsam::Pose3::identity());
