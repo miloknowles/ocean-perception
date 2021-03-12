@@ -14,6 +14,22 @@ namespace bm {
 namespace core {
 
 
+// Returns whether an id is requesting a "shared" parameter (prefixed by /shared/).
+// If so, returns the suffix of the id after /shared/.
+inline bool CheckIfSharedId(const std::string& id, std::string& suffix)
+{
+  const bool is_shared = id.substr(0, 8) == "/shared/";
+
+  if (is_shared) {
+    suffix = id.substr(8, std::string::npos);
+  } else {
+    suffix = "";
+  }
+
+  return is_shared;
+}
+
+
 // Class for parsing a YAML file, using OpenCV's FileStorage module.
 class YamlParser {
  public:
@@ -31,23 +47,41 @@ class YamlParser {
   }
 
   // Construct from a YAML node.
-  YamlParser(const cv::FileNode& root_node) : root_node_(root_node) {}
+  YamlParser(const cv::FileNode& root_node, const cv::FileNode& shared_node)
+      : root_node_(root_node), shared_node_(shared_node) {}
 
   // Retrieve a param from the YAML hierarchy and pass it to output.
   template <class ParamType>
   void GetYamlParam(const std::string& id, ParamType* output) const
   {
     CHECK_NOTNULL(output);
-    CHECK(!root_node_.empty()) << "GetYamlParam: root_node_ is empty. Was the parser constructed?" << std::endl;
-    const cv::FileNode& node = GetYamlNodeHelper(root_node_, id);
-    node >> *output;
+
+    // Any id request prefixed with /shared/ is directed to the shared params.
+    std::string maybe_suffix;
+    if (CheckIfSharedId(id, maybe_suffix)) {
+      CHECK(!shared_node_.empty()) << "GetYamlParam: shared_node_ is empty. Was the parser constructed with a shared node?" << std::endl;
+      const cv::FileNode& node = GetYamlNodeHelper(shared_node_, maybe_suffix);
+      node >> *output;
+
+    // Anything else is directed to the root params.
+    } else {
+      CHECK(!root_node_.empty()) << "GetYamlParam: root_node_ is empty. Was the parser constructed?" << std::endl;
+      const cv::FileNode& node = GetYamlNodeHelper(root_node_, id);
+      node >> *output;
+    }
   }
 
   // Get a YAML node relative to the root. This is used for constructing params that are a subtree.
   cv::FileNode GetYamlNode(const std::string& id) const
   {
-    CHECK(!root_node_.empty()) << "GetYamlParam: root_node_ is empty. Was the parser constructed?" << std::endl;
-    return GetYamlNodeHelper(root_node_, id);
+    std::string maybe_suffix;
+    if (CheckIfSharedId(id, maybe_suffix)) {
+      CHECK(!shared_node_.empty()) << "GetYamlParam: shared_node_ is empty. Was the parser constructed with a shared node?" << std::endl;
+      return GetYamlNodeHelper(shared_node_, id);
+    } else {
+      CHECK(!root_node_.empty()) << "GetYamlParam: root_node_ is empty. Was the parser constructed?" << std::endl;
+      return GetYamlNodeHelper(root_node_, id);
+    }
   }
 
  private:
@@ -85,6 +119,7 @@ class YamlParser {
   std::string filepath_;
   cv::FileStorage fs_;
   cv::FileNode root_node_;
+  cv::FileNode shared_node_;
 };
 
 

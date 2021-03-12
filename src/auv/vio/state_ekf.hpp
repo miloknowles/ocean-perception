@@ -75,11 +75,11 @@ class StateEkf final {
     MACRO_PARAMS_STRUCT_CONSTRUCTORS(Params);
 
     // Process noise standard deviations.
-    double sigma_Q_t = 1e-2;
-    double sigma_Q_v = 1e-3;
-    double sigma_Q_a = 1e-3;
-    double sigma_Q_uq = 1e-3;
-    double sigma_Q_w = 1e-3;
+    double sigma_Q_t = 1e-2;   // translation
+    double sigma_Q_v = 1e-3;   // velocity
+    double sigma_Q_a = 1e-3;   // accleration
+    double sigma_Q_uq = 1e-3;  // orientation (3D tangent space)
+    double sigma_Q_w = 1e-3;   // angular velocity
 
     // Sensor noise standard deviations.
     double sigma_R_imu_a = 0.0003924;
@@ -90,6 +90,14 @@ class StateEkf final {
    private:
     void LoadParams(const YamlParser& parser) override
     {
+      parser.GetYamlParam("sigma_Q_t", &sigma_Q_t);
+      parser.GetYamlParam("sigma_Q_v", &sigma_Q_v);
+      parser.GetYamlParam("sigma_Q_a", &sigma_Q_a);
+      parser.GetYamlParam("sigma_Q_uq", &sigma_Q_uq);
+      parser.GetYamlParam("sigma_Q_w", &sigma_Q_w);
+
+      parser.GetYamlParam("sigma_R_imu_a", &sigma_R_imu_a);
+      parser.GetYamlParam("sigma_R_imu_w", &sigma_R_imu_w);
     }
   };
 

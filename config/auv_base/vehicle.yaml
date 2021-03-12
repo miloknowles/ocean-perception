@@ -1,0 +1,69 @@
+%YAML:1.0
+
+n_gravity: [0, 9.81, 0]
+
+imu0:
+  frame_id: imu0
+
+  # IMU and body frame are one and the same.
+  T_body_imu:
+    cols: 4
+    rows: 4
+    data: [1.0, 0.0, 0.0, 0.0,
+           0.0, 1.0, 0.0, 0.0,
+           0.0, 0.0, 1.0, 0.0,
+           0.0, 0.0, 0.0, 1.0]
+  noise_model:
+    accel_noise_sigma:    0.0003924
+    gyro_noise_sigma:     0.000205689024915
+    accel_bias_rw_sigma:  0.004905
+    gyro_bias_rw_sigma:   0.000001454441043
+    bias_prior_noise_model_sigma: 0.01  # Noise model for the zero-prior on IMU bias.
+    bias_drift_noise_model_sigma: 0.001 # Noise model for the IMU bias between factors.
+
+# NOTE(milo): Placeholder for acoustic positioning system.
+aps0:
+  frame_id: aps0
+  T_body_imu:
+    cols: 4
+    rows: 4
+    data: [1.0, 0.0, 0.0, 0.0,
+           0.0, 1.0, 0.0, 0.0,
+           0.0, 0.0, 1.0, 0.0,
+           0.0, 0.0, 0.0, 1.0]
+
+cam0:
+  frame_id: cam0
+  T_body_cam:
+    cols: 4
+    rows: 4
+    data: [1.0, 0.0, 0.0, -0.1,
+           0.0, 1.0, 0.0, 0.0,
+           0.0, 0.0, 1.0, 0.1,
+           0.0, 0.0, 0.0, 1.0]
+
+  # Camera specific definitions.
+  image_height: 480
+  image_width: 752
+  camera_model: pinhole
+  intrinsics: [415.876509, 415.876509, 375.5, 239.5] # fx, fy, cx, cy
+  distortion_model: radial-tangential
+  distortion_coefficients: [0.0, 0.0, 0.0, 0.0] # Zero means already undistorted.
+
+cam1:
+  frame_id: cam1
+  T_body_cam:
+    cols: 4
+    rows: 4
+    data: [1.0, 0.0, 0.0, 0.1,
+           0.0, 1.0, 0.0, 0.0,
+           0.0, 0.0, 1.0, 0.1,
+           0.0, 0.0, 0.0, 1.0]
+
+  # Camera specific definitions.
+  image_height: 480
+  image_width: 752
+  camera_model: pinhole
+  intrinsics: [415.876509, 415.876509, 375.5, 239.5] # fx, fy, cx, cy
+  distortion_model: radial-tangential
+  distortion_coefficients: [0.0, 0.0, 0.0, 0.0] # Zero means already undistorted.

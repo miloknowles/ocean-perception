@@ -23,6 +23,19 @@ GtsamInferenceParams:
   velocity_sigma: 0.1 # m/s
 
 #===============================================================================
+StateEkfParams:
+  # Process noise standard deviations.
+  sigma_Q_t: 0.01    # translation
+  sigma_Q_v: 0.001   # velocity
+  sigma_Q_a: 0.001   # accleration
+  sigma_Q_uq: 0.001  # orientation (3D tangent space)
+  sigma_Q_w: 0.001   # angular velocity
+
+  # Sensor noise standard deviations.
+  sigma_R_imu_a: 0.0003924
+  double sigma_R_imu_w: 0.000205689024915
+
+#===============================================================================
 StereoFrontend:
   stereo_max_depth: 100.0 # m
   stereo_min_depth: 0.5   # m
