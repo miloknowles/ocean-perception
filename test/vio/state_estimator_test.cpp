@@ -42,7 +42,8 @@ TEST(VioTest, TestStateEstimator1)
   const PinholeCamera camera_model(415.876509, 415.876509, 375.5, 239.5, 480, 752);
   const StereoCamera stereo_rig(camera_model, 0.2);
 
-  StateEstimator::Params params("/home/milo/bluemeadow/catkin_ws/src/auv/config/auv_base/StateEstimator_params.yaml");
+  StateEstimator::Params params("/home/milo/bluemeadow/catkin_ws/src/auv/config/auv_base/StateEstimator_params.yaml",
+                                "/home/milo/bluemeadow/catkin_ws/src/auv/config/auv_base/shared_params.yaml");
   StateEstimator state_estimator(params, stereo_rig);
 
   Visualizer3D::Params viz_params("/home/milo/bluemeadow/catkin_ws/src/auv/config/auv_base/Visualizer3D_params.yaml");
@@ -55,9 +56,13 @@ TEST(VioTest, TestStateEstimator1)
     viz.AddCameraPose(cam_id, Image1b(), result.P_world_body.matrix(), true);
   };
 
-  FilterResultCallback filter_callback = [&](const FilterResult& result)
+  FilterResultCallback filter_callback = [&](const StateStamped& ss)
   {
-    viz.AddCameraPose(0, Image1b(), result.P_world_body.matrix(), false);
+    Matrix4d T_world_body;
+    T_world_body.block<3, 3>(0, 0) = ss.state.q.toRotationMatrix();
+    T_world_body.block<3, 1>(0, 3) = ss.state.t;
+    // NOTE: cam_id doesn't matter because the frustum is just shown as the realtime camera.
+    viz.AddCameraPose(0, Image1b(), T_world_body, false);
   };
 
   viz.Start();

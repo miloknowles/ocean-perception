@@ -57,7 +57,9 @@ struct StateStamped final
   StateStamped(const seconds_t timestamp, const State& state)
       : timestamp(timestamp), state(state) {}
 
-  seconds_t timestamp;
+  StateStamped() = default;
+
+  seconds_t timestamp = 0;
   State state;
 
   void Print() const
@@ -66,6 +68,10 @@ struct StateStamped final
     state.Print();
   }
 };
+
+
+// Callback function for filter updates.
+typedef std::function<void(const StateStamped&)> FilterResultCallback;
 
 
 class StateEkf final {

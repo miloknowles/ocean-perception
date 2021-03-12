@@ -70,7 +70,7 @@ class ImuManager final {
       parser.GetYamlParam("bias_drift_noise_model_sigma", &bias_drift_noise_model_sigma);
       bias_prior_noise_model = IsotropicModel::Sigma(6, bias_prior_noise_model_sigma);
       bias_drift_noise_model = IsotropicModel::Sigma(6, bias_drift_noise_model_sigma);
-      YamlToVector<gtsam::Vector3>(parser.GetYamlNode("n_gravity"), n_gravity);
+      YamlToVector<gtsam::Vector3>(parser.GetYamlNode("/shared/n_gravity"), n_gravity);
     }
   };
 

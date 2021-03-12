@@ -62,9 +62,9 @@ inline std::string to_string(const SmootherMode& m)
 
 
 // Parameters for the backend smoother/filter inside of the state estimator.
-struct GtsamInferenceParams : public ParamsBase
+struct SmootherParams : public ParamsBase
 {
-  MACRO_PARAMS_STRUCT_CONSTRUCTORS(GtsamInferenceParams);
+  MACRO_PARAMS_STRUCT_CONSTRUCTORS(SmootherParams);
 
   //============================================================================
   DiagonalModel::shared_ptr pose_prior_noise_model = DiagonalModel::Sigmas(
@@ -132,21 +132,21 @@ struct SmootherResult final
 };
 
 
-struct FilterResult final
-{
-  explicit FilterResult(seconds_t timestamp,
-                        const gtsam::Pose3& P_world_body)
-      : timestamp(timestamp),
-        P_world_body(P_world_body) {}
+// struct FilterResult final
+// {
+//   explicit FilterResult(seconds_t timestamp,
+//                         const gtsam::Pose3& P_world_body)
+//       : timestamp(timestamp),
+//         P_world_body(P_world_body) {}
 
-  seconds_t timestamp;
-  gtsam::Pose3 P_world_body;
-};
+//   seconds_t timestamp;
+//   gtsam::Pose3 P_world_body;
+// };
 
 
 // Functional types.
 typedef std::function<void(const SmootherResult&)> SmootherResultCallback;
-typedef std::function<void(const FilterResult&)> FilterResultCallback;
+// typedef std::function<void(const FilterResult&)> FilterResultCallback;
 
 
 }

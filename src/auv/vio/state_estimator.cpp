@@ -23,8 +23,8 @@ StateEstimator::StateEstimator(const Params& params, const StereoCamera& stereo_
       raw_stereo_queue_(params_.max_size_raw_stereo_queue, true),
       smoother_vo_queue_(params_.max_size_smoother_vo_queue, true),
       smoother_imu_manager_(params_.imu_manager_params),
-      filter_vo_queue_(params_.max_size_filter_vo_queue, true),
-      filter_imu_queue_(params_.max_size_filter_imu_queue, true)
+      filter_imu_manager_(params.imu_manager_params),
+      filter_vo_queue_(params_.max_size_filter_vo_queue, true)
 {
 }
 
@@ -38,7 +38,7 @@ void StateEstimator::ReceiveStereo(const StereoImage& stereo_pair)
 void StateEstimator::ReceiveImu(const ImuMeasurement& imu_data)
 {
   smoother_imu_manager_.Push(imu_data);
-  filter_imu_queue_.Push(imu_data);
+  filter_imu_manager_.Push(imu_data);
 }
 
 
@@ -58,7 +58,7 @@ void StateEstimator::Initialize(seconds_t t0, const gtsam::Pose3 P0_world_body)
 {
   stereo_frontend_thread_ = std::thread(&StateEstimator::StereoFrontendLoop, this);
   smoother_thread_ = std::thread(&StateEstimator::SmootherLoop, this, t0, P0_world_body);
-  filter_thread_ = std::thread(&StateEstimator::FilterLoop, this);
+  filter_thread_ = std::thread(&StateEstimator::FilterLoop, this, t0, P0_world_body);
 }
 
 
@@ -153,8 +153,8 @@ static bool MaybeAddImuFactor(uid_t keypose_id,
   if (imu_manager.Empty()) {
     LOG(WARNING) << "Preintegration: IMU queue is empty" << std::endl;
   } else {
-    LOG(INFO) << "Preintegration: from_time=" << from_time << " to_time=" << to_time << std::endl;
-    LOG(INFO) << "Preintegration: oldest_imu=" << imu_manager.Oldest() << " newest_imu=" << imu_manager.Newest() << std::endl;
+    // LOG(INFO) << "Preintegration: from_time=" << from_time << " to_time=" << to_time << std::endl;
+    // LOG(INFO) << "Preintegration: oldest_imu=" << imu_manager.Oldest() << " newest_imu=" << imu_manager.Newest() << std::endl;
   }
 
   const PimResult& pim_result = imu_manager.Preintegrate(from_time, to_time);
@@ -238,7 +238,7 @@ SmootherResult StateEstimator::UpdateGraphNoVision(
       smoother_imu_manager_,
       keypose_time,
       last_smoother_result,
-      params_.inference_params.velocity_noise_model,
+      params_.smoother_params.velocity_noise_model,
       true,
       new_values,
       new_factors);
@@ -323,7 +323,7 @@ SmootherResult StateEstimator::UpdateGraphWithVision(
 
     new_factors.push_back(gtsam::BetweenFactor<gtsam::Pose3>(
         last_keypose_sym, keypose_sym, P_lkf_cam,
-        params_.inference_params.frontend_vo_noise_model));
+        params_.smoother_params.frontend_vo_noise_model));
 
     graph_has_vo_btw_factor = true;
   }
@@ -343,7 +343,7 @@ SmootherResult StateEstimator::UpdateGraphWithVision(
     // NEW SMART FACTOR: Creating smart stereo factor for the first time.
     if (stereo_factors.count(lmk_id) == 0) {
       stereo_factors.emplace(lmk_id, new SmartStereoFactor(
-          params_.inference_params.lmk_stereo_factor_noise_model, stereo_factor_params));
+          params_.smoother_params.lmk_stereo_factor_noise_model, stereo_factor_params));
 
       // Indicate that the newest factor refers to lmk_id.
       // NOTE(milo): Add the new factor to the graph. Order matters here!
@@ -370,7 +370,7 @@ SmootherResult StateEstimator::UpdateGraphWithVision(
       smoother_imu_manager_,
       keypose_time,
       last_smoother_result,
-      params_.inference_params.velocity_noise_model,
+      params_.smoother_params.velocity_noise_model,
       !graph_has_vo_btw_factor,
       new_values,
       new_factors);
@@ -501,14 +501,14 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
     smoother_result_ = SmootherResult(id0, t0, P0_world_body, !no_imu, kZeroVelocity, kZeroImuBias);
 
     // Prior and initial value for the 0th pose.
-    new_factors.addPrior<gtsam::Pose3>(P0_sym, P0_world_body, params_.inference_params.pose_prior_noise_model);
+    new_factors.addPrior<gtsam::Pose3>(P0_sym, P0_world_body, params_.smoother_params.pose_prior_noise_model);
     new_values.insert(P0_sym, P0_world_body);
 
     // If IMU available, add inertial variables to the graph.
     if (!no_imu) {
       new_values.insert(V0_sym, kZeroVelocity);
       new_values.insert(B0_sym, kZeroImuBias);
-      new_factors.addPrior(V0_sym, kZeroVelocity, params_.inference_params.velocity_noise_model);
+      new_factors.addPrior(V0_sym, kZeroVelocity, params_.smoother_params.velocity_noise_model);
       new_factors.addPrior(B0_sym, kZeroImuBias, smoother_imu_manager_.BiasPriorNoiseModel());
     }
 
@@ -544,8 +544,6 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
             smoother_imu_manager_,
             smoother_result_);
         UpdateSmootherResult(new_result);
-      } else {
-        LOG(WARNING) << "No vision or IMU available! Could not update smoother." << std::endl;
       }
 
     // VO AVAILABLE --> Add a keyframe and smooth.
@@ -566,74 +564,57 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
 
 
 // NOTE(milo): For now, this thread does nothing. It just keeps up with queues.
-void StateEstimator::FilterLoop()
+void StateEstimator::FilterLoop(seconds_t t0, const gtsam::Pose3& P0_world_body)
 {
-  ItemHistory<double, gtsam::Pose3> pose_history;
-
   gtsam::Pose3 T_world_lkf;
 
-  while (!is_shutdown_) {
-    // NOTE(milo): Always empty these queues BEFORE trying to sync with smoother! This avoids a
-    // a situation whether the filter is actually behind the smoother in terms of measurements it
-    // has received so far.
-    mutex_filter_result_.lock();
-    while (!filter_vo_queue_.Empty()) {
-      const StereoFrontend::Result& result = filter_vo_queue_.Pop();
-      if (result.is_keyframe) {
-        T_world_lkf = T_world_lkf * gtsam::Pose3(result.T_lkf_cam);
-        filter_T_world_cam_ = T_world_lkf;
-      } else {
-        filter_T_world_cam_ = T_world_lkf * gtsam::Pose3(result.T_lkf_cam);
-      }
+  StateEkf filter(params_.filter_params);
+  filter.Initialize(StateStamped(t0, State(
+      P0_world_body.translation(),
+      Vector3d::Zero(),
+      Vector3d::Zero(),
+      P0_world_body.rotation().toQuaternion(),
+      Vector3d::Zero(),
+      1e-3 * Matrix15d::Identity())),
+      ImuBias());
 
-      pose_history.Update(ConvertToSeconds(result.timestamp), filter_T_world_cam_);
+  while (!is_shutdown_) {
+    filter_imu_manager_.DiscardBefore(filter_state_.timestamp);
+
+    if (!filter_imu_manager_.Empty()) {
+      mutex_filter_result_.lock();
+      filter_state_ = filter.PredictAndUpdate(filter_imu_manager_.Pop());
 
       for (const FilterResultCallback& cb : filter_result_callbacks_) {
-        cb(FilterResult(filter_T_world_cam_time_, filter_T_world_cam_));
+        cb(filter.GetState());
       }
-    }
-    mutex_filter_result_.unlock();
-
-    // Update the filter state using IMU.
-    while (!filter_imu_queue_.Empty()) {
-      filter_imu_queue_.Pop();
+      mutex_filter_result_.unlock();
     }
 
     //================================== SYNCHRONIZE WITH SMOOTHER =================================
-    if (smoother_update_flag_.exchange(false)) {
-      // Get a copy of the latest smoother state to make sure it doesn't change during the synchronization.
+    const bool sync_with_smoother = smoother_update_flag_.exchange(false);
+    if (sync_with_smoother) {
+      LOG(INFO) << "Syncing with smoother" << std::endl;
+      // Get a copy of the latest smoother state to make sure it doesn't change during the sync.
       mutex_smoother_result_.lock();
       const SmootherResult result = smoother_result_;
       mutex_smoother_result_.unlock();
 
-      // TODO(milo): Better system:
-      // Get sensor measurements since the smoother result.
-      // Re-apply the measurements on top of the smoother result.
       mutex_filter_result_.lock();
+      const Vector3d& t = result.P_world_body.translation();
+      const Quaterniond& q = result.P_world_body.rotation().toQuaternion();
+      const Vector3d& v = result.v_world_body;
+      const Vector3d& a = Vector3d::Zero(); // TODO
+      const Vector3d& w = Vector3d::Zero(); // TODO
 
-      if (pose_history.Empty()) {
-        filter_T_world_cam_ = result.P_world_body;
-        filter_T_world_cam_time_ = result.timestamp;
-      } else {
-        const double t_now = pose_history.NewestKey();
+      // TODO: get from smoother
+      const Matrix15d S = Matrix15d::Identity() * 1e-3;
 
-        const gtsam::Pose3& filter_T_world_keypose = pose_history.at(result.timestamp);
-        const gtsam::Pose3& filter_T_world_now = pose_history.at(t_now);
-        const gtsam::Pose3 filter_T_keypose_now = filter_T_world_keypose.inverse() * filter_T_world_now;
-
-        // Update the current filter pose (cam in world).
-        filter_T_world_cam_time_ = t_now;
-        filter_T_world_cam_ = result.P_world_body * filter_T_keypose_now;
-        T_world_lkf = result.P_world_body;
-        // LOG(INFO) << "Synchronized FILTER with SMOOTHER" << std::endl;
-        // LOG(INFO) << "  TIME(smoother) = " << result.new_keypose_time << std::endl;
-        // LOG(INFO) << "  TIME(filter)   = " << t_now << std::endl;
-
-        pose_history.DiscardBefore(result.timestamp);
-      }
+      const StateStamped new_initial_state(result.timestamp, State(t, v, a, q, w, S));
+      filter.Initialize(new_initial_state, result.imu_bias);
 
       for (const FilterResultCallback& cb : filter_result_callbacks_) {
-        cb(FilterResult(filter_T_world_cam_time_, filter_T_world_cam_));
+        cb(filter.GetState());
       }
       mutex_filter_result_.unlock();
     }

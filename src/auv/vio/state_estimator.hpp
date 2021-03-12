@@ -15,6 +15,7 @@
 #include "vio/imu_manager.hpp"
 #include "vio/state_estimator_types.hpp"
 #include "vio/state_estimator_util.hpp"
+#include "vio/state_ekf.hpp"
 
 #include <gtsam/navigation/NavState.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
@@ -35,7 +36,8 @@ class StateEstimator final {
 
     StereoFrontend::Params stereo_frontend_params;
     ImuManager::Params imu_manager_params;
-    GtsamInferenceParams inference_params;
+    SmootherParams smoother_params;
+    StateEkf::Params filter_params;
 
     int max_size_raw_stereo_queue = 100;      // Images for the stereo frontend to process.
     int max_size_smoother_vo_queue = 100;     // Holds keyframe VO estimates for the smoother to process.
@@ -44,9 +46,12 @@ class StateEstimator final {
     int max_size_filter_imu_queue = 1000;     // Holds IMU measurements for the filter to process.
 
     int reliable_vision_min_lmks = 12;        // Vision is "unreliable" if not many features can be detected.
+
+    // TODO
     double max_sec_btw_keyposes = 2.0;        // If a keypose hasn't been triggered in this long, trigger it!
     double min_sec_btw_keyposes = 0.5;        // Don't trigger a keypose if it hasn't been long since the last one.
 
+    // TODO
     int extra_smoothing_iters = 2;            // More smoothing iters --> better accuracy.
 
     double smoother_init_wait_vision_sec = 3.0;   // Wait this long for VO to arrive during initialization.
@@ -54,9 +59,10 @@ class StateEstimator final {
    private:
     void LoadParams(const YamlParser& parser) override
     {
-      stereo_frontend_params = StereoFrontend::Params(parser.GetYamlNode("StereoFrontend"));
-      imu_manager_params = ImuManager::Params(parser.GetYamlNode("ImuManager"));
-      inference_params = GtsamInferenceParams(parser.GetYamlNode("GtsamInferenceParams"));
+      stereo_frontend_params = StereoFrontend::Params(parser.Subtree("StereoFrontend"));
+      imu_manager_params = ImuManager::Params(parser.Subtree("ImuManager"));
+      smoother_params = SmootherParams(parser.Subtree("SmootherParams"));
+      filter_params = StateEkf::Params(parser.Subtree("StateEkfParams"));
 
       parser.GetYamlParam("max_size_raw_stereo_queue", &max_size_raw_stereo_queue);
       parser.GetYamlParam("max_size_smoother_vo_queue", &max_size_smoother_vo_queue);
@@ -97,7 +103,7 @@ class StateEstimator final {
 
   // Smart the backend smoother with an initial timestamp and pose.
   void SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_body);
-  void FilterLoop();
+  void FilterLoop(seconds_t t0, const gtsam::Pose3& P0_world_body);
 
   SmootherResult UpdateGraphNoVision(gtsam::ISAM2& smoother,
                                      ImuManager& imu_manager,
@@ -139,8 +145,8 @@ class StateEstimator final {
   //================================================================================================
   // The filter maintains the pose of the camera in the world.
   std::mutex mutex_filter_result_;
-  double filter_T_world_cam_time_ = -1;
-  gtsam::Pose3 filter_T_world_cam_ = gtsam::Pose3::identity();
+  StateStamped filter_state_;
+  ImuManager filter_imu_manager_;
   //================================================================================================
 
   ThreadsafeQueue<StereoImage> raw_stereo_queue_;
@@ -148,7 +154,6 @@ class StateEstimator final {
   ImuManager smoother_imu_manager_;
 
   ThreadsafeQueue<StereoFrontend::Result> filter_vo_queue_;
-  ThreadsafeQueue<ImuMeasurement> filter_imu_queue_;
 
   uid_t next_kf_id_ = 0;
 
