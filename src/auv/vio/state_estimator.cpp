@@ -594,7 +594,6 @@ void StateEstimator::FilterLoop(seconds_t t0, const gtsam::Pose3& P0_world_body)
     //================================== SYNCHRONIZE WITH SMOOTHER =================================
     const bool sync_with_smoother = smoother_update_flag_.exchange(false);
     if (sync_with_smoother) {
-      LOG(INFO) << "Syncing with smoother" << std::endl;
       // Get a copy of the latest smoother state to make sure it doesn't change during the sync.
       mutex_smoother_result_.lock();
       const SmootherResult result = smoother_result_;
@@ -611,8 +610,6 @@ void StateEstimator::FilterLoop(seconds_t t0, const gtsam::Pose3& P0_world_body)
 
       const StateStamped new_initial_state(result.timestamp, State(t, v, a, q, w, S));
       filter.Initialize(new_initial_state, result.imu_bias);
-
-      LOG(INFO) << "finished reinnit" << std::endl;
 
       mutex_filter_result_.lock();
       filter_state_ = filter.GetState();
