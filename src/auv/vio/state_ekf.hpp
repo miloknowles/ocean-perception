@@ -104,7 +104,7 @@ class StateEkf final {
 
       YamlToVector<Vector3d>(parser.GetYamlNode("/shared/n_gravity"), n_gravity);
       YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/imu0/T_body_imu"), T_body_imu);
-      YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/imu0/T_body_cam"), T_body_cam);
+      YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/cam0/T_body_cam"), T_body_cam);
     }
   };
 

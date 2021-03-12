@@ -33,7 +33,7 @@ StateEkfParams:
 
   # Sensor noise standard deviations.
   sigma_R_imu_a: 0.0003924
-  double sigma_R_imu_w: 0.000205689024915
+  sigma_R_imu_w: 0.000205689024915
 
 #===============================================================================
 StereoFrontend:

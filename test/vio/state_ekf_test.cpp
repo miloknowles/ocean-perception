@@ -46,8 +46,11 @@ TEST(VioTest, TestEkf_02)
   const PinholeCamera camera_model(415.876509, 415.876509, 375.5, 239.5, 480, 752);
   const StereoCamera stereo_rig(camera_model, 0.2);
 
-  StateEkf::Params params;
-  StateEkf ekf(params);
+  const YamlParser yaml(
+      "/home/milo/bluemeadow/catkin_ws/src/auv/config/auv_base/StateEstimator_params.yaml",
+      "/home/milo/bluemeadow/catkin_ws/src/auv/config/auv_base/shared_params.yaml");
+
+  StateEkf ekf(StateEkf::Params(yaml.Subtree("StateEkfParams")));
 
   const Matrix15d S0 = Matrix15d::Identity() * 0.1;
 
@@ -57,7 +60,6 @@ TEST(VioTest, TestEkf_02)
            Quaterniond::Identity(),   // q
            Vector3d::Zero(),          // w
            S0);                       // cov
-
   StateStamped ss0(ConvertToSeconds(dataset.FirstTimestamp()), s0);
 
   ekf.Initialize(ss0, ImuBias());

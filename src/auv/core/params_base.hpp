@@ -27,6 +27,12 @@ class ParamsBase {
     LoadParams(YamlParser(filepath, shared_filepath));
   }
 
+  // Construct from an existing parser.
+  void Parse(const YamlParser& parser)
+  {
+    LoadParams(parser);
+  }
+
  protected:
   // This should be implemented in the derived params struct! It gets used when we call Parse()
   // on the derived params struct.

@@ -21,5 +21,6 @@
 
 #define MACRO_PARAMS_STRUCT_CONSTRUCTORS(ClassName) \
   ClassName() : ParamsBase() {} \
-  ClassName(const cv::FileNode& root_node) : ParamsBase() { Parse(root_node); } \
-  ClassName(const std::string& filepath) : ParamsBase() { Parse(filepath); }
+  ClassName(const cv::FileNode& root_node, const cv::FileNode& shared_node = cv::FileNode()) : ParamsBase() { Parse(root_node, shared_node); } \
+  ClassName(const std::string& filepath, const std::string& shared_filepath = "") : ParamsBase() { Parse(filepath, shared_filepath); } \
+  ClassName(const YamlParser& parser) : ParamsBase() { Parse(parser); }

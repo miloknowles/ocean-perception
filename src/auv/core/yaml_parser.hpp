@@ -39,22 +39,28 @@ class YamlParser {
   // a shared_params.yaml file.
   YamlParser(const std::string& filepath,
              const std::string& shared_filepath = "")
-      : filepath_(filepath)
   {
-    CHECK(!filepath_.empty()) << "Empty filepath given to YamlParser!" << std::endl;
-    fs_.open(filepath_, cv::FileStorage::READ);
+    CHECK(!filepath.empty()) << "Empty filepath given to YamlParser!" << std::endl;
+    fs_.open(filepath, cv::FileStorage::READ);
     CHECK(fs_.isOpened())
-        << "Cannot open file in YamlParser: " << filepath_
+        << "Cannot open file in YamlParser: " << filepath
         << " (remember that the first line should be: %YAML:1.0)";
     root_node_ = fs_.root();
 
     if (shared_filepath.size() > 0) {
-      fs_.open(shared_filepath, cv::FileStorage::READ);
-      CHECK(fs_.isOpened())
-          << "Cannot open file in YamlParser: " << filepath_
+      fs_shared_.open(shared_filepath, cv::FileStorage::READ);
+      CHECK(fs_shared_.isOpened())
+          << "Cannot open file in YamlParser: " << shared_filepath
           << " (remember that the first line should be: %YAML:1.0)";
-      root_node_ = fs_.root();
+      shared_node_ = fs_shared_.root();
     }
+  }
+
+  // Close OpenCV Filestorage IO on destruct.
+  ~YamlParser()
+  {
+    fs_.release();
+    fs_shared_.release();
   }
 
   // Construct from a YAML node.
@@ -90,11 +96,16 @@ class YamlParser {
     std::string maybe_suffix;
     if (CheckIfSharedId(id, maybe_suffix)) {
       CHECK(!shared_node_.empty()) << "GetYamlParam: shared_node_ is empty. Was the parser constructed with a shared node?" << std::endl;
-      return GetYamlNodeHelper(shared_node_, id);
+      return GetYamlNodeHelper(shared_node_, maybe_suffix);
     } else {
       CHECK(!root_node_.empty()) << "GetYamlParam: root_node_ is empty. Was the parser constructed?" << std::endl;
       return GetYamlNodeHelper(root_node_, id);
     }
+  }
+
+  YamlParser Subtree(const std::string& id) const
+  {
+    return YamlParser(GetYamlNode(id), shared_node_);
   }
 
  private:
@@ -129,8 +140,7 @@ class YamlParser {
   }
 
  private:
-  std::string filepath_;
-  cv::FileStorage fs_;
+  cv::FileStorage fs_, fs_shared_;
   cv::FileNode root_node_;
   cv::FileNode shared_node_;
 };
