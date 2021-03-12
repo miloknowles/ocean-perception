@@ -140,7 +140,8 @@ StateEkf::StateEkf(const Params& params)
   Q_.block<3, 3>(uq_row, uq_row) =  Matrix3d::Identity() * std::pow(params_.sigma_Q_uq, 2.0);
   Q_.block<3, 3>(w_row, w_row) =    Matrix3d::Identity() * std::pow(params_.sigma_Q_w, 2.0);
 
-  q_body_imu_ = Quaterniond(params_.T_body_imu.block<3, 3>(0, 0));
+  // Make sure that the quaternion is a unit quaternion!
+  q_body_imu_ = Quaterniond(params_.T_body_imu.block<3, 3>(0, 0)).normalized();
 }
 
 
@@ -176,7 +177,8 @@ StateStamped StateEkf::PredictAndUpdate(const ImuMeasurement& imu)
   imu_unbiased.a = imu_bias_.correctAccelerometer(imu.a);
   imu_unbiased.w = imu_bias_.correctGyroscope(imu.w);
 
-  const State& xu = UpdateImu(x_new, imu_unbiased, q_body_imu_, params_.n_gravity, R_imu_);
+  State xu = UpdateImu(x_new, imu_unbiased, q_body_imu_, params_.n_gravity, R_imu_);
+  xu.q = xu.q.normalized(); // Just to be safe.
 
   state_.timestamp = t_new;
   state_.state = xu;

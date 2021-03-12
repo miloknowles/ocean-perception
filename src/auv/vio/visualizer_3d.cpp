@@ -93,7 +93,23 @@ void Visualizer3D::UpdateCameraPose(const CameraPoseData& data)
   const cv::Affine3d T_world_cam_cv = EigenMatrix4dToCvAffine3d(data.T_world_cam);
 
   viz_lock_.lock();
-  viz_.updateWidgetPose(widget_name, T_world_cam_cv);
+  viz_.setWidgetPose(widget_name, T_world_cam_cv);
+  viz_lock_.unlock();
+}
+
+
+void Visualizer3D::UpdateBodyPose(const std::string& name, const Matrix4d& T_world_body)
+{
+  const cv::Affine3d& T_world_body_cv = EigenMatrix4dToCvAffine3d(T_world_body);
+
+  if (widget_names_.count(name) == 0) {
+    viz_lock_.lock();
+    viz_.showWidget(name, cv::viz::WCameraPosition(), T_world_body_cv);
+    viz_lock_.unlock();
+  }
+
+  viz_lock_.lock();
+  viz_.setWidgetPose(name, T_world_body_cv);
   viz_lock_.unlock();
 }
 
@@ -117,7 +133,7 @@ void Visualizer3D::AddOrUpdateLandmark(const std::vector<uid_t>& lmk_ids, const 
       set_live_lmk_ids_.insert(lmk_id);
       queue_live_lmk_ids_.push(lmk_id);
     } else {
-      viz_.updateWidgetPose(widget_name, T_world_lmk_cv);
+      viz_.setWidgetPose(widget_name, T_world_lmk_cv);
     }
   }
 

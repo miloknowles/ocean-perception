@@ -62,7 +62,8 @@ TEST(VioTest, TestStateEstimator1)
     T_world_body.block<3, 3>(0, 0) = ss.state.q.toRotationMatrix();
     T_world_body.block<3, 1>(0, 3) = ss.state.t;
     // NOTE: cam_id doesn't matter because the frustum is just shown as the realtime camera.
-    viz.AddCameraPose(0, Image1b(), T_world_body, false);
+    // viz.UpdateCameraPose(, Image1b(), T_world_body, false);
+    viz.UpdateBodyPose("imu0", T_world_body);
   };
 
   viz.Start();
@@ -73,7 +74,7 @@ TEST(VioTest, TestStateEstimator1)
   // dataset.RegisterStereoCallback(std::bind(&StateEstimator::ReceiveStereo, &state_estimator, std::placeholders::_1));
   dataset.RegisterImuCallback(std::bind(&StateEstimator::ReceiveImu, &state_estimator, std::placeholders::_1));
 
-  state_estimator.Initialize(0, gtsam::Pose3::identity());
+  state_estimator.Initialize(ConvertToSeconds(dataset.FirstTimestamp()), gtsam::Pose3::identity());
 
   dataset.Playback(10.0f, false);
 

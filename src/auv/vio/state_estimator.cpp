@@ -563,23 +563,20 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
 }
 
 
-// NOTE(milo): For now, this thread does nothing. It just keeps up with queues.
 void StateEstimator::FilterLoop(seconds_t t0, const gtsam::Pose3& P0_world_body)
 {
-  gtsam::Pose3 T_world_lkf;
-
   StateEkf filter(params_.filter_params);
   filter.Initialize(StateStamped(t0, State(
       P0_world_body.translation(),
       Vector3d::Zero(),
       Vector3d::Zero(),
-      P0_world_body.rotation().toQuaternion(),
+      P0_world_body.rotation().toQuaternion().normalized(),
       Vector3d::Zero(),
-      1e-3 * Matrix15d::Identity())),
+      0.1 * Matrix15d::Identity())),
       ImuBias());
 
   while (!is_shutdown_) {
-    filter_imu_manager_.DiscardBefore(filter_state_.timestamp);
+    // filter_imu_manager_.DiscardBefore(filter_state_.timestamp);
 
     if (!filter_imu_manager_.Empty()) {
       mutex_filter_result_.lock();
@@ -592,32 +589,32 @@ void StateEstimator::FilterLoop(seconds_t t0, const gtsam::Pose3& P0_world_body)
     }
 
     //================================== SYNCHRONIZE WITH SMOOTHER =================================
-    const bool sync_with_smoother = smoother_update_flag_.exchange(false);
-    if (sync_with_smoother) {
-      LOG(INFO) << "Syncing with smoother" << std::endl;
-      // Get a copy of the latest smoother state to make sure it doesn't change during the sync.
-      mutex_smoother_result_.lock();
-      const SmootherResult result = smoother_result_;
-      mutex_smoother_result_.unlock();
+    // const bool sync_with_smoother = smoother_update_flag_.exchange(false);
+    // if (sync_with_smoother) {
+    //   LOG(INFO) << "Syncing with smoother" << std::endl;
+    //   // Get a copy of the latest smoother state to make sure it doesn't change during the sync.
+    //   mutex_smoother_result_.lock();
+    //   const SmootherResult result = smoother_result_;
+    //   mutex_smoother_result_.unlock();
 
-      mutex_filter_result_.lock();
-      const Vector3d& t = result.P_world_body.translation();
-      const Quaterniond& q = result.P_world_body.rotation().toQuaternion();
-      const Vector3d& v = result.v_world_body;
-      const Vector3d& a = Vector3d::Zero(); // TODO
-      const Vector3d& w = Vector3d::Zero(); // TODO
+    //   mutex_filter_result_.lock();
+    //   const Vector3d& t = result.P_world_body.translation();
+    //   const Quaterniond& q = result.P_world_body.rotation().toQuaternion();
+    //   const Vector3d& v = result.v_world_body;
+    //   const Vector3d& a = Vector3d::Zero(); // TODO
+    //   const Vector3d& w = Vector3d::Zero(); // TODO
 
-      // TODO: get from smoother
-      const Matrix15d S = Matrix15d::Identity() * 1e-3;
+    //   // TODO: get from smoother
+    //   const Matrix15d S = Matrix15d::Identity() * 1e-3;
 
-      const StateStamped new_initial_state(result.timestamp, State(t, v, a, q, w, S));
-      filter.Initialize(new_initial_state, result.imu_bias);
+    //   const StateStamped new_initial_state(result.timestamp, State(t, v, a, q, w, S));
+    //   filter.Initialize(new_initial_state, result.imu_bias);
 
-      for (const FilterResultCallback& cb : filter_result_callbacks_) {
-        cb(filter.GetState());
-      }
-      mutex_filter_result_.unlock();
-    }
+    //   for (const FilterResultCallback& cb : filter_result_callbacks_) {
+    //     cb(filter.GetState());
+    //   }
+    //   mutex_filter_result_.unlock();
+    // }
   } // end while (!is_shutdown)
 
   LOG(INFO) << "FilterLoop() exiting" << std::endl;

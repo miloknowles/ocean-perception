@@ -78,6 +78,8 @@ class Visualizer3D final {
   // Update the pose associated with a cam_id (must correspond to a keyframe).
   void UpdateCameraPose(uid_t cam_id, const Matrix4d& T_world_cam);
 
+  void UpdateBodyPose(const std::string& name, const Matrix4d& T_world_body);
+
   // Adds a 3D landmark at a point in the world. If the lmk_id already exists, updates its location.
   void AddOrUpdateLandmark(const std::vector<uid_t>& lmk_ids, const std::vector<Vector3d>& t_world_lmks);
 
