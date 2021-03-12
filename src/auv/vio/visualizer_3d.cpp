@@ -88,7 +88,7 @@ void Visualizer3D::UpdateCameraPose(uid_t cam_id, const Matrix4d& T_world_cam)
 void Visualizer3D::UpdateCameraPose(const CameraPoseData& data)
 {
   const std::string widget_name = GetCameraPoseWidgetName(data.cam_id);
-  CHECK(widget_names_.count(widget_name) != 0) << "Tried to update camera pose that doesn't exist yet" << std::endl;
+  CHECK(widget_names_.count(widget_name) != 0) << "Tried to update camera pose that doesn't exist yet: " << data.cam_id << std::endl;
 
   const cv::Affine3d T_world_cam_cv = EigenMatrix4dToCvAffine3d(data.T_world_cam);
 

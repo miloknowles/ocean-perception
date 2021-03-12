@@ -42,7 +42,7 @@ static State Predict(const State& x0,
   F.block<3, 3>(v_row, a_row) = dt * Matrix3d::Identity();
   F.block<3, 3>(uq_row, uq_row) = AngleAxisd(angle, axis).toRotationMatrix();
 
-  // Compute d(uq)/dw (see (21) in [1])
+  // Compute d(uq)/dw (see (21) in [1]). If angle is zero, then the derivative is zero.
   if (angle > 1e-5) {
     const Vector3d n = axis;
     const double dt_angle = dt * angle;
@@ -161,7 +161,7 @@ StateStamped StateEkf::PredictAndUpdate(const ImuMeasurement& imu)
   state_.timestamp = t_new;
   state_.state = xu;
 
-  return true;
+  return state_;
 }
 
 
