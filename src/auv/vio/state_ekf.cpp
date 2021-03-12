@@ -85,6 +85,7 @@ static ImuMeasurement RotateAndRemoveGravity(const Quaterniond& q_world_imu,
 // https://en.wikipedia.org/wiki/Extended_Kalman_filter
 static State UpdateImu(const State& x,
                        const ImuMeasurement& imu,
+                       const Quaterniond& q_body_imu,
                        const Vector3d& n_gravity,
                        const Matrix6d& R)
 {
@@ -96,13 +97,15 @@ static State UpdateImu(const State& x,
   const Matrix6d& S = H * x.S * H.transpose() + R;
   const Matrix15x6& K = x.S * H.transpose() * S.inverse();
 
-  const ImuMeasurement& imu_corrected = RotateAndRemoveGravity(x.q, n_gravity, imu);
+  // q_world_imu = q_world_body * q_body_imu
+  const Quaterniond& q_world_imu = x.q * q_body_imu;
+  const ImuMeasurement& imu_uc = RotateAndRemoveGravity(q_world_imu, n_gravity, imu);
 
   Vector6d x_imu, z_imu;
   x_imu.head(3) = x.w;
   x_imu.tail(3) = x.a;
-  z_imu.head(3) = imu_corrected.w;
-  z_imu.tail(3) = imu_corrected.a;
+  z_imu.head(3) = imu_uc.w;
+  z_imu.tail(3) = imu_uc.a;
 
   const Vector6d& y = z_imu - x_imu;
   const Vector15d dx = K*y;
@@ -132,6 +135,8 @@ StateEkf::StateEkf(const Params& params)
   Q_.block<3, 3>(a_row, a_row) =    Matrix3d::Identity() * std::pow(params_.sigma_Q_a, 2.0);
   Q_.block<3, 3>(uq_row, uq_row) =  Matrix3d::Identity() * std::pow(params_.sigma_Q_uq, 2.0);
   Q_.block<3, 3>(w_row, w_row) =    Matrix3d::Identity() * std::pow(params_.sigma_Q_w, 2.0);
+
+  q_body_imu_ = Quaterniond(params_.T_body_imu.block<3, 3>(0, 0));
 }
 
 
@@ -152,11 +157,11 @@ StateStamped StateEkf::PredictAndUpdate(const ImuMeasurement& imu)
   const State& x_new = (dt > 0) ? Predict(state_.state, dt, Q_) : state_.state;
 
   // UPDATE STEP: Compute redidual errors, Kalman gain, and apply update.
-  ImuMeasurement imu_c = imu;
-  imu_c.a = imu_bias_.correctAccelerometer(imu.a);
-  imu_c.w = imu_bias_.correctGyroscope(imu.w);
+  ImuMeasurement imu_unbiased = imu;
+  imu_unbiased.a = imu_bias_.correctAccelerometer(imu.a);
+  imu_unbiased.w = imu_bias_.correctGyroscope(imu.w);
 
-  const State& xu = UpdateImu(x_new, imu_c, params_.n_gravity, R_imu_);
+  const State& xu = UpdateImu(x_new, imu_unbiased, q_body_imu_, params_.n_gravity, R_imu_);
 
   state_.timestamp = t_new;
   state_.state = xu;

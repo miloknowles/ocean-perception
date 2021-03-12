@@ -1,5 +1,7 @@
 %YAML:1.0
 
+# Acceleration of gravity in the world frame.
+# For example, in a RDF world, n_gravity = [0, 9.81, 0].
 n_gravity: [0, 9.81, 0]
 
 imu0:

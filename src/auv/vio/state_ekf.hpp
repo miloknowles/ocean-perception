@@ -85,7 +85,10 @@ class StateEkf final {
     double sigma_R_imu_a = 0.0003924;
     double sigma_R_imu_w = 0.000205689024915;
 
+    // Shared params.
     Vector3d n_gravity = Vector3d(0, 9.81, 0);
+    Matrix4d T_body_imu = Matrix4d::Identity();
+    Matrix4d T_body_cam = Matrix4d::Identity();
 
    private:
     void LoadParams(const YamlParser& parser) override
@@ -98,6 +101,10 @@ class StateEkf final {
 
       parser.GetYamlParam("sigma_R_imu_a", &sigma_R_imu_a);
       parser.GetYamlParam("sigma_R_imu_w", &sigma_R_imu_w);
+
+      YamlToVector<Vector3d>(parser.GetYamlNode("/shared/n_gravity"), n_gravity);
+      YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/imu0/T_body_imu"), T_body_imu);
+      YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/imu0/T_body_cam"), T_body_cam);
     }
   };
 
@@ -130,6 +137,8 @@ class StateEkf final {
 
   // IMU measurement noise.
   Matrix6d R_imu_ = 1e-5 * Matrix6d::Identity();
+
+  Quaterniond q_body_imu_;
 };
 
 }

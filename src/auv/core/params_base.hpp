@@ -13,16 +13,18 @@ class ParamsBase {
   // Construct with default params (declared in ParamsDerived).
   ParamsBase() = default;
 
-  // Construct from a root YAML node.
-  void Parse(const cv::FileNode& root_node)
+  // Construct from root YAML node(s).
+  void Parse(const cv::FileNode& root_node,
+             const cv::FileNode& shared_node = cv::FileNode())
   {
-    LoadParams(YamlParser(root_node));
+    LoadParams(YamlParser(root_node, shared_node));
   }
 
-  // Construct from a path to a YAML file.
-  void Parse(const std::string& filepath)
+  // Construct from a path to YAML file(s).
+  void Parse(const std::string& filepath,
+             const std::string& shared_filepath = "")
   {
-    LoadParams(YamlParser(filepath));
+    LoadParams(YamlParser(filepath, shared_filepath));
   }
 
  protected:

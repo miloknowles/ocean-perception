@@ -35,8 +35,11 @@ class YamlParser {
  public:
   YamlParser() = default;
 
-  // Construct with a path to a .yaml file.
-  YamlParser(const std::string& filepath) : filepath_(filepath)
+  // Construct with a path to a .yaml file. Optionally provide a shared_filepath, which points to
+  // a shared_params.yaml file.
+  YamlParser(const std::string& filepath,
+             const std::string& shared_filepath = "")
+      : filepath_(filepath)
   {
     CHECK(!filepath_.empty()) << "Empty filepath given to YamlParser!" << std::endl;
     fs_.open(filepath_, cv::FileStorage::READ);
@@ -44,11 +47,21 @@ class YamlParser {
         << "Cannot open file in YamlParser: " << filepath_
         << " (remember that the first line should be: %YAML:1.0)";
     root_node_ = fs_.root();
+
+    if (shared_filepath.size() > 0) {
+      fs_.open(shared_filepath, cv::FileStorage::READ);
+      CHECK(fs_.isOpened())
+          << "Cannot open file in YamlParser: " << filepath_
+          << " (remember that the first line should be: %YAML:1.0)";
+      root_node_ = fs_.root();
+    }
   }
 
   // Construct from a YAML node.
-  YamlParser(const cv::FileNode& root_node, const cv::FileNode& shared_node)
-      : root_node_(root_node), shared_node_(shared_node) {}
+  YamlParser(const cv::FileNode& root_node,
+             const cv::FileNode& shared_node)
+      : root_node_(root_node),
+        shared_node_(shared_node) {}
 
   // Retrieve a param from the YAML hierarchy and pass it to output.
   template <class ParamType>
@@ -131,6 +144,36 @@ void YamlToVector(const cv::FileNode& node, VectorType& vout)
   CHECK((int)node.size() == vout.rows());
   for (int i = 0; i < vout.rows(); ++i) {
     vout(i) = node[i];
+  }
+}
+
+
+template <typename MatrixType>
+void YamlToMatrix(const cv::FileNode& node, MatrixType& mout)
+{
+  const cv::FileNode& rows_node = node["rows"];
+  const cv::FileNode& cols_node = node["cols"];
+  CHECK(rows_node.type() != cv::FileNode::NONE && cols_node.type() != cv::FileNode::NONE)
+      << "YamlToMatrix: required 'rows' or 'cols' attribute not found" << std::endl;
+  int rows, cols;
+  rows_node >> rows;
+  cols_node >> cols;
+
+  CHECK(rows == mout.rows() && cols == mout.cols())
+      << "YamlToMatrix: Output matrix did not match YAML rows/cols" << std::endl;
+
+  const cv::FileNode& data_node = node["data"];
+  CHECK(data_node.type() != cv::FileNode::NONE)
+      << "YamlToMatrix: 'data' node not found" << std::endl;
+
+  CHECK(data_node.isSeq()) << "YamlToMatrix: 'data' node must contain a sequence" << std::endl;
+  CHECK((int)data_node.size() == (rows * cols)) << "YamlToMatrix: wrong data size" << std::endl;
+
+  // NOTE(milo): Data should be stored in ROW-MAJOR order as a vector.
+  for (int r = 0; r < rows; ++r) {
+    for (int c = 0; c < cols; ++c) {
+      mout(r, c) = data_node[r*cols + c];
+    }
   }
 }
 
