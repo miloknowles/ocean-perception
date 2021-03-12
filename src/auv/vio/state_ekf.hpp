@@ -124,7 +124,7 @@ class StateEkf final {
   // IMU timestamp is the same or before the current state timestamp, skips the prediction step.
   // [1] https://bicr.atr.jp//~aude/publications/ras99.pdf
   // [2] https://en.wikipedia.org/wiki/Extended_Kalman_filter
-  StateStamped PredictAndUpdate(const ImuMeasurement& imu);
+  StateStamped PredictAndUpdate(const ImuMeasurement& imu, bool store = true);
 
   // Update with an external pose estimate (e.g from visual odometry).
   StateStamped PredictAndUpdate(const Matrix4d& T_world_body);

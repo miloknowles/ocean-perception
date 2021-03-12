@@ -83,6 +83,7 @@ class ImuManager final {
   void Push(const ImuMeasurement& imu);
 
   bool Empty() { return queue_.Empty(); }
+  size_t Size() { return queue_.Size(); }
   ImuMeasurement Pop() { return queue_.Pop(); }
 
   // Preintegrate queued IMU measurements, optionally within a time range [from_time, to_time].

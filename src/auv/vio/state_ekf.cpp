@@ -156,13 +156,14 @@ void StateEkf::Initialize(const StateStamped& state, const ImuBias& imu_bias)
     // Apply available IMU measurements.
     imu_since_init_->DiscardBefore(state.timestamp);
     while (!imu_since_init_->Empty()) {
-      PredictAndUpdate(imu_since_init_->Pop());
+      // NOTE(milo): Don't store these measurements in PredictAndUpdate()! Endless loop!
+      PredictAndUpdate(imu_since_init_->Pop(), false);
     }
   }
 }
 
 
-StateStamped StateEkf::PredictAndUpdate(const ImuMeasurement& imu)
+StateStamped StateEkf::PredictAndUpdate(const ImuMeasurement& imu, bool store)
 {
   CHECK(is_initialized_) << "Must call Initialize() before PredictAndUpdate()" << std::endl;
 
@@ -183,7 +184,7 @@ StateStamped StateEkf::PredictAndUpdate(const ImuMeasurement& imu)
   state_.timestamp = t_new;
   state_.state = xu;
 
-  if (params_.reapply_measurements_after_init) {
+  if (store && params_.reapply_measurements_after_init) {
     imu_since_init_->Push(imu);
   }
 

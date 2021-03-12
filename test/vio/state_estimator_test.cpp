@@ -61,8 +61,6 @@ TEST(VioTest, TestStateEstimator1)
     Matrix4d T_world_body;
     T_world_body.block<3, 3>(0, 0) = ss.state.q.toRotationMatrix();
     T_world_body.block<3, 1>(0, 3) = ss.state.t;
-    // NOTE: cam_id doesn't matter because the frustum is just shown as the realtime camera.
-    // viz.UpdateCameraPose(, Image1b(), T_world_body, false);
     viz.UpdateBodyPose("imu0", T_world_body);
   };
 

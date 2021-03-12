@@ -583,38 +583,42 @@ void StateEstimator::FilterLoop(seconds_t t0, const gtsam::Pose3& P0_world_body)
       filter_state_ = filter.PredictAndUpdate(filter_imu_manager_.Pop());
 
       for (const FilterResultCallback& cb : filter_result_callbacks_) {
-        cb(filter.GetState());
+        cb(filter_state_);
       }
       mutex_filter_result_.unlock();
     }
 
     //================================== SYNCHRONIZE WITH SMOOTHER =================================
-    // const bool sync_with_smoother = smoother_update_flag_.exchange(false);
-    // if (sync_with_smoother) {
-    //   LOG(INFO) << "Syncing with smoother" << std::endl;
-    //   // Get a copy of the latest smoother state to make sure it doesn't change during the sync.
-    //   mutex_smoother_result_.lock();
-    //   const SmootherResult result = smoother_result_;
-    //   mutex_smoother_result_.unlock();
+    const bool sync_with_smoother = smoother_update_flag_.exchange(false);
+    if (sync_with_smoother) {
+      LOG(INFO) << "Syncing with smoother" << std::endl;
+      // Get a copy of the latest smoother state to make sure it doesn't change during the sync.
+      mutex_smoother_result_.lock();
+      const SmootherResult result = smoother_result_;
+      mutex_smoother_result_.unlock();
 
-    //   mutex_filter_result_.lock();
-    //   const Vector3d& t = result.P_world_body.translation();
-    //   const Quaterniond& q = result.P_world_body.rotation().toQuaternion();
-    //   const Vector3d& v = result.v_world_body;
-    //   const Vector3d& a = Vector3d::Zero(); // TODO
-    //   const Vector3d& w = Vector3d::Zero(); // TODO
+      const Vector3d& t = result.P_world_body.translation();
+      const Quaterniond& q = result.P_world_body.rotation().toQuaternion().normalized();
+      const Vector3d& v = result.v_world_body;
+      const Vector3d& a = Vector3d::Zero(); // TODO
+      const Vector3d& w = Vector3d::Zero(); // TODO
 
-    //   // TODO: get from smoother
-    //   const Matrix15d S = Matrix15d::Identity() * 1e-3;
+      // TODO: get from smoother
+      const Matrix15d S = Matrix15d::Identity() * 1e-3;
 
-    //   const StateStamped new_initial_state(result.timestamp, State(t, v, a, q, w, S));
-    //   filter.Initialize(new_initial_state, result.imu_bias);
+      const StateStamped new_initial_state(result.timestamp, State(t, v, a, q, w, S));
+      filter.Initialize(new_initial_state, result.imu_bias);
 
-    //   for (const FilterResultCallback& cb : filter_result_callbacks_) {
-    //     cb(filter.GetState());
-    //   }
-    //   mutex_filter_result_.unlock();
-    // }
+      LOG(INFO) << "finished reinnit" << std::endl;
+
+      mutex_filter_result_.lock();
+      filter_state_ = filter.GetState();
+
+      for (const FilterResultCallback& cb : filter_result_callbacks_) {
+        cb(filter_state_);
+      }
+      mutex_filter_result_.unlock();
+    }
   } // end while (!is_shutdown)
 
   LOG(INFO) << "FilterLoop() exiting" << std::endl;
