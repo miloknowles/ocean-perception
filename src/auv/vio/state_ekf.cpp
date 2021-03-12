@@ -125,6 +125,10 @@ StateEkf::StateEkf(const Params& params)
     : params_(params),
       state_(0, State())
 {
+  ImuManager::Params imu_manager_params;
+  imu_manager_params.max_queue_size = params_.stored_imu_max_queue_size;
+  imu_since_init_ = std::shared_ptr<ImuManager>(new ImuManager(imu_manager_params));
+
   // IMU measurement noise: [ wx wy wz ax ay az ]
   R_imu_.block<3, 3>(0, 0) =  Matrix3d::Identity() * std::pow(params_.sigma_R_imu_w, 2.0);
   R_imu_.block<3, 3>(3, 3) =  Matrix3d::Identity() * std::pow(params_.sigma_R_imu_a, 2.0);
@@ -145,11 +149,22 @@ void StateEkf::Initialize(const StateStamped& state, const ImuBias& imu_bias)
   state_ = state;
   imu_bias_ = imu_bias;
   is_initialized_ = true;
+
+  // Reapply any sensor measurements AFTER the new initialized state.
+  if (params_.reapply_measurements_after_init) {
+    // Apply available IMU measurements.
+    imu_since_init_->DiscardBefore(state.timestamp);
+    while (!imu_since_init_->Empty()) {
+      PredictAndUpdate(imu_since_init_->Pop());
+    }
+  }
 }
 
 
 StateStamped StateEkf::PredictAndUpdate(const ImuMeasurement& imu)
 {
+  CHECK(is_initialized_) << "Must call Initialize() before PredictAndUpdate()" << std::endl;
+
   const seconds_t t_new = ConvertToSeconds(imu.timestamp);
   const seconds_t dt = (t_new - state_.timestamp);
 
@@ -165,6 +180,10 @@ StateStamped StateEkf::PredictAndUpdate(const ImuMeasurement& imu)
 
   state_.timestamp = t_new;
   state_.state = xu;
+
+  if (params_.reapply_measurements_after_init) {
+    imu_since_init_->Push(imu);
+  }
 
   return state_;
 }

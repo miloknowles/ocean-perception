@@ -74,6 +74,9 @@ class StateEkf final {
   {
     MACRO_PARAMS_STRUCT_CONSTRUCTORS(Params);
 
+    bool reapply_measurements_after_init = true;
+    int stored_imu_max_queue_size = 2000;
+
     // Process noise standard deviations.
     double sigma_Q_t = 1e-2;   // translation
     double sigma_Q_v = 1e-3;   // velocity
@@ -111,12 +114,14 @@ class StateEkf final {
   // Construct with parameters.
   StateEkf(const Params& params);
 
-  // Main function for the EKF.
   // Simulate the forward dynamics of the state, then update with a single IMU measurement. If the
   // IMU timestamp is the same or before the current state timestamp, skips the prediction step.
   // [1] https://bicr.atr.jp//~aude/publications/ras99.pdf
   // [2] https://en.wikipedia.org/wiki/Extended_Kalman_filter
   StateStamped PredictAndUpdate(const ImuMeasurement& imu);
+
+  // Update with an external pose estimate (e.g from visual odometry).
+  StateStamped PredictAndUpdate(const Matrix4d& T_world_body);
 
   // Retrieve the current state.
   StateStamped GetState() const { return state_; }
@@ -139,6 +144,9 @@ class StateEkf final {
   Matrix6d R_imu_ = 1e-5 * Matrix6d::Identity();
 
   Quaterniond q_body_imu_;
+
+  // ThreadsafeQueue<ImuMeasurement> imu_since_init_;
+  std::shared_ptr<ImuManager> imu_since_init_ = nullptr;
 };
 
 }

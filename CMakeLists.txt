@@ -8,7 +8,10 @@ set(GLOG_PREFER_EXPORTED_GLOG_CMAKE_CONFIGURATION TRUE)
 list(INSERT CMAKE_MODULE_PATH 0 ${CMAKE_SOURCE_DIR}/cmake)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
-add_compile_options(-std=c++11 -Wall -O3)
+# NOTE(milo): The "-faligned-new" flag solves Eigen alignment issues.
+# See: http://eigen.tuxfamily.org/dox-devel/group__TopicStlContainers.html
+# These seemed to show up when creating a shared_ptr for a struct that has Eigen member types.
+add_compile_options(-std=c++11 -Wall -faligned-new -O3)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
