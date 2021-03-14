@@ -53,6 +53,7 @@ class ImuManager final {
     // Direction of the gravity vector in the world frame.
     // NOTE(milo): Right now, we use a RDF frame for the IMU, so gravity is +y.
     gtsam::Vector3 n_gravity = gtsam::Vector3(0, 9.81, 0); // m/s^2
+    gtsam::Pose3 P_body_imu = gtsam::Pose3::identity();
 
    private:
     // Loads in params using a YAML parser.
@@ -72,6 +73,10 @@ class ImuManager final {
       bias_prior_noise_model = IsotropicModel::Sigma(6, bias_prior_noise_model_sigma);
       bias_drift_noise_model = IsotropicModel::Sigma(6, bias_drift_noise_model_sigma);
       YamlToVector<gtsam::Vector3>(parser.GetYamlNode("/shared/n_gravity"), n_gravity);
+
+      Matrix4d T_body_imu;
+      YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/imu0/T_body_imu"), T_body_imu);
+      P_body_imu = gtsam::Pose3(T_body_imu);
     }
   };
 
@@ -94,8 +99,9 @@ class ImuManager final {
 
   // Preintegrate queued IMU measurements, optionally within a time range [from_time, to_time].
   // If not time range is given, all available result are integrated. Integration is reset inside
-  // of this function once all IMU measurements are incorporated.
-  // NOTE(milo): All measurements up to the to_time are removed from the queue!
+  // of this function once all IMU measurements are incorporated. Internally, GTSAM converts raw
+  // IMU measurements into body frame measurements using body_P_sensor.
+  // NOTE(milo): All measurements up to the to_time are removed from tjkjhe queue!
   PimResult Preintegrate(seconds_t from_time = kMinSeconds,
                          seconds_t to_time = kMaxSeconds);
 

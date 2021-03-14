@@ -72,7 +72,7 @@ TEST(VioTest, TestStateEstimator1)
 
   state_estimator.Initialize(ConvertToSeconds(dataset.FirstTimestamp()), gtsam::Pose3::identity());
 
-  dataset.Playback(10.0f, false);
+  dataset.Playback(1.0f, false);
 
   state_estimator.BlockUntilFinished();
   state_estimator.Shutdown();

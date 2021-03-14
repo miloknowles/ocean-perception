@@ -63,7 +63,8 @@ static State Predict(const State& x0,
     F.block<3, 3>(uq_row, w_row) = G;
   }
 
-  const Matrix15d S1 = F * x0.S * F.transpose() + Q;
+  // Multiply dt*Q to account for different step sizes (uncertainty grows with time).
+  const Matrix15d S1 = F * x0.S * F.transpose() + dt*Q;
 
   return State(t1, v1, a1, q1, w1, S1);
 }

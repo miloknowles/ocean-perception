@@ -37,11 +37,14 @@ void StateEstimator::ReceiveStereo(const StereoImage& stereo_pair)
 void StateEstimator::ReceiveImu(const ImuMeasurement& imu_data)
 {
   // IMPORTANT: Rotate the raw IMU measurement so that it is expressed in the BODY frame.
-  const ImuMeasurement imu_body_frame(imu_data.timestamp,
-                                      params_.P_body_imu.rotation() * imu_data.w,
-                                      params_.P_body_imu.rotation() * imu_data.a);
-  smoother_imu_manager_.Push(imu_body_frame);
-  filter_imu_manager_.Push(imu_body_frame);
+  // const ImuMeasurement imu_body_frame(imu_data.timestamp,
+  //                                     params_.P_body_imu.rotation() * imu_data.w,
+  //                                     params_.P_body_imu.rotation() * imu_data.a);
+  // smoother_imu_manager_.Push(imu_body_frame);
+  // filter_imu_manager_.Push(imu_body_frame);
+
+  smoother_imu_manager_.Push(imu_data);
+  filter_imu_manager_.Push(imu_data);
 }
 
 
@@ -286,6 +289,7 @@ void StateEstimator::FilterLoop(seconds_t t0, const gtsam::Pose3& P0_world_body)
       const Vector3d& t = result.P_world_body.translation();
       const Quaterniond& q = result.P_world_body.rotation().toQuaternion().normalized();
       const Vector3d& v = result.v_world_body;
+      LOG(INFO) << "Syncing with velocity: " << v << std::endl;
       const Vector3d& a = Vector3d::Zero(); // TODO
       const Vector3d& w = Vector3d::Zero(); // TODO
 
@@ -303,6 +307,7 @@ void StateEstimator::FilterLoop(seconds_t t0, const gtsam::Pose3& P0_world_body)
       }
       mutex_filter_result_.unlock();
     } // end if (sync_with_smoother)
+    //==============================================================================================
   } // end while (!is_shutdown)
 
   LOG(INFO) << "FilterLoop() exiting" << std::endl;
