@@ -34,7 +34,10 @@ struct CameraPoseData
                  const Image1b& left_image,
                  const Matrix4d& T_world_cam,
                  bool is_keyframe)
-      : cam_id(cam_id), left_image(left_image), T_world_cam(T_world_cam), is_keyframe(is_keyframe) {}
+      : cam_id(cam_id),
+        left_image(left_image),
+        T_world_cam(T_world_cam),
+        is_keyframe(is_keyframe) {}
 
   uid_t cam_id;
   Image1b left_image;
@@ -68,10 +71,14 @@ class Visualizer3D final {
 
   ~Visualizer3D();
 
-  // Adds a new camera frustrum at the given pose. If the camera_id already exists, updates its
-  // visualized pose. If left_image is not empty, it is shown inside of the camera frustum.
+  // Adds a new camera frustrum at the given pose. If left_image is not empty, it is shown inside
+  // of the camera frustum. Only keyframe cameras are stored (and can be updated later).
   void AddCameraPose(uid_t cam_id, const Image1b& left_image, const Matrix4d& T_world_cam, bool is_keyframe);
+
+  // Update the pose associated with a cam_id (must correspond to a keyframe).
   void UpdateCameraPose(uid_t cam_id, const Matrix4d& T_world_cam);
+
+  void UpdateBodyPose(const std::string& name, const Matrix4d& T_world_body);
 
   // Adds a 3D landmark at a point in the world. If the lmk_id already exists, updates its location.
   void AddOrUpdateLandmark(const std::vector<uid_t>& lmk_ids, const std::vector<Vector3d>& t_world_lmks);

@@ -5,26 +5,28 @@ namespace vio {
 
 
 ImuManager::ImuManager(const Params& params)
-    : params_(params), queue_(params_.max_queue_size, true)
+    : params_(params),
+      queue_(params_.max_queue_size, true)
 {
   // https://github.com/haidai/gtsam/blob/master/examples/ImuFactorsExample.cpp
-  const gtsam::Matrix33 measured_acc_cov = gtsam::Matrix33::Identity(3,3) * std::pow(params_.accel_noise_sigma, 2);
-  const gtsam::Matrix33 measured_omega_cov = gtsam::Matrix33::Identity(3,3) * std::pow(params_.gyro_noise_sigma, 2);
-  const gtsam::Matrix33 integration_error_cov = gtsam::Matrix33::Identity(3,3) * 1e-8; // error committed in integrating position from velocities
-  const gtsam::Matrix33 bias_acc_cov = gtsam::Matrix33::Identity(3,3) * std::pow(params_.accel_bias_rw_sigma, 2);
-  const gtsam::Matrix33 bias_omega_cov = gtsam::Matrix33::Identity(3,3) * std::pow(params_.gyro_bias_rw_sigma, 2);
-  const gtsam::Matrix66 bias_acc_omega_int = gtsam::Matrix::Identity(6,6) * 1e-5; // error in the bias used for preintegration
+  const gtsam::Matrix3 measured_acc_cov = gtsam::I_3x3 * std::pow(params_.accel_noise_sigma, 2);
+  const gtsam::Matrix3 measured_omega_cov = gtsam::I_3x3 * std::pow(params_.gyro_noise_sigma, 2);
+  const gtsam::Matrix3 integration_error_cov = gtsam::I_3x3 * 1e-8;
+  const gtsam::Matrix3 bias_acc_cov = gtsam::I_3x3 * std::pow(params_.accel_bias_rw_sigma, 2);
+  const gtsam::Matrix3 bias_omega_cov = gtsam::I_3x3 * std::pow(params_.gyro_bias_rw_sigma, 2);
+  const gtsam::Matrix6 bias_acc_omega_int = gtsam::I_6x6 * 1e-5;
 
   // Set up all of the params for preintegration.
-  pim_params_ = boost::make_shared<PimC::Params>(params_.n_gravity);
-  pim_params_->accelerometerCovariance = measured_acc_cov;      // acc white noise in continuous
-  pim_params_->integrationCovariance = integration_error_cov;   // integration uncertainty continuous
-  pim_params_->gyroscopeCovariance = measured_omega_cov;        // gyro white noise in continuous
-  pim_params_->biasAccCovariance = bias_acc_cov;                // acc bias in continuous
-  pim_params_->biasOmegaCovariance = bias_omega_cov;            // gyro bias in continuous
-  pim_params_->biasAccOmegaInt = bias_acc_omega_int;
+  pim_params_ = PimC::Params(params_.n_gravity);
+  pim_params_.setBiasAccOmegaInt(bias_acc_omega_int);
+  pim_params_.setAccelerometerCovariance(measured_acc_cov);
+  pim_params_.setGyroscopeCovariance(measured_omega_cov);
+  pim_params_.setIntegrationCovariance(integration_error_cov);
+  pim_params_.setBiasAccCovariance(bias_acc_cov);
+  pim_params_.setBiasOmegaCovariance(bias_omega_cov);
+  pim_params_.print();
 
-  pim_ = PimC(pim_params_); // Initialize with zero bias.
+  pim_ = PimC(boost::make_shared<PimC::Params>(pim_params_)); // Initialize with zero bias.
 }
 
 
@@ -47,6 +49,8 @@ PimResult ImuManager::Preintegrate(seconds_t from_time, seconds_t to_time)
   while (ConvertToSeconds(queue_.PeekFront().timestamp) <= from_time) {
     imu = queue_.Pop();
   }
+
+  const gtsam::Vector3 w_from = imu.w;
 
   const double earliest_imu_sec = ConvertToSeconds(imu.timestamp);
 
@@ -73,6 +77,7 @@ PimResult ImuManager::Preintegrate(seconds_t from_time, seconds_t to_time)
   }
 
   const double latest_imu_sec = ConvertToSeconds(imu.timestamp);
+  const gtsam::Vector3 w_to = imu.w;
 
   // FAIL: No measurement close to (specified) to_time.
   const double offset_to_sec = (to_time != kMaxSeconds) ? std::fabs(latest_imu_sec - to_time) : 0.0;
@@ -86,7 +91,9 @@ PimResult ImuManager::Preintegrate(seconds_t from_time, seconds_t to_time)
     pim_.integrateMeasurement(imu.a, imu.w, offset_to_sec);
   }
 
-  const PimResult out = PimResult(true, earliest_imu_sec, latest_imu_sec, pim_);
+  PimResult out = PimResult(true, earliest_imu_sec, latest_imu_sec, pim_);
+  out.w_from_unbiased = pim_.biasHat().correctGyroscope(w_from);
+  out.w_to_unbiased = pim_.biasHat().correctGyroscope(w_to);
   pim_.resetIntegration();
 
   return out;

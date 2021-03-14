@@ -58,6 +58,8 @@ class DataProvider {
   // Start the dataset back over at the beginning.
   void Reset();
 
+  timestamp_t FirstTimestamp() const;
+
  private:
   std::pair<timestamp_t, DataSource> NextTimestamp() const;
 

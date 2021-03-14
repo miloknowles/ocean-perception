@@ -1,0 +1,12 @@
+%YAML:1.0
+
+a: 456
+b: 789
+v: [1, 2, 3]
+
+SubtreeStruct:
+  key1: 3.14159
+  KEY2: 2.0
+  subsubtree:
+    c: 0
+

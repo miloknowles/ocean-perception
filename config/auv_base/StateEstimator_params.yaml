@@ -1,17 +1,81 @@
 %YAML:1.0
 
+#===============================================================================
+max_size_raw_stereo_queue: 100
+max_size_smoother_vo_queue: 100
+max_size_smoother_imu_queue: 1000
+max_size_filter_vo_queue: 100
+max_size_filter_imu_queue: 1000
+
+reliable_vision_min_lmks: 12
+max_sec_btw_keyposes: 5.0
+min_sec_btw_keyposes: 0.5
+
+smoother_init_wait_vision_sec: 3.0
+
+show_feature_tracks: 1
+
+#===============================================================================
+SmootherParams:
+  pose_prior_noise_model: [0.1, 0.1, 0.1, 0.3, 0.3, 0.3]        # rad, rad, rad, m, m, m
+  frontend_vo_noise_model: [0.01, 0.01, 0.01, 0.05, 0.05, 0.05] # rad, rad, rad, m, m, m
+  lmk_mono_reproj_err_sigma: 2.0    # px in u and v
+  lmk_stereo_reproj_err_sigma: 2.0  # px in u and v
+  velocity_sigma: 0.1 # m/s
+  extra_smoothing_iters: 2
+
+  # Noise model for the zero-prior on IMU bias.
+  bias_prior_noise_model_sigma: 0.01
+
+  # Noise model for the IMU bias between factors.
+  bias_drift_noise_model_sigma: 0.001
+
+#===============================================================================
+StateEkfParams:
+  # Process noise standard deviations.
+  sigma_Q_t: 0.01    # translation
+  sigma_Q_v: 0.001   # velocity
+  sigma_Q_a: 0.001   # accleration
+  sigma_Q_uq: 0.001  # orientation (3D tangent space)
+  sigma_Q_w: 0.001   # angular velocity
+
+  # Sensor noise standard deviations.
+  sigma_R_imu_a: 0.0003924
+  sigma_R_imu_w: 0.000205689024915
+
+#===============================================================================
 StereoFrontend:
+  stereo_max_depth: 100.0 # m
+  stereo_min_depth: 0.5   # m
+
+  max_avg_reprojection_error: 5.0 # px
+
+  # Kill off a tracked landmark if it hasn't been observed in this many frames.
+  # If set to zero, this means that a track dies as soon as it isn't observed in the current frame.
+  lost_point_lifespan: 0
+
+  # Kill off a tracked landmark if its more than this many observations.
+  # This prevents a landmark from gathering an unbounded number of observations.
+  tracked_point_lifespan: 300
+
+  # Trigger a keyframe if there aren't many landmarks. The StereoFrontend will try to create new
+  # landmarks for tracking.
+  trigger_keyframe_min_lmks: 10
+
+  # Trigger a keyframe at least every k frames.
+  trigger_keyframe_k: 10
+
   FeatureDetector:
     max_features_per_frame: 200
-    subpixel_corners: false
+    subpixel_corners: 0 # bool
     min_distance_btw_tracked_and_detected_features: 20
     gftt_quality_level: 0.01
     gftt_block_size: 5
-    gftt_use_harris_corner_detector: false
+    gftt_use_harris_corner_detector: 0 # bool
     gftt_k: 0.04
 
   FeatureTracker:
-    klt_maxiers: 30
+    klt_maxiters: 30
     klt_epsilon: 0.001
     klt_winsize: 21
     klt_max_level: 4
@@ -21,9 +85,10 @@ StereoFrontend:
     templ_rows: 11
     max_disp: 128
     max_matching_cost: 0.15
-    bidirectional: false
-    subpixel_refinement: false
+    bidirectional: 0 # bool
+    subpixel_refinement: 0 # bool
 
+#===============================================================================
 ImuManager:
   allowed_misalignment_sec: 0.05
   max_queue_size: 1000
@@ -34,6 +99,8 @@ ImuManager:
   accel_bias_rw_sigma:  0.004905
   gyro_bias_rw_sigma:   0.000001454441043
 
-  # Direction of the gravity vector in the world frame.
-  # NOTE(milo): Right now, we use a RDF frame for the IMU, so gravity is +y.
-  n_gravity: [0, 9.81, 0] # m/s^2
+  # Noise model for the zero-prior on IMU bias.
+  bias_prior_noise_model_sigma: 0.01
+
+  # Noise model for the IMU bias between factors.
+  bias_drift_noise_model_sigma: 0.001

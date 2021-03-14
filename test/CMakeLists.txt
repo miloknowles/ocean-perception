@@ -1,6 +1,7 @@
 enable_testing()
 
 set(TEST_SOURCES
+  core/params_base_test.cpp
   # core/stereo_camera_test.cpp
   # core/grid_lookup_test.cpp
   # core/math_util_test.cpp
@@ -14,7 +15,7 @@ set(TEST_SOURCES
   # vio/stereo_frontend_test.cpp
   # vio/viz_test.cpp
   vio/state_estimator_test.cpp
-  vio/backend_test.cpp)
+  vio/state_ekf_test.cpp)
 
 # Add one big executable with all of the tests. Filter for specific tests with:
 # --gtest_filter=TestModuleName.UnitTestName.

@@ -6,6 +6,8 @@
 #include <string>
 #include <utility>
 
+#include <eigen3/Eigen/StdDeque>
+
 #include <glog/logging.h>
 
 namespace bm {
@@ -100,7 +102,8 @@ class ThreadsafeQueue {
   size_t max_queue_size_ = 0;
   bool drop_oldest_if_full_ = true;
 
-  std::queue<Item> q_;
+  // http://eigen.tuxfamily.org/dox-devel/group__TopicStlContainers.html
+  std::queue<Item, std::deque<Item, Eigen::aligned_allocator<Item>>> q_;
   std::mutex lock_;
 };
 

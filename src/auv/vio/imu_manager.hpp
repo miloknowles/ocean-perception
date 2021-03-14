@@ -6,22 +6,12 @@
 #include "core/imu_measurement.hpp"
 #include "core/uid.hpp"
 #include "core/thread_safe_queue.hpp"
-
-#include <gtsam/navigation/ImuFactor.h>
-#include <gtsam/navigation/CombinedImuFactor.h>
+#include "vio/gtsam_types.hpp"
 
 namespace bm {
 namespace vio {
 
 using namespace core;
-
-// Shorten these types a little bit.
-typedef gtsam::PreintegratedImuMeasurements Pim;
-typedef gtsam::PreintegratedCombinedMeasurements PimC;
-typedef gtsam::imuBias::ConstantBias ImuBias;
-
-
-static const ImuBias kZeroImuBias = ImuBias(gtsam::Vector3::Zero(), gtsam::Vector3::Zero());
 
 
 struct PimResult final
@@ -33,6 +23,10 @@ struct PimResult final
   seconds_t from_time;
   seconds_t to_time;
   PimC pim;
+
+  // Angular velocity at the start and end timestamps, with bias subtracted off.
+  gtsam::Vector3 w_from_unbiased = gtsam::Vector3::Zero();
+  gtsam::Vector3 w_to_unbiased = gtsam::Vector3::Zero();
 };
 
 
@@ -53,6 +47,9 @@ class ImuManager final {
     double accel_bias_rw_sigma =  0.004905;
     double gyro_bias_rw_sigma =   0.000001454441043;
 
+    IsotropicModel::shared_ptr bias_prior_noise_model = IsotropicModel::Sigma(6, 1e-2);
+    IsotropicModel::shared_ptr bias_drift_noise_model = IsotropicModel::Sigma(6, 1e-3);
+
     // Direction of the gravity vector in the world frame.
     // NOTE(milo): Right now, we use a RDF frame for the IMU, so gravity is +y.
     gtsam::Vector3 n_gravity = gtsam::Vector3(0, 9.81, 0); // m/s^2
@@ -63,10 +60,18 @@ class ImuManager final {
     {
       parser.GetYamlParam("allowed_misalignment_sec", &allowed_misalignment_sec);
       parser.GetYamlParam("max_queue_size", &max_queue_size);
+
       parser.GetYamlParam("accel_noise_sigma", &accel_noise_sigma);
+      parser.GetYamlParam("gyro_noise_sigma", &gyro_noise_sigma);
       parser.GetYamlParam("accel_bias_rw_sigma", &accel_bias_rw_sigma);
       parser.GetYamlParam("gyro_bias_rw_sigma", &gyro_bias_rw_sigma);
-      YamlToVector<gtsam::Vector3>(parser.GetYamlNode("n_gravity"), n_gravity);
+
+      double bias_prior_noise_model_sigma, bias_drift_noise_model_sigma;
+      parser.GetYamlParam("bias_prior_noise_model_sigma", &bias_prior_noise_model_sigma);
+      parser.GetYamlParam("bias_drift_noise_model_sigma", &bias_drift_noise_model_sigma);
+      bias_prior_noise_model = IsotropicModel::Sigma(6, bias_prior_noise_model_sigma);
+      bias_drift_noise_model = IsotropicModel::Sigma(6, bias_drift_noise_model_sigma);
+      YamlToVector<gtsam::Vector3>(parser.GetYamlNode("/shared/n_gravity"), n_gravity);
     }
   };
 
@@ -78,7 +83,14 @@ class ImuManager final {
   // Add new IMU data to the queue.
   void Push(const ImuMeasurement& imu);
 
+  // Is the IMU queue empty?
   bool Empty() { return queue_.Empty(); }
+
+  // Returns the size of hte IMU queue.
+  size_t Size() { return queue_.Size(); }
+
+  // Get the oldest IMU measurement (first in) from the queue.
+  ImuMeasurement Pop() { return queue_.Pop(); }
 
   // Preintegrate queued IMU measurements, optionally within a time range [from_time, to_time].
   // If not time range is given, all available result are integrated. Integration is reset inside
@@ -94,12 +106,25 @@ class ImuManager final {
   // Throw away IMU measurements before (but NOT equal to) time.
   void DiscardBefore(seconds_t time);
 
+  // Timestamp of the newest IMU measurement in the queue.
   seconds_t Newest() { return ConvertToSeconds(queue_.PeekBack().timestamp); }
+
+  // Timestamp of the oldest IMU measurement in the queue.
   seconds_t Oldest() { return ConvertToSeconds(queue_.PeekFront().timestamp); }
+
+  Vector3d CorrectGyro(const Vector3d& w) const
+  {
+    return pim_.biasHat().correctGyroscope(w);
+  }
+
+  Vector3d CorrectAcc(const Vector3d& a) const
+  {
+    return pim_.biasHat().correctAccelerometer(a);
+  }
 
  private:
   Params params_;
-  boost::shared_ptr<PimC::Params> pim_params_;
+  PimC::Params pim_params_;
   ThreadsafeQueue<ImuMeasurement> queue_;
   PimC pim_;
 };

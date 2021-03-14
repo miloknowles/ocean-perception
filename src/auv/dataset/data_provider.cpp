@@ -136,5 +136,18 @@ void DataProvider::Reset()
 }
 
 
+timestamp_t DataProvider::FirstTimestamp() const
+{
+  CHECK(!(imu_data.empty() && stereo_data.empty()));
+
+  const timestamp_t first_imu = imu_data.empty() ?
+      std::numeric_limits<timestamp_t>::max() : imu_data.front().timestamp;
+  const timestamp_t first_stereo = stereo_data.empty() ?
+      std::numeric_limits<timestamp_t>::max() : stereo_data.front().timestamp;
+
+  return std::min(first_imu, first_stereo);
+}
+
+
 }
 }
