@@ -40,7 +40,7 @@ void Smoother::ResetISAM2()
   smoother_params.relinearizeThreshold = 0.0;
   smoother_params.relinearizeSkip = 1;
 
-  // NOTE(milo): This is needed for using smart factors.
+  // NOTE(milo): This is needed for using smart factors!!!
   // See: https://github.com/borglab/gtsam/blob/d6b24294712db197096cd3ea75fbed3157aea096/gtsam_unstable/slam/tests/testSmartStereoFactor_iSAM2.cpp
   smoother_params.cacheLinearizedFactors = false;
   smoother_ = gtsam::ISAM2(smoother_params);
@@ -231,9 +231,8 @@ SmootherResult Smoother::UpdateGraphWithVision(
 
   // Check if the timestamp from the LAST VO keyframe matches the last smoother result. If so, the
   // odometry measurement can be used in the graph.
+  // NOTE(milo): Allowing a small epsilon here.
   const bool vo_is_aligned = std::fabs(last_keypose_time - ConvertToSeconds(odom_result.timestamp_lkf)) < 0.01;
-
-  CHECK(vo_is_aligned) << last_keypose_time << " " << ConvertToSeconds(odom_result.timestamp_lkf) << std::endl;
 
   bool graph_has_vo_btw_factor = false;
   bool graph_has_imu_btw_factor = false;
@@ -246,12 +245,9 @@ SmootherResult Smoother::UpdateGraphWithVision(
     // Add an odometry factor between the previous KF and current KF.
     const gtsam::Pose3 P_lkf_cam(odom_result.T_lkf_cam);
 
-    // TODO
-    if (keypose_id == 1) {
-      new_factors.push_back(gtsam::BetweenFactor<gtsam::Pose3>(
-          last_keypose_sym, keypose_sym, P_lkf_cam,
-          params_.frontend_vo_noise_model));
-    }
+    new_factors.push_back(gtsam::BetweenFactor<gtsam::Pose3>(
+        last_keypose_sym, keypose_sym, P_lkf_cam,
+        params_.frontend_vo_noise_model));
 
     graph_has_vo_btw_factor = true;
   }

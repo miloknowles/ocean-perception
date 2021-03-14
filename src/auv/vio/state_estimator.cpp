@@ -144,9 +144,6 @@ void StateEstimator::StereoFrontendLoop()
 
 void StateEstimator::OnSmootherResult(const SmootherResult& new_result)
 {
-  LOG(INFO) << "Smoother updated pose:\n" << new_result.P_world_body << std::endl;
-  LOG(INFO) << "KEYPOSE ID: " << new_result.keypose_id << std::endl;
-
   // Copy the result into the state estimator. Use the mutex to make sure we don't change the result
   // while some other consumer is using it.
   mutex_smoother_result_.lock();
@@ -187,6 +184,8 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
 
     // If VO is available, use the first keyframe timestamp for the first pose. Otherwise, use the
     // first IMU measurement equal or after the given t0.
+    // NOTE(milo): Important that we Pop() from the vo queue here. That way, the smoother is
+    // initialized at t0, and receives the next VO measurement from t0 to t1.
     t0 = no_vo ? smoother_imu_manager_.Oldest() :
                  ConvertToSeconds(smoother_vo_queue_.Pop().timestamp);
 
@@ -211,7 +210,6 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
 
     // Update the smoother mode.
     smoother_mode_ = did_timeout ? SmootherMode::VISION_UNAVAILABLE : SmootherMode::VISION_AVAILABLE;
-    LOG(INFO) << "SMOOTHER MODE: " << to_string(smoother_mode_);
 
     if (is_shutdown_) { break; }  // Timeout could have happened due to shutdown; check that here.
 
@@ -230,9 +228,6 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
     // VO AVAILABLE ==> Add a keyframe and smooth.
     } else {
       const StereoFrontend::Result frontend_result = smoother_vo_queue_.Pop();
-      LOG(INFO) << "Processing frame_id: " << frontend_result.camera_id << std::endl;
-      std::cout << "CURRENT: " << frontend_result.camera_id << " " << ConvertToSeconds(frontend_result.timestamp) << std::endl;
-      std::cout << "PREVIOUS: " << frontend_result.camera_id_lkf << " " << ConvertToSeconds(frontend_result.timestamp_lkf) << std::endl;
       const seconds_t to_time = ConvertToSeconds(frontend_result.timestamp);
       const PimResult pim = smoother_imu_manager_.Preintegrate(from_time, to_time);
       OnSmootherResult(smoother.UpdateGraphWithVision(
