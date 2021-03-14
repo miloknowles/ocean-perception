@@ -11,7 +11,6 @@ reliable_vision_min_lmks: 12
 max_sec_btw_keyposes: 5.0
 min_sec_btw_keyposes: 0.5
 
-extra_smoothing_iters: 2
 smoother_init_wait_vision_sec: 3.0
 
 #===============================================================================
@@ -21,6 +20,13 @@ SmootherParams:
   lmk_mono_reproj_err_sigma: 2.0    # px in u and v
   lmk_stereo_reproj_err_sigma: 2.0  # px in u and v
   velocity_sigma: 0.1 # m/s
+  extra_smoothing_iters: 2
+
+  # Noise model for the zero-prior on IMU bias.
+  bias_prior_noise_model_sigma: 0.01
+
+  # Noise model for the IMU bias between factors.
+  bias_drift_noise_model_sigma: 0.001
 
 #===============================================================================
 StateEkfParams:
