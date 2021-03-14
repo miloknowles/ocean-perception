@@ -51,6 +51,7 @@ TEST(VioTest, TestStateEstimator1)
   SmootherResult::Callback smoother_callback = [&](const SmootherResult& result)
   {
     const core::uid_t cam_id = static_cast<core::uid_t>(result.keypose_id);
+    LOG(INFO) << "Adding keypose " << cam_id << " to visualizer" << std::endl;
     viz.AddCameraPose(cam_id, Image1b(), result.P_world_body.matrix(), true);
   };
 
@@ -67,8 +68,8 @@ TEST(VioTest, TestStateEstimator1)
   state_estimator.RegisterSmootherResultCallback(smoother_callback);
   state_estimator.RegisterFilterResultCallback(filter_callback);
 
-  // dataset.RegisterStereoCallback(std::bind(&StateEstimator::ReceiveStereo, &state_estimator, std::placeholders::_1));
-  dataset.RegisterImuCallback(std::bind(&StateEstimator::ReceiveImu, &state_estimator, std::placeholders::_1));
+  dataset.RegisterStereoCallback(std::bind(&StateEstimator::ReceiveStereo, &state_estimator, std::placeholders::_1));
+  // dataset.RegisterImuCallback(std::bind(&StateEstimator::ReceiveImu, &state_estimator, std::placeholders::_1));
 
   state_estimator.Initialize(ConvertToSeconds(dataset.FirstTimestamp()), gtsam::Pose3::identity());
 

@@ -62,6 +62,8 @@ class StateEstimator final {
 
     double smoother_init_wait_vision_sec = 3.0;   // Wait this long for VO to arrive during initialization.
 
+    int show_feature_tracks = 0;
+
    private:
     void LoadParams(const YamlParser& parser) override
     {
@@ -79,6 +81,7 @@ class StateEstimator final {
       parser.GetYamlParam("max_sec_btw_keyposes", &max_sec_btw_keyposes);
       parser.GetYamlParam("min_sec_btw_keyposes", &min_sec_btw_keyposes);
       parser.GetYamlParam("smoother_init_wait_vision_sec", &smoother_init_wait_vision_sec);
+      parser.GetYamlParam("show_feature_tracks", &show_feature_tracks);
     }
   };
 

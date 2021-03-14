@@ -13,6 +13,8 @@ min_sec_btw_keyposes: 0.5
 
 smoother_init_wait_vision_sec: 3.0
 
+show_feature_tracks: 1
+
 #===============================================================================
 SmootherParams:
   pose_prior_noise_model: [0.1, 0.1, 0.1, 0.3, 0.3, 0.3]        # rad, rad, rad, m, m, m

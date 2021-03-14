@@ -43,7 +43,7 @@ void Smoother::ResetISAM2()
   // NOTE(milo): This is needed for using smart factors.
   // See: https://github.com/borglab/gtsam/blob/d6b24294712db197096cd3ea75fbed3157aea096/gtsam_unstable/slam/tests/testSmartStereoFactor_iSAM2.cpp
   smoother_params.cacheLinearizedFactors = false;
-  gtsam::ISAM2 smoother_ = gtsam::ISAM2(smoother_params);
+  smoother_ = gtsam::ISAM2(smoother_params);
 }
 
 
@@ -219,6 +219,7 @@ SmootherResult Smoother::UpdateGraphWithVision(
   const uid_t keypose_id = GetNextKeyposeId();
   const seconds_t keypose_time = ConvertToSeconds(odom_result.timestamp);
   const uid_t last_keypose_id = result_.keypose_id;
+  const seconds_t last_keypose_time = result_.timestamp;
 
   const gtsam::Symbol keypose_sym('X', keypose_id);
   const gtsam::Symbol vel_sym('V', keypose_id);
@@ -230,8 +231,9 @@ SmootherResult Smoother::UpdateGraphWithVision(
 
   // Check if the timestamp from the LAST VO keyframe matches the last smoother result. If so, the
   // odometry measurement can be used in the graph.
-  // TODO(milo): Eventually add some epsilon.
-  const bool vo_is_aligned = (result_.timestamp == ConvertToSeconds(odom_result.timestamp_lkf));
+  const bool vo_is_aligned = std::fabs(last_keypose_time - ConvertToSeconds(odom_result.timestamp_lkf)) < 0.01;
+
+  CHECK(vo_is_aligned) << last_keypose_time << " " << ConvertToSeconds(odom_result.timestamp_lkf) << std::endl;
 
   bool graph_has_vo_btw_factor = false;
   bool graph_has_imu_btw_factor = false;
@@ -244,9 +246,12 @@ SmootherResult Smoother::UpdateGraphWithVision(
     // Add an odometry factor between the previous KF and current KF.
     const gtsam::Pose3 P_lkf_cam(odom_result.T_lkf_cam);
 
-    new_factors.push_back(gtsam::BetweenFactor<gtsam::Pose3>(
-        last_keypose_sym, keypose_sym, P_lkf_cam,
-        params_.frontend_vo_noise_model));
+    // TODO
+    if (keypose_id == 1) {
+      new_factors.push_back(gtsam::BetweenFactor<gtsam::Pose3>(
+          last_keypose_sym, keypose_sym, P_lkf_cam,
+          params_.frontend_vo_noise_model));
+    }
 
     graph_has_vo_btw_factor = true;
   }
@@ -315,6 +320,7 @@ SmootherResult Smoother::UpdateGraphWithVision(
   //================================ RETRIEVE VARIABLE ESTIMATES ===================================
   const gtsam::Values& estimate = smoother_.calculateBestEstimate();
 
+  result_lock_.lock();
   result_ = SmootherResult(
       keypose_id,
       keypose_time,
@@ -322,6 +328,7 @@ SmootherResult Smoother::UpdateGraphWithVision(
       graph_has_imu_btw_factor,
       graph_has_imu_btw_factor ? estimate.at<gtsam::Vector3>(vel_sym) : kZeroVelocity,
       graph_has_imu_btw_factor ? estimate.at<ImuBias>(bias_sym) : kZeroImuBias);
+  result_lock_.unlock();
 
   return result_;
 }

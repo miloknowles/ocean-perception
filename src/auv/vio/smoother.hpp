@@ -115,6 +115,9 @@ class Smoother final {
   // Construct with parameters.
   Smoother(const Params& params, const StereoCamera& stereo_rig);
 
+  MACRO_DELETE_COPY_CONSTRUCTORS(Smoother);
+  Smoother() = delete;
+
   // Initialize the smoother by providing the first timestamp and corresponding state.
   // This can be used to initialize the smoother for the first time, or to "reset" it through some
   // external source of localization.

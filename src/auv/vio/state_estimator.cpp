@@ -2,6 +2,8 @@
 
 #include <glog/logging.h>
 
+#include <opencv2/highgui.hpp>
+
 #include "vio/state_estimator.hpp"
 #include "vio/item_history.hpp"
 #include "core/timer.hpp"
@@ -91,6 +93,10 @@ void StateEstimator::StereoFrontendLoop()
 {
   LOG(INFO) << "Started up StereoFrontendLoop() thread" << std::endl;
 
+  if (params_.show_feature_tracks) {
+    cv::namedWindow("StereoTracking", cv::WINDOW_AUTOSIZE);
+  }
+
   while (!is_shutdown_) {
     // If no images waiting to be processed, take a nap.
     while (raw_stereo_queue_.Empty()) {
@@ -105,6 +111,12 @@ void StateEstimator::StereoFrontendLoop()
     // TODO(milo): Use initial odometry estimate other than identity!
     const StereoFrontend::Result& result = stereo_frontend_.Track(
         raw_stereo_queue_.Pop(), Matrix4d::Identity(), false);
+
+    if (params_.show_feature_tracks) {
+      const Image3b& viz = stereo_frontend_.VisualizeFeatureTracks();
+      cv::imshow("StereoTracking", viz);
+      cv::waitKey(1);
+    }
 
     const bool tracking_failed = (result.status & StereoFrontend::Status::ODOM_ESTIMATION_FAILED) ||
                                  (result.status & StereoFrontend::Status::FEW_TRACKED_FEATURES);
@@ -133,6 +145,7 @@ void StateEstimator::StereoFrontendLoop()
 void StateEstimator::OnSmootherResult(const SmootherResult& new_result)
 {
   LOG(INFO) << "Smoother updated pose:\n" << new_result.P_world_body << std::endl;
+  LOG(INFO) << "KEYPOSE ID: " << new_result.keypose_id << std::endl;
 
   // Copy the result into the state estimator. Use the mutex to make sure we don't change the result
   // while some other consumer is using it.
@@ -141,13 +154,13 @@ void StateEstimator::OnSmootherResult(const SmootherResult& new_result)
   mutex_smoother_result_.unlock();
 
   // Use the latest bias estimate for the next IMU preintegration.
-  smoother_imu_manager_.ResetAndUpdateBias(smoother_result_.imu_bias);
-
-  smoother_update_flag_.store(true); // Tell the filter to sync with this result!
+  smoother_imu_manager_.ResetAndUpdateBias(new_result.imu_bias);
 
   for (const SmootherResult::Callback& cb : smoother_result_callbacks_) {
-    cb(smoother_result_);
+    cb(new_result);
   }
+
+  smoother_update_flag_.store(true); // Tell the filter to sync with this result!
 }
 
 
@@ -170,11 +183,11 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
     }
 
     LOG(INFO) << "Got data for initialization!" << std::endl;
-    LOG(INFO) << "Vision? " << !no_vo << " " << "IMU? " << !no_imu << std::endl;
+    LOG(INFO) << "STEREO? " << !no_vo << " " << "IMU? " << !no_imu << std::endl;
 
     // If VO is available, use the first keyframe timestamp for the first pose. Otherwise, use the
     // first IMU measurement equal or after the given t0.
-    t0 = no_vo ? ConvertToSeconds(smoother_imu_manager_.Oldest()) :
+    t0 = no_vo ? smoother_imu_manager_.Oldest() :
                  ConvertToSeconds(smoother_vo_queue_.Pop().timestamp);
 
     smoother.Initialize(t0, P0_world_body, kZeroVelocity, kZeroImuBias, !no_imu);
@@ -198,6 +211,7 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
 
     // Update the smoother mode.
     smoother_mode_ = did_timeout ? SmootherMode::VISION_UNAVAILABLE : SmootherMode::VISION_AVAILABLE;
+    LOG(INFO) << "SMOOTHER MODE: " << to_string(smoother_mode_);
 
     if (is_shutdown_) { break; }  // Timeout could have happened due to shutdown; check that here.
 
@@ -210,18 +224,19 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
       const seconds_t time_since_last_keypose = (smoother_imu_manager_.Newest() - from_time);
       if (imu_is_available && (time_since_last_keypose > params_.min_sec_btw_keyposes)) {
         const PimResult& pim = smoother_imu_manager_.Preintegrate(from_time);
-        smoother.UpdateGraphNoVision(pim);
-        OnSmootherResult(smoother.GetResult());
+        OnSmootherResult(smoother.UpdateGraphNoVision(pim));
       }
 
     // VO AVAILABLE ==> Add a keyframe and smooth.
     } else {
-      const StereoFrontend::Result& frontend_result = smoother_vo_queue_.Pop();
+      const StereoFrontend::Result frontend_result = smoother_vo_queue_.Pop();
+      LOG(INFO) << "Processing frame_id: " << frontend_result.camera_id << std::endl;
+      std::cout << "CURRENT: " << frontend_result.camera_id << " " << ConvertToSeconds(frontend_result.timestamp) << std::endl;
+      std::cout << "PREVIOUS: " << frontend_result.camera_id_lkf << " " << ConvertToSeconds(frontend_result.timestamp_lkf) << std::endl;
       const seconds_t to_time = ConvertToSeconds(frontend_result.timestamp);
       const PimResult pim = smoother_imu_manager_.Preintegrate(from_time, to_time);
-      const SmootherResult& new_result = smoother.UpdateGraphWithVision(
-          frontend_result, pim.valid ? std::make_shared<PimResult>(pim) : nullptr);
-      OnSmootherResult(smoother.GetResult());
+      OnSmootherResult(smoother.UpdateGraphWithVision(
+          frontend_result, pim.valid ? std::make_shared<PimResult>(pim) : nullptr));
     }
 
   } // end while (!is_shutdown)
@@ -261,6 +276,7 @@ void StateEstimator::FilterLoop(seconds_t t0, const gtsam::Pose3& P0_world_body)
 
     //================================== SYNCHRONIZE WITH SMOOTHER =================================
     const bool sync_with_smoother = smoother_update_flag_.exchange(false);
+
     if (sync_with_smoother) {
       // Get a copy of the latest smoother state to make sure it doesn't change during the sync.
       mutex_smoother_result_.lock();

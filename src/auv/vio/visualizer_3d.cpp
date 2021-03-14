@@ -51,29 +51,13 @@ void Visualizer3D::AddCameraPose(const CameraPoseData& data)
                           0.0,              0.0,              1.0  };
   const cv::Affine3d T_world_cam_cv = EigenMatrix4dToCvAffine3d(data.T_world_cam);
 
-  // REALTIME CAMERA: Show the current camera image inside a frustum.
-  cv::viz::WCameraPosition widget_realtime(K, 1.0, cv::viz::Color::red());
-  if (!data.left_image.empty()) {
-    widget_realtime = cv::viz::WCameraPosition(K, data.left_image, 1.0, cv::viz::Color::red());
-  }
-
   viz_lock_.lock();
 
-  // Update the REALTIME camera by removing/re-adding it.
-  if (widget_names_.count(kWidgetNameRealtime) != 0) {
-    viz_.removeWidget(kWidgetNameRealtime);
-  }
-  viz_.showWidget(kWidgetNameRealtime, widget_realtime, T_world_cam_cv);
-  widget_names_.insert(kWidgetNameRealtime);
-
-  // KEYFRAME CAMERA: If this is a keyframe, add a stereo camera frustum.
-  if (data.is_keyframe) {
-    const std::string widget_name = GetCameraPoseWidgetName(data.cam_id);
-    CHECK(widget_names_.count(widget_name) == 0) << "Trying to add existing cam_id: " << widget_name << std::endl;
-    cv::viz::WCameraPosition widget_keyframe(K, 1.0, cv::viz::Color::blue());
-    viz_.showWidget(widget_name, widget_keyframe, T_world_cam_cv);
-    widget_names_.insert(widget_name);
-  }
+  const std::string widget_name = GetCameraPoseWidgetName(data.cam_id);
+  CHECK(widget_names_.count(widget_name) == 0) << "Trying to add existing cam_id: " << widget_name << std::endl;
+  cv::viz::WCameraPosition widget_keyframe(K, 1.0, data.is_keyframe ? cv::viz::Color::blue() : cv::viz::Color::red());
+  viz_.showWidget(widget_name, widget_keyframe, T_world_cam_cv);
+  widget_names_.insert(widget_name);
 
   viz_lock_.unlock();
 }
