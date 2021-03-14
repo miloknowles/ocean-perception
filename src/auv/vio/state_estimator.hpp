@@ -64,6 +64,9 @@ class StateEstimator final {
 
     int show_feature_tracks = 0;
 
+    gtsam::Pose3 P_body_imu = gtsam::Pose3::identity();
+    gtsam::Pose3 P_body_cam = gtsam::Pose3::identity();
+
    private:
     void LoadParams(const YamlParser& parser) override
     {
@@ -82,6 +85,12 @@ class StateEstimator final {
       parser.GetYamlParam("min_sec_btw_keyposes", &min_sec_btw_keyposes);
       parser.GetYamlParam("smoother_init_wait_vision_sec", &smoother_init_wait_vision_sec);
       parser.GetYamlParam("show_feature_tracks", &show_feature_tracks);
+
+      Matrix4d T_body_imu, T_body_cam;
+      YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/imu0/T_body_imu"), T_body_imu);
+      YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/cam0/T_body_cam"), T_body_cam);
+      P_body_imu = gtsam::Pose3(T_body_imu);
+      P_body_cam = gtsam::Pose3(T_body_cam);
     }
   };
 

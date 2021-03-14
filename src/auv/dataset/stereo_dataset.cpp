@@ -61,7 +61,7 @@ cv::Mat StereoDataset::Right(int i, bool gray) const
 
 bool StereoDataset::LeftPose(int i, double& seconds, Quaterniond& q_w_cam, Vector3d& t_w_cam)
 {
-  if (i >= seconds_.size()) {
+  if (i >= (int)seconds_.size()) {
     return false;
   }
 

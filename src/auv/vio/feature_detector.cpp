@@ -23,14 +23,14 @@ static VecPoint2f CvKeyPointToPoint(const std::vector<cv::KeyPoint>& input)
 }
 
 
-static std::vector<cv::KeyPoint> CvPointToKeyPoint(const VecPoint2f& input)
-{
-  std::vector<cv::KeyPoint> out(input.size());
-  for (size_t i = 0; i < input.size(); ++i) {
-    out.at(i) = cv::KeyPoint(input.at(i), -1.0f);
-  }
-  return out;
-}
+// static std::vector<cv::KeyPoint> CvPointToKeyPoint(const VecPoint2f& input)
+// {
+//   std::vector<cv::KeyPoint> out(input.size());
+//   for (size_t i = 0; i < input.size(); ++i) {
+//     out.at(i) = cv::KeyPoint(input.at(i), -1.0f);
+//   }
+//   return out;
+// }
 
 
 FeatureDetector::FeatureDetector(const Params& params) : params_(params)

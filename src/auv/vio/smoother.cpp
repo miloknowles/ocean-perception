@@ -99,7 +99,7 @@ static void AddImuFactors(uid_t keypose_id,
                           gtsam::NonlinearFactorGraph& new_factors,
                           const Smoother::Params& params)
 {
-  CHECK(pim_result.valid) << "Preintegrated IMU invalid" << std::endl;
+  CHECK(pim_result.valid) << "Preintegrated IMU invalid!" << std::endl;
 
   const gtsam::Symbol keypose_sym('X', keypose_id);
   const gtsam::Symbol vel_sym('V', keypose_id);
@@ -112,7 +112,7 @@ static void AddImuFactors(uid_t keypose_id,
 
   // NOTE(milo): Gravity is corrected for in predict(), not during preintegration (NavState.cpp).
   const gtsam::NavState prev_state(last_smoother_result.P_world_body,
-                                    last_smoother_result.v_world_body);
+                                   last_smoother_result.v_world_body);
   const gtsam::NavState pred_state = pim_result.pim.predict(prev_state, last_smoother_result.imu_bias);
 
   // If no between factor from VO, we can use IMU to get an initial guess on the current pose.
@@ -239,14 +239,14 @@ SmootherResult Smoother::UpdateGraphWithVision(
 
   // If VO is valid, we can use it to create a between factor and guess the latest pose.
   if (vo_is_aligned) {
-    const gtsam::Pose3 P_world_body = result_.P_world_body * gtsam::Pose3(odom_result.T_lkf_cam);
+    // NOTE(milo): Must convert VO into BODY frame odometry!
+    const gtsam::Pose3& body_P_odom = params_.P_body_cam * gtsam::Pose3(odom_result.T_lkf_cam) * params_.P_body_cam.inverse();
+    const gtsam::Pose3 P_world_body = result_.P_world_body * body_P_odom;
     new_values.insert(keypose_sym, P_world_body);
 
     // Add an odometry factor between the previous KF and current KF.
-    const gtsam::Pose3 P_lkf_cam(odom_result.T_lkf_cam);
-
     new_factors.push_back(gtsam::BetweenFactor<gtsam::Pose3>(
-        last_keypose_sym, keypose_sym, P_lkf_cam,
+        last_keypose_sym, keypose_sym, body_P_odom,
         params_.frontend_vo_noise_model));
 
     graph_has_vo_btw_factor = true;
@@ -267,7 +267,7 @@ SmootherResult Smoother::UpdateGraphWithVision(
     // NEW SMART FACTOR: Creating smart stereo factor for the first time.
     if (stereo_factors_.count(lmk_id) == 0) {
       stereo_factors_.emplace(lmk_id, new SmartStereoFactor(
-          params_.lmk_stereo_factor_noise_model, lmk_stereo_factor_params_));
+          params_.lmk_stereo_factor_noise_model, lmk_stereo_factor_params_, params_.P_body_cam));
 
       // Indicate that the newest factor refers to lmk_id.
       // NOTE(milo): Add the new factor to the graph. Order matters here!
