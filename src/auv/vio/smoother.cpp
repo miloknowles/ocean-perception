@@ -176,7 +176,7 @@ SmootherResult Smoother::UpdateGraphNoVision(const PimResult& pim_result)
       params_);
 
   //==================================== UPDATE FACTOR GRAPH =======================================
-  gtsam::ISAM2Result isam_result = smoother_.update(new_factors, new_values);
+  smoother_.update(new_factors, new_values);
 
   // (Optional) run the smoother a few more times to reduce error.
   for (int i = 0; i < params_.extra_smoothing_iters; ++i) {
@@ -196,7 +196,6 @@ SmootherResult Smoother::UpdateGraphNoVision(const PimResult& pim_result)
       estimate.at<ImuBias>(bias_sym));
   result_lock_.unlock();
 
-  // TODO: reset bias in state estimator
   return result_;
 }
 
