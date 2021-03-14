@@ -39,13 +39,13 @@ void StateEstimator::ReceiveImu(const ImuMeasurement& imu_data)
 }
 
 
-void StateEstimator::RegisterSmootherResultCallback(const SmootherResultCallback& cb)
+void StateEstimator::RegisterSmootherResultCallback(const SmootherResult::Callback& cb)
 {
   smoother_result_callbacks_.emplace_back(cb);
 }
 
 
-void StateEstimator::RegisterFilterResultCallback(const FilterResultCallback& cb)
+void StateEstimator::RegisterFilterResultCallback(const StateStamped::Callback& cb)
 {
   filter_result_callbacks_.emplace_back(cb);
 }
@@ -140,9 +140,12 @@ void StateEstimator::OnSmootherResult(const SmootherResult& new_result)
   smoother_result_ = new_result;
   mutex_smoother_result_.unlock();
 
+  // Use the latest bias estimate for the next IMU preintegration.
+  smoother_imu_manager_.ResetAndUpdateBias(smoother_result_.imu_bias);
+
   smoother_update_flag_.store(true); // Tell the filter to sync with this result!
 
-  for (const SmootherResultCallback& cb : smoother_result_callbacks_) {
+  for (const SmootherResult::Callback& cb : smoother_result_callbacks_) {
     cb(smoother_result_);
   }
 }
@@ -250,7 +253,7 @@ void StateEstimator::FilterLoop(seconds_t t0, const gtsam::Pose3& P0_world_body)
       mutex_filter_result_.lock();
       filter_state_ = filter.PredictAndUpdate(filter_imu_manager_.Pop());
 
-      for (const FilterResultCallback& cb : filter_result_callbacks_) {
+      for (const StateStamped::Callback& cb : filter_result_callbacks_) {
         cb(filter_state_);
       }
       mutex_filter_result_.unlock();
@@ -279,7 +282,7 @@ void StateEstimator::FilterLoop(seconds_t t0, const gtsam::Pose3& P0_world_body)
       mutex_filter_result_.lock();
       filter_state_ = filter.GetState();
 
-      for (const FilterResultCallback& cb : filter_result_callbacks_) {
+      for (const StateStamped::Callback& cb : filter_result_callbacks_) {
         cb(filter_state_);
       }
       mutex_filter_result_.unlock();

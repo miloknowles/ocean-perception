@@ -6,12 +6,13 @@
 #include "core/imu_measurement.hpp"
 #include "core/uid.hpp"
 #include "core/thread_safe_queue.hpp"
-#include "vio/state_estimator_types.hpp"
+#include "vio/gtsam_types.hpp"
 
 namespace bm {
 namespace vio {
 
 using namespace core;
+
 
 struct PimResult final
 {
@@ -82,8 +83,13 @@ class ImuManager final {
   // Add new IMU data to the queue.
   void Push(const ImuMeasurement& imu);
 
+  // Is the IMU queue empty?
   bool Empty() { return queue_.Empty(); }
+
+  // Returns the size of hte IMU queue.
   size_t Size() { return queue_.Size(); }
+
+  // Get the oldest IMU measurement (first in) from the queue.
   ImuMeasurement Pop() { return queue_.Pop(); }
 
   // Preintegrate queued IMU measurements, optionally within a time range [from_time, to_time].
@@ -100,11 +106,11 @@ class ImuManager final {
   // Throw away IMU measurements before (but NOT equal to) time.
   void DiscardBefore(seconds_t time);
 
+  // Timestamp of the newest IMU measurement in the queue.
   seconds_t Newest() { return ConvertToSeconds(queue_.PeekBack().timestamp); }
-  seconds_t Oldest() { return ConvertToSeconds(queue_.PeekFront().timestamp); }
 
-  gtsam::SharedNoiseModel BiasPriorNoiseModel() const { return params_.bias_prior_noise_model; }
-  gtsam::SharedNoiseModel BiasDriftNoiseModel() const { return params_.bias_drift_noise_model; }
+  // Timestamp of the oldest IMU measurement in the queue.
+  seconds_t Oldest() { return ConvertToSeconds(queue_.PeekFront().timestamp); }
 
   Vector3d CorrectGyro(const Vector3d& w) const
   {
@@ -114,16 +120,6 @@ class ImuManager final {
   Vector3d CorrectAcc(const Vector3d& a) const
   {
     return pim_.biasHat().correctAccelerometer(a);
-  }
-
-  gtsam::SharedNoiseModel GyroMeasurementNoiseModel() const
-  {
-    return IsotropicModel::Sigma(3, params_.gyro_noise_sigma);
-  }
-
-  gtsam::SharedNoiseModel AccMeasurementNoiseModel() const
-  {
-    return IsotropicModel::Sigma(3, params_.accel_noise_sigma);
   }
 
  private:

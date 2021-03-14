@@ -2,10 +2,9 @@
 SET(LIBRARY_NAME ${PROJECT_NAME}_vio)
 
 SET(LIBRARY_SRC
-  state_estimator_types.hpp
+  gtsam_types.hpp
   state_estimator_util.hpp
   landmark_observation.hpp
-  state_estimate_3d.hpp
   feature_detector.cpp
   feature_detector.hpp
   feature_tracker.cpp
@@ -25,6 +24,8 @@ SET(LIBRARY_SRC
   imu_manager.hpp
   state_ekf.cpp
   state_ekf.hpp
+  smoother.cpp
+  smoother.hpp
   state_estimator.cpp
   state_estimator.hpp)
 

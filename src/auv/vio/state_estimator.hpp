@@ -11,9 +11,7 @@
 #include "core/stereo_image.hpp"
 #include "core/imu_measurement.hpp"
 #include "vio/stereo_frontend.hpp"
-#include "vio/state_estimate_3d.hpp"
 #include "vio/imu_manager.hpp"
-#include "vio/state_estimator_types.hpp"
 #include "vio/state_estimator_util.hpp"
 #include "vio/state_ekf.hpp"
 #include "vio/smoother.hpp"
@@ -22,6 +20,22 @@
 
 namespace bm {
 namespace vio {
+
+
+// The smoother changes its behavior depending on whether vision is available/unavailable.
+enum class SmootherMode { VISION_AVAILABLE, VISION_UNAVAILABLE };
+inline std::string to_string(const SmootherMode& m)
+{
+  switch (m) {
+    case SmootherMode::VISION_AVAILABLE:
+      return "VISION_AVAILABLE";
+    case SmootherMode::VISION_UNAVAILABLE:
+      return "VISION_UNAVAILABLE";
+    default:
+      throw std::runtime_error("Unknkown SmootherMode");
+      return "ERROR";
+  }
+}
 
 
 class StateEstimator final {
@@ -76,8 +90,8 @@ class StateEstimator final {
 
   // Add a function that gets called whenever the smoother finished an update.
   // NOTE(milo): Callbacks will block the smoother thread, so keep them fast!
-  void RegisterSmootherResultCallback(const SmootherResultCallback& cb);
-  void RegisterFilterResultCallback(const FilterResultCallback& cb);
+  void RegisterSmootherResultCallback(const SmootherResult::Callback& cb);
+  void RegisterFilterResultCallback(const StateStamped::Callback& cb);
 
   // Initialize the state estimator pose from an external source of localization.
   void Initialize(seconds_t t0, const gtsam::Pose3 P0_world_body);
@@ -118,13 +132,13 @@ class StateEstimator final {
   std::atomic_bool smoother_update_flag_{false};
   ImuManager smoother_imu_manager_;
   ThreadsafeQueue<StereoFrontend::Result> smoother_vo_queue_;
-  std::vector<SmootherResultCallback> smoother_result_callbacks_;
+  std::vector<SmootherResult::Callback> smoother_result_callbacks_;
   //================================================================================================
   std::mutex mutex_filter_result_;
   StateStamped filter_state_;
   ImuManager filter_imu_manager_;
   ThreadsafeQueue<StereoFrontend::Result> filter_vo_queue_;
-  std::vector<FilterResultCallback> filter_result_callbacks_;
+  std::vector<StateStamped::Callback> filter_result_callbacks_;
   //================================================================================================
 };
 

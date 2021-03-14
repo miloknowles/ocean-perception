@@ -27,7 +27,6 @@
 #include "vio/visualizer_3d.hpp"
 #include "vio/state_estimator.hpp"
 
-typedef gtsam::SmartStereoProjectionPoseFactor SmartStereoFactor;
 
 using namespace bm;
 using namespace core;
@@ -50,13 +49,13 @@ TEST(VioTest, TestStateEstimator1)
   Visualizer3D viz(viz_params, stereo_rig);
 
   // std::function<void(const SmootherResult& result)>
-  SmootherResultCallback smoother_callback = [&](const SmootherResult& result)
+  SmootherResult::Callback smoother_callback = [&](const SmootherResult& result)
   {
     const core::uid_t cam_id = static_cast<core::uid_t>(result.keypose_id);
     viz.AddCameraPose(cam_id, Image1b(), result.P_world_body.matrix(), true);
   };
 
-  FilterResultCallback filter_callback = [&](const StateStamped& ss)
+  StateStamped::Callback filter_callback = [&](const StateStamped& ss)
   {
     Matrix4d T_world_body;
     T_world_body.block<3, 3>(0, 0) = ss.state.q.toRotationMatrix();

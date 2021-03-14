@@ -11,6 +11,7 @@
 #include "core/stereo_camera.hpp"
 #include "vio/imu_manager.hpp"
 #include "vio/stereo_frontend.hpp"
+#include "vio/gtsam_types.hpp"
 
 #include <gtsam/navigation/NavState.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
@@ -18,61 +19,18 @@
 #include <gtsam/inference/Key.h>
 #include <gtsam/inference/Symbol.h>
 #include <gtsam/nonlinear/ISAM2.h>
-#include <gtsam/geometry/Pose3.h>
-#include <gtsam/geometry/Cal3_S2Stereo.h>
-#include <gtsam/slam/SmartProjectionPoseFactor.h>
-#include <gtsam/navigation/ImuFactor.h>
-#include <gtsam/navigation/CombinedImuFactor.h>
-#include <gtsam_unstable/slam/SmartStereoProjectionPoseFactor.h>
 
 namespace bm {
 namespace vio {
 
 using namespace core;
 
-// Preintegrated IMU types.
-typedef gtsam::PreintegratedImuMeasurements Pim;
-typedef gtsam::PreintegratedCombinedMeasurements PimC;
-typedef gtsam::imuBias::ConstantBias ImuBias;
-
-// Stereo/mono vision factors.
-typedef gtsam::SmartStereoProjectionPoseFactor SmartStereoFactor;
-typedef gtsam::SmartProjectionPoseFactor<gtsam::Cal3_S2> SmartMonoFactor;
-
-// Convenient map types.
-typedef std::unordered_map<uid_t, SmartMonoFactor::shared_ptr> SmartMonoFactorMap;
-typedef std::unordered_map<uid_t, SmartStereoFactor::shared_ptr> SmartStereoFactorMap;
-typedef std::map<uid_t, gtsam::FactorIndex> LmkToFactorMap;
-
-// Noise model types.
-typedef gtsam::noiseModel::Isotropic IsotropicModel;
-typedef gtsam::noiseModel::Diagonal DiagonalModel;
-
-//================================= CONSTANTS ==================================
-static const ImuBias kZeroImuBias = ImuBias(gtsam::Vector3::Zero(), gtsam::Vector3::Zero());
-static const gtsam::Vector3 kZeroVelocity = gtsam::Vector3::Zero();
-static const double kSetSkewToZero = 0.0;
-
-
-// The smoother changes its behavior depending on whether vision is available/unavailable.
-enum class SmootherMode { VISION_AVAILABLE, VISION_UNAVAILABLE };
-inline std::string to_string(const SmootherMode& m)
-{
-  switch (m) {
-    case SmootherMode::VISION_AVAILABLE:
-      return "VISION_AVAILABLE";
-    case SmootherMode::VISION_UNAVAILABLE:
-      return "VISION_UNAVAILABLE";
-    default:
-      throw std::runtime_error("Unknkown SmootherMode");
-      return "ERROR";
-  }
-}
-
 
 // Returns a summary of the smoother update.
 struct SmootherResult final
 {
+  typedef std::function<void(const SmootherResult&)> Callback;
+
   explicit SmootherResult(uid_t keypose_id,
                           seconds_t timestamp,
                           const gtsam::Pose3& P_world_body,
@@ -96,9 +54,6 @@ struct SmootherResult final
   gtsam::Vector3 v_world_body = kZeroVelocity;
   ImuBias imu_bias = kZeroImuBias;
 };
-
-
-typedef std::function<void(const SmootherResult&)> SmootherResultCallback;
 
 
 class Smoother final {
