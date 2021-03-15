@@ -60,7 +60,6 @@ TEST(VioTest, TestStateEstimator1)
     viz.UpdateBodyPose("imu0", T_world_body);
   };
 
-  LOG(INFO) << "Drawing gt poses" << std::endl;
   for (size_t i = 0; i < groundtruth_poses.size(); ++i) {
     const Matrix4d T_world_cam = T0_world_cam.inverse() * groundtruth_poses.at(i).T_world_body;
     viz.AddGroundtruthPose(i, T_world_cam);
@@ -76,7 +75,7 @@ TEST(VioTest, TestStateEstimator1)
 
   state_estimator.Initialize(ConvertToSeconds(dataset.FirstTimestamp()), gtsam::Pose3::identity());
 
-  dataset.Playback(1.0f, false);
+  dataset.Playback(10.0f, false);
 
   state_estimator.BlockUntilFinished();
   state_estimator.Shutdown();

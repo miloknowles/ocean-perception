@@ -327,9 +327,6 @@ SmootherResult Smoother::UpdateGraphWithVision(
   const gtsam::Values& estimate = smoother_.calculateBestEstimate();
 
   const Matrix6d cov_pose = smoother_.marginalCovariance(keypose_sym).matrix();
-  const Matrix3d cov_vel = smoother_.marginalCovariance(vel_sym).matrix();
-  const Matrix6d cov_bias = smoother_.marginalCovariance(bias_sym).matrix();
-
   const Matrix3d& default_cov_vel = params_.velocity_noise_model->covariance();
   const Matrix6d& default_cov_bias = params_.bias_prior_noise_model->covariance();
 
@@ -342,8 +339,8 @@ SmootherResult Smoother::UpdateGraphWithVision(
       graph_has_imu_btw_factor ? estimate.at<gtsam::Vector3>(vel_sym) : kZeroVelocity,
       graph_has_imu_btw_factor ? estimate.at<ImuBias>(bias_sym) : kZeroImuBias,
       cov_pose,
-      graph_has_imu_btw_factor ? cov_vel : default_cov_vel,
-      graph_has_imu_btw_factor ? cov_bias : default_cov_bias);
+      graph_has_imu_btw_factor ? smoother_.marginalCovariance(vel_sym).matrix() : default_cov_vel,
+      graph_has_imu_btw_factor ? smoother_.marginalCovariance(bias_sym).matrix() : default_cov_bias);
   result_lock_.unlock();
 
   return result_;
