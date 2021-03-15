@@ -8,8 +8,8 @@ max_size_filter_vo_queue: 100
 max_size_filter_imu_queue: 1000
 
 reliable_vision_min_lmks: 12
-max_sec_btw_keyposes: 5.0
-min_sec_btw_keyposes: 0.5
+max_sec_btw_keyposes: 2.0
+min_sec_btw_keyposes: 0.2
 
 smoother_init_wait_vision_sec: 2.0
 

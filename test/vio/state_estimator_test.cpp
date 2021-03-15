@@ -71,11 +71,11 @@ TEST(VioTest, TestStateEstimator1)
   state_estimator.RegisterFilterResultCallback(filter_callback);
 
   dataset.RegisterStereoCallback(std::bind(&StateEstimator::ReceiveStereo, &state_estimator, std::placeholders::_1));
-  // dataset.RegisterImuCallback(std::bind(&StateEstimator::ReceiveImu, &state_estimator, std::placeholders::_1));
+  dataset.RegisterImuCallback(std::bind(&StateEstimator::ReceiveImu, &state_estimator, std::placeholders::_1));
 
   state_estimator.Initialize(ConvertToSeconds(dataset.FirstTimestamp()), gtsam::Pose3::identity());
 
-  dataset.Playback(10.0f, false);
+  dataset.Playback(1.0f, false);
 
   state_estimator.BlockUntilFinished();
   state_estimator.Shutdown();

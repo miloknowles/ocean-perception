@@ -34,6 +34,7 @@ ImuManager::ImuManager(const Params& params)
 void ImuManager::Push(const ImuMeasurement& imu)
 {
   // TODO(milo): Eventually deal with dropped IMU measurements (preintegrate them out).
+  CHECK(queue_.Empty() || ConvertToSeconds(imu.timestamp) > Newest()) << "Trying to add IMU measurement out of order" << std::endl;
   queue_.Push(std::move(imu));
 }
 
@@ -109,7 +110,7 @@ void ImuManager::ResetAndUpdateBias(const ImuBias& bias)
 
 void ImuManager::DiscardBefore(seconds_t time)
 {
-  while (!queue_.Empty() && queue_.PeekFront().timestamp < time) {
+  while (!queue_.Empty() && ConvertToSeconds(queue_.PeekFront().timestamp) < time) {
     queue_.Pop();
   }
 }
