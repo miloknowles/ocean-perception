@@ -134,7 +134,10 @@ class StateEkf final {
   StateStamped PredictAndUpdate(const ImuMeasurement& imu, bool store = true);
 
   // Update with an external pose estimate (e.g from visual odometry).
-  StateStamped PredictAndUpdate(const Matrix4d& T_world_body);
+  StateStamped PredictAndUpdate(seconds_t timestamp, const Matrix4d& T_world_body);
+  StateStamped PredictAndUpdate(seconds_t timestamp,
+                                const Vector3d& v_world_body,
+                                const Matrix3d& R_velocity);
 
   // Retrieve the current state.
   StateStamped GetState()

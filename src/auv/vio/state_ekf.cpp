@@ -7,6 +7,9 @@ namespace vio {
 typedef Eigen::Matrix<double, 6, 15> Matrix6x15;
 typedef Eigen::Matrix<double, 15, 6> Matrix15x6;
 
+typedef Eigen::Matrix<double, 3, 15> Matrix3x15;
+typedef Eigen::Matrix<double, 15, 3> Matrix15x3;
+
 
 // [1] https://bicr.atr.jp//~aude/publications/ras99.pdf
 // [2] https://en.wikipedia.org/wiki/Extended_Kalman_filter
@@ -114,6 +117,30 @@ static State UpdateImu(const State& x,
 }
 
 
+static State UpdateVelocity(const State& x,
+                            const Vector3d& v_world_body,
+                            const Matrix3d& R_velocity)
+{
+  // TODO(milo): Sparse matrix is wasteful, but easier to read for now.
+  Matrix3x15 H = Matrix3x15::Zero();
+  H.block<3, 3>(0, v_row) = Matrix3d::Identity();
+
+  const Matrix3d& S = H * x.S * H.transpose() + R_velocity;
+  const Matrix15x3& K = x.S * H.transpose() * S.inverse();
+
+  const Vector3d& y = v_world_body - x.v;
+  const Vector15d dx = K*y;
+
+  // Update state estimate and covariance estimate.
+  State xu = x;
+  xu.v += dx.block<3, 1>(v_row, 0);
+
+  xu.S = (Matrix15d::Identity() - K*H) * x.S;
+
+  return xu;
+}
+
+
 StateEkf::StateEkf(const Params& params)
     : params_(params),
       state_(0, State())
@@ -156,15 +183,18 @@ void StateEkf::Initialize(const StateStamped& state, const ImuBias& imu_bias)
       const seconds_t nearest_timestamp = state_history_.OldestKey();
       const State& nearest_state = state_history_.at(nearest_timestamp);
       state_lock_.lock();
-      // state_.state.v = nearest_state.v;
+      state_.state.v = nearest_state.v;
       state_.state.a = nearest_state.a;
       state_.state.w = nearest_state.w;
 
       // Also use the filter covariance instead of the one provided.
-      // state_.state.S.block<3, 3>(v_row, v_row) = nearest_state.S.block<3, 3>(v_row, v_row);
+      state_.state.S.block<3, 3>(v_row, v_row) = nearest_state.S.block<3, 3>(v_row, v_row);
       state_.state.S.block<3, 3>(a_row, a_row) = nearest_state.S.block<3, 3>(a_row, a_row);
       state_.state.S.block<3, 3>(w_row, w_row) = nearest_state.S.block<3, 3>(w_row, w_row);
       state_lock_.unlock();
+
+      // Fuse the filtered velocity with the externally estimated velocity.
+      PredictAndUpdate(state_.timestamp, state.state.v, state.state.S.block<3, 3>(v_row, v_row));
     }
 
     while (!imu_since_init_->Empty()) {
@@ -186,14 +216,14 @@ StateStamped StateEkf::PredictAndUpdate(const ImuMeasurement& imu, bool store)
   const seconds_t dt = (t_new - state_.timestamp);
 
   // PREDICT STEP: Simulate the system forward to the current timestep.
-  const State& x_new = (dt > 0) ? Predict(state_.state, dt, Q_) : state_.state;
+  const State& xp = (dt > 0) ? Predict(state_.state, dt, Q_) : state_.state;
 
   // UPDATE STEP: Compute redidual errors, Kalman gain, and apply update.
   ImuMeasurement imu_unbiased = imu;
   imu_unbiased.a = imu_bias_.correctAccelerometer(imu.a);
   imu_unbiased.w = imu_bias_.correctGyroscope(imu.w);
 
-  State xu = UpdateImu(x_new, imu_unbiased, q_body_imu_, params_.n_gravity, R_imu_);
+  State xu = UpdateImu(xp, imu_unbiased, q_body_imu_, params_.n_gravity, R_imu_);
   xu.q = xu.q.normalized(); // Just to be safe.
 
   state_lock_.lock();
@@ -208,6 +238,28 @@ StateStamped StateEkf::PredictAndUpdate(const ImuMeasurement& imu, bool store)
   }
 
   state_history_.DiscardBefore(state_.timestamp - params_.stored_state_lag_sec);
+
+  return state_;
+}
+
+
+StateStamped StateEkf::PredictAndUpdate(seconds_t timestamp,
+                                        const Vector3d& v_world_body,
+                                        const Matrix3d& R_velocity)
+{
+  CHECK(is_initialized_) << "Must call Initialize() before PredictAndUpdate()" << std::endl;
+  const seconds_t dt = (timestamp - state_.timestamp);
+
+  // PREDICT STEP: Simulate the system forward to the current timestep.
+  const State& xp = (dt > 0) ? Predict(state_.state, dt, Q_) : state_.state;
+
+  // UPDATE STEP: Compute redidual errors, Kalman gain, and apply update.
+  const State& xu = UpdateVelocity(xp, v_world_body, R_velocity);
+
+  state_lock_.lock();
+  state_.timestamp = timestamp;
+  state_.state = xu;
+  state_lock_.unlock();
 
   return state_;
 }
