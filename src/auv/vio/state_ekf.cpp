@@ -193,7 +193,7 @@ void StateEkf::Initialize(const StateStamped& state, const ImuBias& imu_bias)
       state_lock_.unlock();
 
       // Fuse the filtered velocity with the externally estimated velocity.
-      // PredictAndUpdate(state_.timestamp, state.state.v, state.state.S.block<3, 3>(v_row, v_row));
+      PredictAndUpdate(state_.timestamp, state.state.v, state.state.S.block<3, 3>(v_row, v_row));
     }
 
     while (!imu_since_init_->Empty()) {
