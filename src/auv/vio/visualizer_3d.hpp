@@ -86,6 +86,8 @@ class Visualizer3D final {
   // Adds an observation of a point landmark from a camera image.
   void AddLandmarkObservation(uid_t cam_id, uid_t lmk_id, const LandmarkObservation& lmk_obs);
 
+  void AddGroundtruthPose(uid_t pose_id, const Matrix4d& T_world_body);
+
   // Starts thread that continuously redraws the 3D visualizer window.
   // The thread is joined when this instance's destructor is called.
   void Start();

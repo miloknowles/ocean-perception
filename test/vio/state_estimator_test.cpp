@@ -1,20 +1,13 @@
 #include <gtest/gtest.h>
 #include <glog/logging.h>
+
 #include <utility>
 #include <unordered_map>
 
 #include <opencv2/highgui.hpp>
 #include <opencv2/calib3d.hpp>
 
-#include <gtsam_unstable/nonlinear/IncrementalFixedLagSmoother.h>
-#include <gtsam_unstable/slam/SmartStereoProjectionPoseFactor.h>
-
-#include <gtsam/slam/BetweenFactor.h>
-#include <gtsam/nonlinear/NonlinearFactorGraph.h>
-#include <gtsam/nonlinear/Values.h>
-#include <gtsam/inference/Key.h>
-#include <gtsam/geometry/Pose3.h>
-
+#include "core/eigen_types.hpp"
 #include "dataset/euroc_dataset.hpp"
 #include "dataset/himb_dataset.hpp"
 #include "core/pinhole_camera.hpp"
@@ -35,8 +28,13 @@ using namespace vio;
 
 TEST(VioTest, TestStateEstimator1)
 {
-  const std::string toplevel_folder = "/home/milo/datasets/Unity3D/farmsim/euroc_test1";
+  const std::string toplevel_folder = "/home/milo/datasets/Unity3D/farmsim/euroc_test3";
   dataset::EurocDataset dataset(toplevel_folder);
+
+  const std::vector<dataset::GroundtruthItem>& groundtruth_poses = dataset.GroundtruthPoses();
+  CHECK(!groundtruth_poses.empty()) << "No groundtruth poses" << std::endl;
+
+  const Matrix4d T0_world_cam = groundtruth_poses.at(0).T_world_body;
 
   const PinholeCamera camera_model(415.876509, 415.876509, 375.5, 239.5, 480, 752);
   const StereoCamera stereo_rig(camera_model, 0.2);
@@ -62,13 +60,19 @@ TEST(VioTest, TestStateEstimator1)
     viz.UpdateBodyPose("imu0", T_world_body);
   };
 
+  LOG(INFO) << "Drawing gt poses" << std::endl;
+  for (size_t i = 0; i < groundtruth_poses.size(); ++i) {
+    const Matrix4d T_world_cam = T0_world_cam.inverse() * groundtruth_poses.at(i).T_world_body;
+    viz.AddGroundtruthPose(i, T_world_cam);
+  }
+
   viz.Start();
 
   state_estimator.RegisterSmootherResultCallback(smoother_callback);
   state_estimator.RegisterFilterResultCallback(filter_callback);
 
   dataset.RegisterStereoCallback(std::bind(&StateEstimator::ReceiveStereo, &state_estimator, std::placeholders::_1));
-  dataset.RegisterImuCallback(std::bind(&StateEstimator::ReceiveImu, &state_estimator, std::placeholders::_1));
+  // dataset.RegisterImuCallback(std::bind(&StateEstimator::ReceiveImu, &state_estimator, std::placeholders::_1));
 
   state_estimator.Initialize(ConvertToSeconds(dataset.FirstTimestamp()), gtsam::Pose3::identity());
 

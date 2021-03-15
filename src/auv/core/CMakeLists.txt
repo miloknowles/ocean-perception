@@ -1,8 +1,8 @@
 SET(LIBRARY_NAME ${PROJECT_NAME}_core)
 
 SET(LIBRARY_SRC
-  macros.hpp
   eigen_types.hpp
+  macros.hpp
   cv_types.hpp
   image_util.hpp
   grid_lookup.hpp

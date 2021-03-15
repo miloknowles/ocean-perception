@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/macros.hpp"
 #include "core/eigen_types.hpp"
 #include "core/timestamp.hpp"
 
@@ -9,6 +10,8 @@ namespace core {
 
 struct ImuMeasurement final
 {
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
   explicit ImuMeasurement(timestamp_t timestamp,
                           const Vector3d& w,
                           const Vector3d& a)

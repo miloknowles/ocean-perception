@@ -2,8 +2,6 @@
 SET(LIBRARY_NAME ${PROJECT_NAME}_dataset)
 
 SET(LIBRARY_SRC
-  stereo_dataset.cpp
-  stereo_dataset.hpp
   data_provider.cpp
   data_provider.hpp
   euroc_dataset.cpp

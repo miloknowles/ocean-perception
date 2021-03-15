@@ -1,15 +1,15 @@
 #pragma once
 
+#include "core/eigen_types.hpp"
+
 #include <string>
 #include <functional>
-#include <vector>
 #include <memory>
 #include <thread>
 #include <utility>
 
 #include "core/cv_types.hpp"
 #include "core/stereo_image.hpp"
-#include "core/eigen_types.hpp"
 #include "core/imu_measurement.hpp"
 #include "core/timestamp.hpp"
 #include "core/uid.hpp"
@@ -28,11 +28,14 @@ typedef std::function<void(const ImuMeasurement&)> ImuCallback;
 
 
 // Represents a stereo image pair stored on disk.
-struct StereoDatasetItem{
-  StereoDatasetItem(timestamp_t timestamp,
-                  const std::string& path_left,
-                  const std::string& path_right)
-      : timestamp(timestamp), path_left(path_left), path_right(path_right) {}
+struct StereoDatasetItem
+{
+  explicit StereoDatasetItem(timestamp_t timestamp,
+                             const std::string& path_left,
+                             const std::string& path_right)
+      : timestamp(timestamp),
+        path_left(path_left),
+        path_right(path_right) {}
 
   timestamp_t timestamp;
   std::string path_left;
@@ -40,8 +43,24 @@ struct StereoDatasetItem{
 };
 
 
+struct GroundtruthItem
+{
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+  explicit GroundtruthItem(timestamp_t timestamp,
+                           Matrix4d T_world_body)
+      : timestamp(timestamp),
+        T_world_body(T_world_body) {}
+
+  timestamp_t timestamp;
+  Matrix4d T_world_body;
+};
+
+
 class DataProvider {
  public:
+  // EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
   DataProvider() = default;
 
   void RegisterStereoCallback(StereoCallback cb) { stereo_callbacks_.emplace_back(cb); }
@@ -59,6 +78,8 @@ class DataProvider {
   void Reset();
 
   timestamp_t FirstTimestamp() const;
+
+  const std::vector<GroundtruthItem>& GroundtruthPoses() const { return pose_data; }
 
  private:
   std::pair<timestamp_t, DataSource> NextTimestamp() const;
@@ -79,9 +100,10 @@ class DataProvider {
   size_t next_stereo_idx_ = 0;
   size_t next_imu_idx_ = 0;
 
- public:
+ protected:
   std::vector<StereoDatasetItem> stereo_data;
   std::vector<ImuMeasurement> imu_data;
+  std::vector<GroundtruthItem> pose_data;
 };
 
 }

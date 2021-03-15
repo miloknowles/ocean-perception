@@ -26,6 +26,12 @@ static std::string GetLandmarkWidgetName(uid_t lmk_id)
 }
 
 
+static std::string GetGroundtruthPoseWidgetName(uid_t pose_id)
+{
+  return "gt_" + std::to_string(pose_id);
+}
+
+
 static cv::Affine3d EigenMatrix4dToCvAffine3d(const Matrix4d& T_world_cam)
 {
   cv::Affine3d::Mat3 R_world_cam;
@@ -129,6 +135,17 @@ void Visualizer3D::AddOrUpdateLandmark(const std::vector<uid_t>& lmk_ids, const 
 
 void Visualizer3D::AddLandmarkObservation(uid_t cam_id, uid_t lmk_id, const LandmarkObservation& lmk_obs)
 {
+}
+
+
+void Visualizer3D::AddGroundtruthPose(uid_t pose_id, const Matrix4d& T_world_body)
+{
+  const cv::Affine3d& T_world_body_cv = EigenMatrix4dToCvAffine3d(T_world_body);
+  const std::string& name = GetGroundtruthPoseWidgetName(pose_id);
+
+  viz_lock_.lock();
+  viz_.showWidget(name, cv::viz::WCameraPosition(0.5), T_world_body_cv);
+  viz_lock_.unlock();
 }
 
 

@@ -179,7 +179,6 @@ void StateEkf::Initialize(const StateStamped& state, const ImuBias& imu_bias)
 
     // Use the estimate of velocity, acceleration, and angular velocity from the filter.
     if (std::fabs(state_history_.OldestKey() - state.timestamp) < 0.1) {
-      LOG(INFO) << "using previous state for v/a/w" << std::endl;
       const seconds_t nearest_timestamp = state_history_.OldestKey();
       const State& nearest_state = state_history_.at(nearest_timestamp);
       state_lock_.lock();

@@ -11,6 +11,7 @@ namespace dataset {
 
 
 HimbDataset::HimbDataset(const std::string& toplevel_path, const std::string& split_name)
+    : DataProvider()
 {
   const std::string left_folder = Join(Join(toplevel_path, split_name), "left");
   const std::string right_folder = Join(Join(toplevel_path, split_name), "right");

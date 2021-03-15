@@ -10,7 +10,7 @@ namespace bm {
 namespace dataset {
 
 
-EurocDataset::EurocDataset(const std::string& toplevel_path)
+EurocDataset::EurocDataset(const std::string& toplevel_path) : DataProvider()
 {
   const std::string mav0_path = Join(toplevel_path, "mav0");
   const std::string cam0_path = Join(mav0_path, "cam0");
@@ -19,6 +19,7 @@ EurocDataset::EurocDataset(const std::string& toplevel_path)
 
   ParseImu(imu0_csv_path);
   ParseStereo(cam0_path, cam1_path);
+  ParseGroundtruth(Join(mav0_path, "cam0_poses.txt"));
 }
 
 
@@ -127,6 +128,44 @@ void EurocDataset::ParseImageFolder(const std::string& cam_folder,
   }
 
   fin.close();
+}
+
+
+void EurocDataset::ParseGroundtruth(const std::string& gt_path)
+{
+  // Read in groundtruth poses.
+  CHECK(Exists(gt_path)) << "Groundtruth pose file does not exist: " << gt_path << std::endl;
+
+  std::ifstream stream(gt_path.c_str());
+  std::string line;
+
+  while (std::getline(stream, line)) {
+    std::stringstream iss(line);
+
+    std::string ns, qw, qx, qy, qz, tx, ty, tz;
+    std::getline(iss, ns, ',');
+    std::getline(iss, qw, ',');
+    std::getline(iss, qx, ',');
+    std::getline(iss, qy, ',');
+    std::getline(iss, qz, ',');
+    std::getline(iss, tx, ',');
+    std::getline(iss, ty, ',');
+    std::getline(iss, tz, ',');
+
+    const Quaterniond q(std::stod(qw), std::stod(qx), std::stod(qy), std::stod(qz));
+    const Vector3d t(std::stod(tx), std::stod(ty), std::stod(tz));
+
+    Matrix4d T_world_body = Matrix4d::Identity();
+    T_world_body.block<3, 3>(0, 0) = q.normalized().toRotationMatrix();
+    T_world_body.block<3, 1>(0, 3) = t;
+    std::cout << T_world_body << std::endl;
+
+    const timestamp_t timestamp = std::stoull(ns);
+    pose_data.emplace_back(GroundtruthItem(timestamp, T_world_body));
+  }
+
+  stream.close();
+  LOG(INFO) << "Read in " << pose_data.size() << " groundtruth poses" << std::endl;
 }
 
 }
