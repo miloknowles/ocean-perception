@@ -304,11 +304,8 @@ void StateEstimator::FilterLoop(seconds_t t0, const gtsam::Pose3& P0_world_body)
 
       // NOTE(milo): Since the smoother doesn't give us acceleration or angular velocity, we
       // initialize them to zero but set a high covariance so that the filter quickly corrects them.
-      S.block<3, 3>(a_row, a_row) = 0.1*Matrix3d::Identity();
+      S.block<3, 3>(a_row, a_row) = 0.5*Matrix3d::Identity();
       S.block<3, 3>(w_row, w_row) = 0.1*Matrix3d::Identity();
-
-      // TODO: get from smoother
-      // const Matrix15d S = Matrix15d::Identity() * 1e-3;
 
       const StateStamped new_initial_state(result.timestamp, State(t, v, a, q, w, S));
       filter.Initialize(new_initial_state, result.imu_bias);

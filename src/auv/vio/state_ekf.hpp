@@ -10,6 +10,7 @@
 #include "core/thread_safe_queue.hpp"
 
 #include "vio/imu_manager.hpp"
+#include "vio/item_history.hpp"
 
 namespace bm {
 namespace vio {
@@ -87,6 +88,7 @@ class StateEkf final {
 
     bool reapply_measurements_after_init = true;
     int stored_imu_max_queue_size = 2000;
+    double stored_state_lag_sec = 10;                // delete stored states once they're this old
 
     // Process noise standard deviations.
     double sigma_Q_t = 1e-2;   // translation
@@ -135,7 +137,13 @@ class StateEkf final {
   StateStamped PredictAndUpdate(const Matrix4d& T_world_body);
 
   // Retrieve the current state.
-  StateStamped GetState() const { return state_; }
+  StateStamped GetState()
+  {
+    state_lock_.lock();
+    const StateStamped out = state_;
+    state_lock_.unlock();
+    return out;
+  }
 
   // Initialize at a state, and set the IMU bias.
   void Initialize(const StateStamped& state, const ImuBias& imu_bias);
@@ -143,12 +151,12 @@ class StateEkf final {
  private:
   Params params_;
 
+  std::mutex state_lock_;
   StateStamped state_;
   ImuBias imu_bias_;
   bool is_initialized_ = false;
 
   // Process noise.
-  // TODO(milo): Should this depend on dt?
   Matrix15d Q_ = 1e-3 * Matrix15d::Identity();
 
   // IMU measurement noise.
@@ -156,8 +164,9 @@ class StateEkf final {
 
   Quaterniond q_body_imu_;
 
-  // ThreadsafeQueue<ImuMeasurement> imu_since_init_;
   std::shared_ptr<ImuManager> imu_since_init_ = nullptr;
+
+  ItemHistory<seconds_t, State> state_history_;
 };
 
 }

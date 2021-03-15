@@ -140,19 +140,41 @@ StateEkf::StateEkf(const Params& params)
 
 void StateEkf::Initialize(const StateStamped& state, const ImuBias& imu_bias)
 {
+  state_lock_.lock();
   state_ = state;
   imu_bias_ = imu_bias;
-  is_initialized_ = true;
+  state_lock_.unlock();
 
   // Reapply any sensor measurements AFTER the new initialized state.
-  if (params_.reapply_measurements_after_init) {
-    // Apply available IMU measurements.
+  if (params_.reapply_measurements_after_init && is_initialized_) {
     imu_since_init_->DiscardBefore(state.timestamp);
+    state_history_.DiscardBefore(state.timestamp);
+
+    // Use the estimate of velocity, acceleration, and angular velocity from the filter.
+    if (std::fabs(state_history_.OldestKey() - state.timestamp) < 0.1) {
+      LOG(INFO) << "using previous state for v/a/w" << std::endl;
+      const seconds_t nearest_timestamp = state_history_.OldestKey();
+      const State& nearest_state = state_history_.at(nearest_timestamp);
+      state_lock_.lock();
+      // state_.state.v = nearest_state.v;
+      state_.state.a = nearest_state.a;
+      state_.state.w = nearest_state.w;
+
+      // Also use the filter covariance instead of the one provided.
+      // state_.state.S.block<3, 3>(v_row, v_row) = nearest_state.S.block<3, 3>(v_row, v_row);
+      state_.state.S.block<3, 3>(a_row, a_row) = nearest_state.S.block<3, 3>(a_row, a_row);
+      state_.state.S.block<3, 3>(w_row, w_row) = nearest_state.S.block<3, 3>(w_row, w_row);
+      state_lock_.unlock();
+    }
+
     while (!imu_since_init_->Empty()) {
       // NOTE(milo): Don't store these measurements in PredictAndUpdate()! Endless loop!
-      PredictAndUpdate(imu_since_init_->Pop(), false);
+      const ImuMeasurement& imu = imu_since_init_->Pop();
+      PredictAndUpdate(imu, false);
     }
   }
+
+  is_initialized_ = true;
 }
 
 
@@ -174,12 +196,18 @@ StateStamped StateEkf::PredictAndUpdate(const ImuMeasurement& imu, bool store)
   State xu = UpdateImu(x_new, imu_unbiased, q_body_imu_, params_.n_gravity, R_imu_);
   xu.q = xu.q.normalized(); // Just to be safe.
 
+  state_lock_.lock();
   state_.timestamp = t_new;
   state_.state = xu;
+  state_lock_.unlock();
 
+  // Store IMU measurements so that we can rewind the filter and re-apply them during re-init.
   if (store && params_.reapply_measurements_after_init) {
     imu_since_init_->Push(imu);
+    state_history_.Update(state_.timestamp, state_.state);
   }
+
+  state_history_.DiscardBefore(state_.timestamp - params_.stored_state_lag_sec);
 
   return state_;
 }
