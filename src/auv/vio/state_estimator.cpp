@@ -286,15 +286,29 @@ void StateEstimator::FilterLoop(seconds_t t0, const gtsam::Pose3& P0_world_body)
       const SmootherResult result = smoother_result_;
       mutex_smoother_result_.unlock();
 
+      filter_imu_manager_.ResetAndUpdateBias(result.imu_bias);
+
       const Vector3d& t = result.P_world_body.translation();
       const Quaterniond& q = result.P_world_body.rotation().toQuaternion().normalized();
       const Vector3d& v = result.v_world_body;
-      LOG(INFO) << "Syncing with velocity: " << v << std::endl;
       const Vector3d& a = Vector3d::Zero(); // TODO
       const Vector3d& w = Vector3d::Zero(); // TODO
 
+      // Make the initial covariance matrix based on the smoother result.
+      StateCovariance S;
+
+      // Pose covariance order is: [ rx ry rz tx ty tz ]
+      S.block<3, 3>(t_row, t_row) = result.cov_pose.block<3, 3>(3, 3);
+      S.block<3, 3>(uq_row, uq_row) = result.cov_pose.block<3, 3>(0, 0);  // TODO
+      S.block<3, 3>(v_row, v_row) = result.cov_vel;
+
+      // NOTE(milo): Since the smoother doesn't give us acceleration or angular velocity, we
+      // initialize them to zero but set a high covariance so that the filter quickly corrects them.
+      S.block<3, 3>(a_row, a_row) = 0.1*Matrix3d::Identity();
+      S.block<3, 3>(w_row, w_row) = 0.1*Matrix3d::Identity();
+
       // TODO: get from smoother
-      const Matrix15d S = Matrix15d::Identity() * 1e-3;
+      // const Matrix15d S = Matrix15d::Identity() * 1e-3;
 
       const StateStamped new_initial_state(result.timestamp, State(t, v, a, q, w, S));
       filter.Initialize(new_initial_state, result.imu_bias);

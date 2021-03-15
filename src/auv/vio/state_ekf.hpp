@@ -20,6 +20,13 @@ using namespace core;
 typedef Vector16d StateVector;
 typedef Matrix15d StateCovariance;
 
+// Row indices for variables in the 15x15 jacobian matrix F.
+static const size_t t_row = 0;
+static const size_t v_row = 3;
+static const size_t a_row = 6;
+static const size_t uq_row = 9;
+static const size_t w_row = 12;
+
 
 struct State final
 {

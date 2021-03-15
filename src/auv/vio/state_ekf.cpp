@@ -4,13 +4,6 @@ namespace bm {
 namespace vio {
 
 
-// Row indices for variables in the 15x15 jacobian matrix F.
-static const size_t t_row = 0;
-static const size_t v_row = 3;
-static const size_t a_row = 6;
-static const size_t uq_row = 9;
-static const size_t w_row = 12;
-
 typedef Eigen::Matrix<double, 6, 15> Matrix6x15;
 typedef Eigen::Matrix<double, 15, 6> Matrix15x6;
 
@@ -98,7 +91,6 @@ static State UpdateImu(const State& x,
   const Matrix6d& S = H * x.S * H.transpose() + R;
   const Matrix15x6& K = x.S * H.transpose() * S.inverse();
 
-  // q_world_imu = q_world_body * q_body_imu
   const Quaterniond& q_world_imu = x.q * q_body_imu;
   const ImuMeasurement& imu_uc = RotateAndRemoveGravity(q_world_imu, n_gravity, imu);
 

@@ -68,7 +68,10 @@ void Smoother::Initialize(seconds_t timestamp,
   gtsam::NonlinearFactorGraph new_factors;
   gtsam::Values new_values;
 
-  result_ = SmootherResult(id0, timestamp, P_world_body, imu_available, v_world_body, imu_bias);
+  result_ = SmootherResult(id0, timestamp, P_world_body, imu_available, v_world_body, imu_bias,
+      params_.pose_prior_noise_model->covariance(),
+      params_.velocity_noise_model->covariance(),
+      params_.bias_prior_noise_model->covariance());
 
   // Prior and initial value for the first pose.
   new_factors.addPrior<gtsam::Pose3>(P0_sym, P_world_body, params_.pose_prior_noise_model);
@@ -186,6 +189,10 @@ SmootherResult Smoother::UpdateGraphNoVision(const PimResult& pim_result)
   //================================ RETRIEVE VARIABLE ESTIMATES ===================================
   const gtsam::Values& estimate = smoother_.calculateBestEstimate();
 
+  const Matrix6d cov_pose = smoother_.marginalCovariance(keypose_sym).matrix();
+  const Matrix3d cov_vel = smoother_.marginalCovariance(vel_sym).matrix();
+  const Matrix6d cov_bias = smoother_.marginalCovariance(bias_sym).matrix();
+
   result_lock_.lock();
   result_ = SmootherResult(
       keypose_id,
@@ -193,7 +200,10 @@ SmootherResult Smoother::UpdateGraphNoVision(const PimResult& pim_result)
       estimate.at<gtsam::Pose3>(keypose_sym),
       true,
       estimate.at<gtsam::Vector3>(vel_sym),
-      estimate.at<ImuBias>(bias_sym));
+      estimate.at<ImuBias>(bias_sym),
+      cov_pose,
+      cov_vel,
+      cov_bias);
   result_lock_.unlock();
 
   return result_;
@@ -316,6 +326,13 @@ SmootherResult Smoother::UpdateGraphWithVision(
   //================================ RETRIEVE VARIABLE ESTIMATES ===================================
   const gtsam::Values& estimate = smoother_.calculateBestEstimate();
 
+  const Matrix6d cov_pose = smoother_.marginalCovariance(keypose_sym).matrix();
+  const Matrix3d cov_vel = smoother_.marginalCovariance(vel_sym).matrix();
+  const Matrix6d cov_bias = smoother_.marginalCovariance(bias_sym).matrix();
+
+  const Matrix3d& default_cov_vel = params_.velocity_noise_model->covariance();
+  const Matrix6d& default_cov_bias = params_.bias_prior_noise_model->covariance();
+
   result_lock_.lock();
   result_ = SmootherResult(
       keypose_id,
@@ -323,7 +340,10 @@ SmootherResult Smoother::UpdateGraphWithVision(
       estimate.at<gtsam::Pose3>(keypose_sym),
       graph_has_imu_btw_factor,
       graph_has_imu_btw_factor ? estimate.at<gtsam::Vector3>(vel_sym) : kZeroVelocity,
-      graph_has_imu_btw_factor ? estimate.at<ImuBias>(bias_sym) : kZeroImuBias);
+      graph_has_imu_btw_factor ? estimate.at<ImuBias>(bias_sym) : kZeroImuBias,
+      cov_pose,
+      graph_has_imu_btw_factor ? cov_vel : default_cov_vel,
+      graph_has_imu_btw_factor ? cov_bias : default_cov_bias);
   result_lock_.unlock();
 
   return result_;
