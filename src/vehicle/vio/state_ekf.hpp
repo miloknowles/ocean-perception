@@ -127,6 +127,14 @@ class StateEkf final {
   // Construct with parameters.
   StateEkf(const Params& params);
 
+  // Rewind the filter to it's state at a previous timestamp. Will throw an exception if the old
+  // state was not available.
+  void Rewind(seconds_t timestamp, seconds_t allowed_dt = 0.1);
+
+  // Re-apply all stored imu measurements on top of the current state.
+  void UpdateImuBias(const ImuBias& imu_bias) { imu_bias_ = imu_bias; }
+  void ReapplyImu();
+
   // Simulate the forward dynamics of the state, then update with a single IMU measurement. If the
   // IMU timestamp is the same or before the current state timestamp, skips the prediction step.
   // [1] https://bicr.atr.jp//~aude/publications/ras99.pdf
@@ -134,7 +142,11 @@ class StateEkf final {
   StateStamped PredictAndUpdate(const ImuMeasurement& imu, bool store = true);
 
   // Update with an external pose estimate (e.g from visual odometry).
-  StateStamped PredictAndUpdate(seconds_t timestamp, const Matrix4d& T_world_body);
+  StateStamped PredictAndUpdate(seconds_t timestamp,
+                                const Quaterniond& q_world_body,
+                                const Vector3d& t_world_body,
+                                const Matrix6d& R_pose);
+
   StateStamped PredictAndUpdate(seconds_t timestamp,
                                 const Vector3d& v_world_body,
                                 const Matrix3d& R_velocity);
@@ -152,6 +164,10 @@ class StateEkf final {
   void Initialize(const StateStamped& state, const ImuBias& imu_bias);
 
  private:
+  State PredictIfTimeElapsed(seconds_t timestamp);
+  StateStamped ThreadsafeSetState(seconds_t timestamp, const State& state);
+
+ private:
   Params params_;
 
   std::mutex state_lock_;
@@ -167,7 +183,7 @@ class StateEkf final {
 
   Quaterniond q_body_imu_;
 
-  std::shared_ptr<ImuManager> imu_since_init_ = nullptr;
+  std::shared_ptr<ImuManager> imu_history_ = nullptr;
 
   ItemHistory<seconds_t, State> state_history_;
 };

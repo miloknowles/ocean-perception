@@ -11,6 +11,60 @@ typedef Eigen::Matrix<double, 3, 15> Matrix3x15;
 typedef Eigen::Matrix<double, 15, 3> Matrix15x3;
 
 
+StateEkf::StateEkf(const Params& params)
+    : params_(params),
+      state_(0, State())
+{
+  ImuManager::Params imu_manager_params;
+  imu_manager_params.max_queue_size = params_.stored_imu_max_queue_size;
+  imu_history_ = std::shared_ptr<ImuManager>(new ImuManager(imu_manager_params));
+
+  // IMU measurement noise: [ wx wy wz ax ay az ]
+  R_imu_.block<3, 3>(0, 0) =  Matrix3d::Identity() * std::pow(params_.sigma_R_imu_w, 2.0);
+  R_imu_.block<3, 3>(3, 3) =  Matrix3d::Identity() * std::pow(params_.sigma_R_imu_a, 2.0);
+
+  // NOTE(milo): For now, process noise is diagonal (no covariance).
+  Q_.block<3, 3>(t_row, t_row) =    Matrix3d::Identity() * std::pow(params_.sigma_Q_t, 2.0);
+  Q_.block<3, 3>(v_row, v_row) =    Matrix3d::Identity() * std::pow(params_.sigma_Q_v, 2.0);
+  Q_.block<3, 3>(a_row, a_row) =    Matrix3d::Identity() * std::pow(params_.sigma_Q_a, 2.0);
+  Q_.block<3, 3>(uq_row, uq_row) =  Matrix3d::Identity() * std::pow(params_.sigma_Q_uq, 2.0);
+  Q_.block<3, 3>(w_row, w_row) =    Matrix3d::Identity() * std::pow(params_.sigma_Q_w, 2.0);
+
+  // Make sure that the quaternion is a unit quaternion!
+  q_body_imu_ = Quaterniond(params_.T_body_imu.block<3, 3>(0, 0)).normalized();
+}
+
+
+void StateEkf::Rewind(seconds_t timestamp, seconds_t allowed_dt)
+{
+  state_history_.DiscardBefore(timestamp);
+  CHECK(!state_history_.Empty()) << "State history is empty after timestamp. Filter is behind smoother!" << std::endl;
+
+  const seconds_t dt = std::fabs(state_history_.OldestKey() - timestamp);
+  CHECK(dt <= allowed_dt) << "Tried to rewind state, but couldn't find a close timestamp.\n"
+                          << "timestamp=" << timestamp << " oldest=" << state_history_.OldestKey() << std::endl;
+
+  // Use the estimate of velocity, acceleration, and angular velocity from the filter.
+  const seconds_t nearest_timestamp = state_history_.OldestKey();
+
+  state_lock_.lock();
+  state_ = StateStamped(nearest_timestamp, state_history_.at(nearest_timestamp));
+  state_lock_.unlock();
+}
+
+
+void StateEkf::ReapplyImu()
+{
+  imu_history_->DiscardBefore(state_.timestamp);
+
+  while (!imu_history_->Empty()) {
+    // NOTE(milo): Don't store these measurements in PredictAndUpdate()! Endless loop!
+    const ImuMeasurement imu = imu_history_->Pop();
+    PredictAndUpdate(imu, false);
+  }
+}
+
+
 // [1] https://bicr.atr.jp//~aude/publications/ras99.pdf
 // [2] https://en.wikipedia.org/wiki/Extended_Kalman_filter
 static State Predict(const State& x0,
@@ -141,27 +195,41 @@ static State UpdateVelocity(const State& x,
 }
 
 
-StateEkf::StateEkf(const Params& params)
-    : params_(params),
-      state_(0, State())
+static State UpdatePose(const State& x,
+                        const Quaterniond& q_world_body,
+                        const Vector3d& t_world_body,
+                        const Matrix6d& R_pose)
 {
-  ImuManager::Params imu_manager_params;
-  imu_manager_params.max_queue_size = params_.stored_imu_max_queue_size;
-  imu_since_init_ = std::shared_ptr<ImuManager>(new ImuManager(imu_manager_params));
+  // To be consistent with the way GTSAM orders pose variables:
+  // [ rx, ry, rz, tx, ty, tz ]
+  Matrix6x15 H = Matrix6x15::Zero();
+  H.block<3, 3>(0, uq_row) = Matrix3d::Identity();
+  H.block<3, 3>(3, t_row) = Matrix3d::Identity();
 
-  // IMU measurement noise: [ wx wy wz ax ay az ]
-  R_imu_.block<3, 3>(0, 0) =  Matrix3d::Identity() * std::pow(params_.sigma_R_imu_w, 2.0);
-  R_imu_.block<3, 3>(3, 3) =  Matrix3d::Identity() * std::pow(params_.sigma_R_imu_a, 2.0);
+  const Matrix6d& S = H * x.S * H.transpose() + R_pose;
+  const Matrix15x6& K = x.S * H.transpose() * S.inverse();
 
-  // NOTE(milo): For now, process noise is diagonal (no covariance).
-  Q_.block<3, 3>(t_row, t_row) =    Matrix3d::Identity() * std::pow(params_.sigma_Q_t, 2.0);
-  Q_.block<3, 3>(v_row, v_row) =    Matrix3d::Identity() * std::pow(params_.sigma_Q_v, 2.0);
-  Q_.block<3, 3>(a_row, a_row) =    Matrix3d::Identity() * std::pow(params_.sigma_Q_a, 2.0);
-  Q_.block<3, 3>(uq_row, uq_row) =  Matrix3d::Identity() * std::pow(params_.sigma_Q_uq, 2.0);
-  Q_.block<3, 3>(w_row, w_row) =    Matrix3d::Identity() * std::pow(params_.sigma_Q_w, 2.0);
+  // NOTE(milo): We compute the relative rotation between the measured q_world_body and predicted
+  // state.q. Then, we express that error in the TANGENT space (angle-axis), where it is valid to
+  // apply a linear Kalman gain. Finally, we take the gain-weighted tangent space differential
+  // rotation (d_uq), convert it back to a quaternion, and apply it.
+  const Quaterniond& err_quat = q_world_body * x.q.inverse();
+  const AngleAxisd err_angleaxis(err_quat);
 
-  // Make sure that the quaternion is a unit quaternion!
-  q_body_imu_ = Quaterniond(params_.T_body_imu.block<3, 3>(0, 0)).normalized();
+  Vector6d y;
+  y.block<3, 1>(0, 0) = err_angleaxis.angle() * err_angleaxis.axis();
+  y.block<3, 1>(3, 0) = (t_world_body - x.t);
+
+  const Vector15d& dx = K*y;
+  const AngleAxisd d_uq(dx.block<3, 1>(0, 0).norm(), dx.block<3, 1>(0, 0).normalized());
+
+  State xu = x;
+  xu.t += dx.block<3, 1>(3, 0);
+  xu.q = Quaterniond(d_uq) * xu.q;  // Left-multiply dq * q.
+  xu.q = xu.q.normalized(); // Just to be safe.
+  xu.S = (Matrix15d::Identity() - K*H) * x.S;
+
+  return xu;
 }
 
 
@@ -173,35 +241,35 @@ void StateEkf::Initialize(const StateStamped& state, const ImuBias& imu_bias)
   state_lock_.unlock();
 
   // Reapply any sensor measurements AFTER the new initialized state.
-  if (params_.reapply_measurements_after_init && is_initialized_) {
-    imu_since_init_->DiscardBefore(state.timestamp);
-    state_history_.DiscardBefore(state.timestamp);
+  // if (params_.reapply_measurements_after_init && is_initialized_) {
+  //   imu_history_->DiscardBefore(state.timestamp);
+  //   state_history_.DiscardBefore(state.timestamp);
 
-    // Use the estimate of velocity, acceleration, and angular velocity from the filter.
-    if (std::fabs(state_history_.OldestKey() - state.timestamp) < 0.1) {
-      const seconds_t nearest_timestamp = state_history_.OldestKey();
-      const State& nearest_state = state_history_.at(nearest_timestamp);
-      state_lock_.lock();
-      state_.state.v = nearest_state.v;
-      state_.state.a = nearest_state.a;
-      state_.state.w = nearest_state.w;
+  //   // Use the estimate of velocity, acceleration, and angular velocity from the filter.
+  //   if (std::fabs(state_history_.OldestKey() - state.timestamp) < 0.1) {
+  //     const seconds_t nearest_timestamp = state_history_.OldestKey();
+  //     const State& nearest_state = state_history_.at(nearest_timestamp);
+  //     state_lock_.lock();
+  //     state_.state.v = nearest_state.v;
+  //     state_.state.a = nearest_state.a;
+  //     state_.state.w = nearest_state.w;
 
-      // Also use the filter covariance instead of the one provided.
-      state_.state.S.block<3, 3>(v_row, v_row) = nearest_state.S.block<3, 3>(v_row, v_row);
-      state_.state.S.block<3, 3>(a_row, a_row) = nearest_state.S.block<3, 3>(a_row, a_row);
-      state_.state.S.block<3, 3>(w_row, w_row) = nearest_state.S.block<3, 3>(w_row, w_row);
-      state_lock_.unlock();
+  //     // Also use the filter covariance instead of the one provided.
+  //     state_.state.S.block<3, 3>(v_row, v_row) = nearest_state.S.block<3, 3>(v_row, v_row);
+  //     state_.state.S.block<3, 3>(a_row, a_row) = nearest_state.S.block<3, 3>(a_row, a_row);
+  //     state_.state.S.block<3, 3>(w_row, w_row) = nearest_state.S.block<3, 3>(w_row, w_row);
+  //     state_lock_.unlock();
 
-      // Fuse the filtered velocity with the externally estimated velocity.
-      PredictAndUpdate(state_.timestamp, state.state.v, state.state.S.block<3, 3>(v_row, v_row));
-    }
+  //     // Fuse the filtered velocity with the externally estimated velocity.
+  //     PredictAndUpdate(state_.timestamp, state.state.v, state.state.S.block<3, 3>(v_row, v_row));
+  //   }
 
-    while (!imu_since_init_->Empty()) {
-      // NOTE(milo): Don't store these measurements in PredictAndUpdate()! Endless loop!
-      const ImuMeasurement& imu = imu_since_init_->Pop();
-      PredictAndUpdate(imu, false);
-    }
-  }
+  //   while (!imu_history_->Empty()) {
+  //     // NOTE(milo): Don't store these measurements in PredictAndUpdate()! Endless loop!
+  //     const ImuMeasurement& imu = imu_history_->Pop();
+  //     PredictAndUpdate(imu, false);
+  //   }
+  // }
 
   is_initialized_ = true;
 }
@@ -209,13 +277,9 @@ void StateEkf::Initialize(const StateStamped& state, const ImuBias& imu_bias)
 
 StateStamped StateEkf::PredictAndUpdate(const ImuMeasurement& imu, bool store)
 {
-  CHECK(is_initialized_) << "Must call Initialize() before PredictAndUpdate()" << std::endl;
-
-  const seconds_t t_new = ConvertToSeconds(imu.timestamp);
-  const seconds_t dt = (t_new - state_.timestamp);
-
   // PREDICT STEP: Simulate the system forward to the current timestep.
-  const State& xp = (dt > 0) ? Predict(state_.state, dt, Q_) : state_.state;
+  const seconds_t t_new = ConvertToSeconds(imu.timestamp);
+  const State& xp = PredictIfTimeElapsed(t_new);
 
   // UPDATE STEP: Compute redidual errors, Kalman gain, and apply update.
   ImuMeasurement imu_unbiased = imu;
@@ -225,20 +289,12 @@ StateStamped StateEkf::PredictAndUpdate(const ImuMeasurement& imu, bool store)
   State xu = UpdateImu(xp, imu_unbiased, q_body_imu_, params_.n_gravity, R_imu_);
   xu.q = xu.q.normalized(); // Just to be safe.
 
-  state_lock_.lock();
-  state_.timestamp = t_new;
-  state_.state = xu;
-  state_lock_.unlock();
-
   // Store IMU measurements so that we can rewind the filter and re-apply them during re-init.
   if (store && params_.reapply_measurements_after_init) {
-    imu_since_init_->Push(imu);
-    state_history_.Update(state_.timestamp, state_.state);
+    imu_history_->Push(imu);
   }
 
-  state_history_.DiscardBefore(state_.timestamp - params_.stored_state_lag_sec);
-
-  return state_;
+  return ThreadsafeSetState(t_new, xu);
 }
 
 
@@ -246,23 +302,57 @@ StateStamped StateEkf::PredictAndUpdate(seconds_t timestamp,
                                         const Vector3d& v_world_body,
                                         const Matrix3d& R_velocity)
 {
-  CHECK(is_initialized_) << "Must call Initialize() before PredictAndUpdate()" << std::endl;
-  const seconds_t dt = (timestamp - state_.timestamp);
-
   // PREDICT STEP: Simulate the system forward to the current timestep.
-  const State& xp = (dt > 0) ? Predict(state_.state, dt, Q_) : state_.state;
+  const State& xp = PredictIfTimeElapsed(timestamp);
 
   // UPDATE STEP: Compute redidual errors, Kalman gain, and apply update.
   const State& xu = UpdateVelocity(xp, v_world_body, R_velocity);
 
+  return ThreadsafeSetState(timestamp, xu);
+}
+
+
+StateStamped StateEkf::PredictAndUpdate(seconds_t timestamp,
+                                        const Quaterniond& q_world_body,
+                                        const Vector3d& t_world_body,
+                                        const Matrix6d& R_pose)
+{
+  // PREDICT STEP: Simulate the system forward to the current timestep.
+  const State& xp = PredictIfTimeElapsed(timestamp);
+
+  // UPDATE STEP: Compute redidual errors, Kalman gain, and apply update.
+  const State& xu = UpdatePose(xp, q_world_body, t_world_body, R_pose);
+
+  return ThreadsafeSetState(timestamp, xu);
+}
+
+
+State StateEkf::PredictIfTimeElapsed(seconds_t timestamp)
+{
+  CHECK(is_initialized_) << "Must call Initialize() before Predict()" << std::endl;
+
+  const seconds_t dt = (timestamp - state_.timestamp);
+  CHECK(dt >= 0) << "Tried to call Predict() using a stale measurement" << std::endl;
+
+  // PREDICT STEP: Simulate the system forward to the current timestep.
+  return (dt > 0) ? Predict(state_.state, dt, Q_) : state_.state;
+}
+
+
+StateStamped StateEkf::ThreadsafeSetState(seconds_t timestamp, const State& state)
+{
   state_lock_.lock();
   state_.timestamp = timestamp;
-  state_.state = xu;
+  state_.state = state;
   state_lock_.unlock();
+
+  state_history_.Update(timestamp, state);
+
+  // Make sure the stored state history doesn't grow unbounded.
+  state_history_.DiscardBefore(timestamp - params_.stored_state_lag_sec);
 
   return state_;
 }
-
 
 }
 }

@@ -18,11 +18,11 @@ show_feature_tracks: 1
 #===============================================================================
 SmootherParams:
   pose_prior_noise_model: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01]    # rad, rad, rad, m, m, m
-  frontend_vo_noise_model: [0.08, 0.08, 0.08, 0.1, 0.1, 0.1]      # rad, rad, rad, m, m, m
+  frontend_vo_noise_model: [0.05, 0.05, 0.05, 0.3, 0.3, 0.3]      # rad, rad, rad, m, m, m
   lmk_mono_reproj_err_sigma: 3.0    # px in u and v
-  lmk_stereo_reproj_err_sigma: 1.0  # px in u and v
+  lmk_stereo_reproj_err_sigma: 2.0  # px in u and v
   velocity_sigma: 0.3 # m/s
-  extra_smoothing_iters: 3
+  extra_smoothing_iters: 1
 
   # Noise model for the zero-prior on IMU bias.
   bias_prior_noise_model_sigma: 0.01
@@ -69,7 +69,7 @@ StereoFrontend:
   FeatureDetector:
     max_features_per_frame: 200
     subpixel_corners: 0 # bool
-    min_distance_btw_tracked_and_detected_features: 20
+    min_distance_btw_tracked_and_detected_features: 15
     gftt_quality_level: 0.01
     gftt_block_size: 5
     gftt_use_harris_corner_detector: 0 # bool

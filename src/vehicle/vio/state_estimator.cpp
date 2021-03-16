@@ -257,6 +257,8 @@ void StateEstimator::FilterLoop(seconds_t t0, const gtsam::Pose3& P0_world_body)
       0.1 * Matrix15d::Identity())),
       ImuBias());
 
+  filter_state_ = filter.GetState();
+
   while (!is_shutdown_) {
     if (!filter_vo_queue_.Empty()) {
       filter_vo_queue_.Pop(); // Keep clearing this queue for now.
@@ -282,8 +284,6 @@ void StateEstimator::FilterLoop(seconds_t t0, const gtsam::Pose3& P0_world_body)
       const SmootherResult result = smoother_result_;
       mutex_smoother_result_.unlock();
 
-      filter_imu_manager_.ResetAndUpdateBias(result.imu_bias);
-
       const Vector3d& t = result.P_world_body.translation();
       const Quaterniond& q = result.P_world_body.rotation().toQuaternion().normalized();
       const Vector3d& v = result.v_world_body;
@@ -303,8 +303,19 @@ void StateEstimator::FilterLoop(seconds_t t0, const gtsam::Pose3& P0_world_body)
       S.block<3, 3>(a_row, a_row) = 0.5*Matrix3d::Identity();
       S.block<3, 3>(w_row, w_row) = 0.1*Matrix3d::Identity();
 
-      const StateStamped new_initial_state(result.timestamp, State(t, v, a, q, w, S));
-      filter.Initialize(new_initial_state, result.imu_bias);
+      // const StateStamped new_initial_state(result.timestamp, State(t, v, a, q, w, S));
+      // filter.Initialize(new_initial_state, result.imu_bias);
+
+      filter.Rewind(result.timestamp);
+      filter.UpdateImuBias(result.imu_bias);
+      filter.PredictAndUpdate(result.timestamp,
+                              result.P_world_body.rotation().toQuaternion(),
+                              result.P_world_body.translation(),
+                              result.cov_pose);
+      filter.PredictAndUpdate(result.timestamp,
+                              result.v_world_body,
+                              result.cov_vel);
+      filter.ReapplyImu();
 
       mutex_filter_result_.lock();
       filter_state_ = filter.GetState();

@@ -266,8 +266,7 @@ SmootherResult Smoother::UpdateGraphWithVision(
   // Even if visual odometry didn't line up with the previous keypose, we still want to add stereo
   // landmarks, since they could be observed in future keyframes.
   for (const LandmarkObservation& lmk_obs : odom_result.lmk_obs) {
-    // TODO(milo): See if we can remove this and let gtsam deal with it.
-    if (lmk_obs.disparity < 1.0) {
+    if (lmk_obs.disparity < 0) {
       LOG(WARNING) << "Skipped zero-disparity observation!" << std::endl;
       continue;
     }

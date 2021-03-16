@@ -14,8 +14,18 @@ class ItemHistory final {
 
   ItemHistory() = default;
 
-  Key NewestKey() const { return key_to_item_map_.rbegin()->first; }
-  Key OldestKey() const { return key_to_item_map_.begin()->first; }
+  Key NewestKey() const
+  {
+    CHECK(!Empty()) << "Cannot get NewestKey() for empty history" << std::endl;
+    return key_to_item_map_.rbegin()->first;
+  }
+
+  Key OldestKey() const
+  {
+    CHECK(!Empty()) << "Cannot get OldestKey() for empty history" << std::endl;
+    return key_to_item_map_.begin()->first;
+  }
+
   size_t Size() const { return key_to_item_map_.size(); }
   bool Empty() const { return key_to_item_map_.empty(); }
   bool Exists(Key k) const { return key_to_item_map_.count(k) > 0; }

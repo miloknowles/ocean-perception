@@ -30,6 +30,9 @@ using namespace core;
 // Used to pass a camera pose (with an optional image) to the visualizer.
 struct CameraPoseData
 {
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+  MACRO_DELETE_DEFAULT_CONSTRUCTOR(CameraPoseData)
+
   explicit CameraPoseData(uid_t cam_id,
                           const Image1b& left_image,
                           const Matrix4d& T_world_cam,
@@ -43,6 +46,22 @@ struct CameraPoseData
   Image1b left_image;
   Matrix4d T_world_cam;
   bool is_keyframe;
+};
+
+
+// Used to pass a generic pose to the visualizer.
+struct BodyPoseData
+{
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+  MACRO_DELETE_DEFAULT_CONSTRUCTOR(BodyPoseData)
+
+  explicit BodyPoseData(const std::string& name,
+                        const Matrix4d& T_world_body)
+      : name(name),
+        T_world_body(T_world_body) {}
+
+  std::string name;
+  Matrix4d T_world_body;
 };
 
 
@@ -97,6 +116,7 @@ class Visualizer3D final {
   // Internal functions that take items off of queues and add to the visualizer.
   void AddCameraPose(const CameraPoseData& data);
   void UpdateCameraPose(const CameraPoseData& data);
+  void UpdateBodyPose(const BodyPoseData& data);
 
   void RemoveOldLandmarks();  // Ensures that max number of landmarks isn't exceeded.
   void RedrawThread();        // Main thread that handles the Viz3D window.
@@ -113,6 +133,7 @@ class Visualizer3D final {
   // NOTE(milo): These queues are allowed to grow unbounded!
   ThreadsafeQueue<CameraPoseData> add_camera_pose_queue_{0, true};
   ThreadsafeQueue<CameraPoseData> update_camera_pose_queue_{0, true};
+  ThreadsafeQueue<BodyPoseData> update_body_pose_queue_{0, true};
 
   std::unordered_set<std::string> widget_names_;
 
