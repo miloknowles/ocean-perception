@@ -156,7 +156,7 @@ class Smoother final {
   // a preintegrated IMU factor is added also.
   // NOTE: pim_result should be integrated in the BODY frame!
   SmootherResult UpdateGraphWithVision(const StereoFrontend::Result& frontend_result,
-                                       const std::shared_ptr<PimResult>& pim_result_ptr = nullptr);
+                                       const PimResult::ConstPtr& pim_result_ptr = nullptr);
 
   // Threadsafe access to the latest result.
   SmootherResult GetResult();

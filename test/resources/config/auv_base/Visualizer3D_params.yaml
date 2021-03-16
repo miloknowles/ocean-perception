@@ -1,0 +1,4 @@
+%YAML:1.0
+
+max_stored_poses: 100
+max_stored_landmarks: 1000

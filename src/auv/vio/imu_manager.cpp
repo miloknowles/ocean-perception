@@ -46,13 +46,21 @@ PimResult ImuManager::Preintegrate(seconds_t from_time, seconds_t to_time)
     return PimResult(false, kMinSeconds, kMaxSeconds, PimC());
   }
 
+  // Requesting a from_time that is too far before our earliest measurement.
+  if (Oldest() > (from_time + params_.allowed_misalignment_sec)) {
+    return PimResult(false, kMinSeconds, kMaxSeconds, PimC());
+  }
+
+  // Requesting a to_time that is too far after our newest measurement.
+  if (Newest() < (to_time - params_.allowed_misalignment_sec)) {
+    return PimResult(false, kMinSeconds, kMaxSeconds, PimC());
+  }
+
   // Get the first measurement >= from_time.
   ImuMeasurement imu = queue_.Pop();
   while (ConvertToSeconds(queue_.PeekFront().timestamp) <= from_time) {
     imu = queue_.Pop();
   }
-
-  const gtsam::Vector3 w_from = imu.w;
 
   const double earliest_imu_sec = ConvertToSeconds(imu.timestamp);
 
@@ -79,7 +87,6 @@ PimResult ImuManager::Preintegrate(seconds_t from_time, seconds_t to_time)
   }
 
   const double latest_imu_sec = ConvertToSeconds(imu.timestamp);
-  const gtsam::Vector3 w_to = imu.w;
 
   // FAIL: No measurement close to (specified) to_time.
   const double offset_to_sec = (to_time != kMaxSeconds) ? std::fabs(latest_imu_sec - to_time) : 0.0;
@@ -94,8 +101,6 @@ PimResult ImuManager::Preintegrate(seconds_t from_time, seconds_t to_time)
   }
 
   PimResult out = PimResult(true, earliest_imu_sec, latest_imu_sec, pim_);
-  out.w_from_unbiased = pim_.biasHat().correctGyroscope(w_from);
-  out.w_to_unbiased = pim_.biasHat().correctGyroscope(w_to);
   pim_.resetIntegration();
 
   return out;
@@ -113,6 +118,18 @@ void ImuManager::DiscardBefore(seconds_t time)
   while (!queue_.Empty() && ConvertToSeconds(queue_.PeekFront().timestamp) < time) {
     queue_.Pop();
   }
+}
+
+
+seconds_t ImuManager::Newest()
+{
+  return queue_.Empty() ? kMaxSeconds : ConvertToSeconds(queue_.PeekBack().timestamp);
+}
+
+
+seconds_t ImuManager::Oldest()
+{
+  return queue_.Empty() ? kMinSeconds : ConvertToSeconds(queue_.PeekFront().timestamp);
 }
 
 

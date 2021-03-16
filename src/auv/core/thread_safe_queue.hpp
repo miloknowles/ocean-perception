@@ -50,7 +50,7 @@ class ThreadsafeQueue {
   Item Pop()
   {
     lock_.lock();
-    CHECK_GT(q_.size(), 0) << "Tried to pop from ThreadSafeQueue of zero size!" << std::endl;
+    CHECK_GT(q_.size(), 0) << "Tried to pop from empty ThreadSafeQueue!" << std::endl;
     const Item item = q_.front();
     q_.pop();
     lock_.unlock();
@@ -85,6 +85,7 @@ class ThreadsafeQueue {
   const Item& PeekFront()
   {
     lock_.lock();
+    CHECK_GT(q_.size(), 0) << "Tried to PeekFront() from empty ThreadSafeQueue!" << std::endl;
     const Item& item = q_.front();
     lock_.unlock();
     return item;
@@ -93,6 +94,7 @@ class ThreadsafeQueue {
   const Item& PeekBack()
   {
     lock_.lock();
+    CHECK_GT(q_.size(), 0) << "Tried to PeekBack() from empty ThreadSafeQueue!" << std::endl;
     const Item& item = q_.back();
     lock_.unlock();
     return item;

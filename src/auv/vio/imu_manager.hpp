@@ -16,17 +16,24 @@ using namespace core;
 
 struct PimResult final
 {
-  PimResult(bool valid, seconds_t from_time, seconds_t to_time, const PimC& pim)
-      : valid(valid), from_time(from_time), to_time(to_time), pim(pim) {}
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-  bool valid;
+  MACRO_DELETE_DEFAULT_CONSTRUCTOR(PimResult)
+  MACRO_SHARED_POINTER_TYPEDEFS(PimResult)
+
+  explicit PimResult(bool timestamps_aligned,
+                     seconds_t from_time,
+                     seconds_t to_time,
+                     const PimC& pim)
+      : timestamps_aligned(timestamps_aligned),
+        from_time(from_time),
+        to_time(to_time),
+        pim(pim) {}
+
+  bool timestamps_aligned;
   seconds_t from_time;
   seconds_t to_time;
   PimC pim;
-
-  // Angular velocity at the start and end timestamps, with bias subtracted off.
-  gtsam::Vector3 w_from_unbiased = gtsam::Vector3::Zero();
-  gtsam::Vector3 w_to_unbiased = gtsam::Vector3::Zero();
 };
 
 
@@ -92,7 +99,7 @@ class ImuManager final {
   // Is the IMU queue empty?
   bool Empty() { return queue_.Empty(); }
 
-  // Returns the size of hte IMU queue.
+  // Returns the size of the IMU queue.
   size_t Size() { return queue_.Size(); }
 
   // Get the oldest IMU measurement (first in) from the queue.
@@ -102,7 +109,7 @@ class ImuManager final {
   // If not time range is given, all available result are integrated. Integration is reset inside
   // of this function once all IMU measurements are incorporated. Internally, GTSAM converts raw
   // IMU measurements into body frame measurements using body_P_sensor.
-  // NOTE(milo): All measurements up to the to_time are removed from tjkjhe queue!
+  // NOTE(milo): All measurements up to the to_time are removed from the queue!
   PimResult Preintegrate(seconds_t from_time = kMinSeconds,
                          seconds_t to_time = kMaxSeconds);
 
@@ -113,21 +120,11 @@ class ImuManager final {
   // Throw away IMU measurements before (but NOT equal to) time.
   void DiscardBefore(seconds_t time);
 
-  // Timestamp of the newest IMU measurement in the queue.
-  seconds_t Newest() { return ConvertToSeconds(queue_.PeekBack().timestamp); }
+  // Timestamp of the newest IMU measurement in the queue. If empty, returns kMaxSeconds.
+  seconds_t Newest();
 
-  // Timestamp of the oldest IMU measurement in the queue.
-  seconds_t Oldest() { return ConvertToSeconds(queue_.PeekFront().timestamp); }
-
-  Vector3d CorrectGyro(const Vector3d& w) const
-  {
-    return pim_.biasHat().correctGyroscope(w);
-  }
-
-  Vector3d CorrectAcc(const Vector3d& a) const
-  {
-    return pim_.biasHat().correctAccelerometer(a);
-  }
+  // Timestamp of the oldest IMU measurement in the queue. If empty, returns kMinSeconds.
+  seconds_t Oldest();
 
  private:
   Params params_;

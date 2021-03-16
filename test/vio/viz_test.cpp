@@ -83,16 +83,3 @@ TEST(VioTest, TestViz1)
 
   LOG(INFO) << "Shutdown viz window" << std::endl;
 }
-
-
-TEST(VioTest, TestVisualizer3D_01)
-{
-  Visualizer3D::Options opt;
-  Visualizer3D viz(opt);
-
-  viz.Start();
-
-  cv::Mat1b left_image = cv::imread("./resources/farmsim_01_left.png", cv::IMREAD_GRAYSCALE);
-
-  viz.AddCameraPose(0, left_image, Matrix4d::Identity(), true);
-}

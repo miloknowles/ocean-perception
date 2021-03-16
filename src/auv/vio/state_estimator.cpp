@@ -239,7 +239,7 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
       const seconds_t to_time = ConvertToSeconds(frontend_result.timestamp);
       const PimResult pim = smoother_imu_manager_.Preintegrate(from_time, to_time);
       OnSmootherResult(smoother.UpdateGraphWithVision(
-          frontend_result, pim.valid ? std::make_shared<PimResult>(pim) : nullptr));
+          frontend_result, pim.timestamps_aligned ? std::make_shared<PimResult>(pim) : nullptr));
     }
 
   } // end while (!is_shutdown)

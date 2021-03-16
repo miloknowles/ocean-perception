@@ -11,7 +11,8 @@ using namespace core;
 
 
 // A 2D observation of a landmark in an image.
-struct LandmarkObservation final {
+struct LandmarkObservation final
+{
   LandmarkObservation() = delete;
 
   explicit LandmarkObservation(uid_t landmark_id,

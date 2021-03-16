@@ -1,0 +1,16 @@
+%YAML:1.0
+
+allowed_misalignment_sec: 0.01
+max_queue_size: 1000
+
+# Sensor noise model parameters.
+accel_noise_sigma:    0.0003924
+gyro_noise_sigma:     0.000205689024915
+accel_bias_rw_sigma:  0.004905
+gyro_bias_rw_sigma:   0.000001454441043
+
+# Noise model for the zero-prior on IMU bias.
+bias_prior_noise_model_sigma: 0.01
+
+# Noise model for the IMU bias between factors.
+bias_drift_noise_model_sigma: 0.001

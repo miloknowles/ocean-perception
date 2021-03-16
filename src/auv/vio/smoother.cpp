@@ -102,7 +102,7 @@ static void AddImuFactors(uid_t keypose_id,
                           gtsam::NonlinearFactorGraph& new_factors,
                           const Smoother::Params& params)
 {
-  CHECK(pim_result.valid) << "Preintegrated IMU invalid!" << std::endl;
+  CHECK(pim_result.timestamps_aligned) << "Preintegrated IMU invalid!" << std::endl;
 
   const gtsam::Symbol keypose_sym('X', keypose_id);
   const gtsam::Symbol vel_sym('V', keypose_id);
@@ -151,7 +151,7 @@ static void AddImuFactors(uid_t keypose_id,
 
 SmootherResult Smoother::UpdateGraphNoVision(const PimResult& pim_result)
 {
-  CHECK(pim_result.valid) << "Preintegrated IMU invalid" << std::endl;
+  CHECK(pim_result.timestamps_aligned) << "Preintegrated IMU invalid" << std::endl;
 
   gtsam::NonlinearFactorGraph new_factors;
   gtsam::Values new_values;
@@ -212,7 +212,7 @@ SmootherResult Smoother::UpdateGraphNoVision(const PimResult& pim_result)
 
 SmootherResult Smoother::UpdateGraphWithVision(
     const StereoFrontend::Result& odom_result,
-    const std::shared_ptr<PimResult>& pim_result_ptr)
+    const PimResult::ConstPtr& pim_result_ptr)
 {
   CHECK(odom_result.is_keyframe) << "Smoother shouldn't receive a non-keyframe odometry result" << std::endl;
   CHECK(odom_result.lmk_obs.size() > 0) << "Smoother shouln't receive a keyframe with no observations" << std::endl;
@@ -298,7 +298,7 @@ SmootherResult Smoother::UpdateGraphWithVision(
   }
 
   //================================= IMU PREINTEGRATION FACTOR ====================================
-  if (pim_result_ptr && pim_result_ptr->valid) {
+  if (pim_result_ptr && pim_result_ptr->timestamps_aligned) {
     AddImuFactors(keypose_id, *pim_result_ptr, result_, !graph_has_vo_btw_factor, new_values, new_factors, params_);
     graph_has_imu_btw_factor = true;
   }
