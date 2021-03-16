@@ -1,4 +1,3 @@
-# Each library follows the convention "auv_libraryname".
 SET(LIBRARY_NAME ${PROJECT_NAME}_dataset)
 
 SET(LIBRARY_SRC

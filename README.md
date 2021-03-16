@@ -1,13 +1,13 @@
-# Blue Meadow AUV
+# Blue Meadow Vehicle Software
 
-Main codebase for vehicle software.
+Main codebase for AUV/USV perception, planning, and controls software.
 
 ## First-Time Setup
 
 Add these lines to your `.bashrc`:
 ```bash
 # Run this once before developing in a new terminal window.
-alias bm-shell='source ~/blue-meadow/catkin_ws/src/auv/setup/setup.bash'
+alias bm-shell='source ~/blue-meadow/catkin_ws/src/vehicle/setup/setup.bash'
 ```
 
 ## Some Notes on Using Eigen

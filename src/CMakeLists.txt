@@ -1,2 +1,2 @@
 add_subdirectory(./external/anms)
-add_subdirectory(./auv)
+add_subdirectory(./vehicle)

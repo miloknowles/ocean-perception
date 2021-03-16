@@ -22,7 +22,7 @@ using namespace imaging;
 // https://github.com/opencv/opencv/issues/7762
 TEST(EnhanceTest, TestResizeDepth)
 {
-  const std::string resources_path = "/home/milo/bluemeadow/catkin_ws/src/auv/test/resources/";
+  const std::string resources_path = "/home/milo/bluemeadow/catkin_ws/src/vehicle/test/resources/";
 
   const std::vector<std::string> depth_fnames = {
     "depthLFT_3374.tif",

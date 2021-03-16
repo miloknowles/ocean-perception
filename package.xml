@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>auv</name>
+  <name>vehicle</name>
   <version>0.0.0</version>
-  <description>Blue Meadow's AUV software stack</description>
-  <maintainer email="milokhl@gmail.com">Milo Knowles</maintainer>
+  <description>Blue Meadow's AUV and USV robotics software stack</description>
+  <maintainer email="milo@bluemeadow.ai">Milo Knowles</maintainer>
 
   <!-- One license tag required, multiple allowed, one license per tag -->
   <!-- Commonly used license strings: -->

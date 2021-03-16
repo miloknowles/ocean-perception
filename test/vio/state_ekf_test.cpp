@@ -47,8 +47,8 @@ TEST(VioTest, TestEkf_02)
   const StereoCamera stereo_rig(camera_model, 0.2);
 
   const YamlParser yaml(
-      "/home/milo/bluemeadow/catkin_ws/src/auv/config/auv_base/StateEstimator_params.yaml",
-      "/home/milo/bluemeadow/catkin_ws/src/auv/config/auv_base/shared_params.yaml");
+      "/home/milo/bluemeadow/catkin_ws/src/vehicle/config/auv_base/StateEstimator_params.yaml",
+      "/home/milo/bluemeadow/catkin_ws/src/vehicle/config/auv_base/shared_params.yaml");
 
   StateEkf ekf(StateEkf::Params(yaml.Subtree("StateEkfParams")));
 
@@ -64,7 +64,7 @@ TEST(VioTest, TestEkf_02)
 
   ekf.Initialize(ss0, ImuBias());
 
-  Visualizer3D::Params viz_params("/home/milo/bluemeadow/catkin_ws/src/auv/config/auv_base/Visualizer3D_params.yaml");
+  Visualizer3D::Params viz_params("/home/milo/bluemeadow/catkin_ws/src/vehicle/config/auv_base/Visualizer3D_params.yaml");
   Visualizer3D viz(viz_params, stereo_rig);
 
   core::uid_t pose_id = 0;
