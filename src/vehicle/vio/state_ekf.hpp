@@ -141,12 +141,13 @@ class StateEkf final {
   // [2] https://en.wikipedia.org/wiki/Extended_Kalman_filter
   StateStamped PredictAndUpdate(const ImuMeasurement& imu, bool store = true);
 
-  // Update with an external pose estimate (e.g from visual odometry).
+  // Update with an external pose estimate (e.g from smoother).
   StateStamped PredictAndUpdate(seconds_t timestamp,
                                 const Quaterniond& q_world_body,
                                 const Vector3d& t_world_body,
                                 const Matrix6d& R_pose);
 
+  // Update with an external velocity estimate (e.g from smoother).
   StateStamped PredictAndUpdate(seconds_t timestamp,
                                 const Vector3d& v_world_body,
                                 const Matrix3d& R_velocity);

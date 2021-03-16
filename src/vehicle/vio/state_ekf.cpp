@@ -226,8 +226,6 @@ static State UpdatePose(const State& x,
 
   State xu = x;
   xu.t += dx.block<3, 1>(3, 0);
-  // xu.q = Quaterniond(d_uq) * xu.q;  // Left-multiply dq * q.
-  // xu.q = xu.q.normalized(); // Just to be safe.
   xu.q = xu.q * Quaterniond(d_uq);
   xu.q = xu.q.normalized();
   xu.S = (Matrix15d::Identity() - K*H) * x.S;
@@ -238,43 +236,9 @@ static State UpdatePose(const State& x,
 
 void StateEkf::Initialize(const StateStamped& state, const ImuBias& imu_bias)
 {
-  state_lock_.lock();
-  state_ = state;
-  imu_bias_ = imu_bias;
-  state_lock_.unlock();
-
-  // Reapply any sensor measurements AFTER the new initialized state.
-  // if (params_.reapply_measurements_after_init && is_initialized_) {
-  //   imu_history_->DiscardBefore(state.timestamp);
-  //   state_history_.DiscardBefore(state.timestamp);
-
-  //   // Use the estimate of velocity, acceleration, and angular velocity from the filter.
-  //   if (std::fabs(state_history_.OldestKey() - state.timestamp) < 0.1) {
-  //     const seconds_t nearest_timestamp = state_history_.OldestKey();
-  //     const State& nearest_state = state_history_.at(nearest_timestamp);
-  //     state_lock_.lock();
-  //     state_.state.v = nearest_state.v;
-  //     state_.state.a = nearest_state.a;
-  //     state_.state.w = nearest_state.w;
-
-  //     // Also use the filter covariance instead of the one provided.
-  //     state_.state.S.block<3, 3>(v_row, v_row) = nearest_state.S.block<3, 3>(v_row, v_row);
-  //     state_.state.S.block<3, 3>(a_row, a_row) = nearest_state.S.block<3, 3>(a_row, a_row);
-  //     state_.state.S.block<3, 3>(w_row, w_row) = nearest_state.S.block<3, 3>(w_row, w_row);
-  //     state_lock_.unlock();
-
-  //     // Fuse the filtered velocity with the externally estimated velocity.
-  //     PredictAndUpdate(state_.timestamp, state.state.v, state.state.S.block<3, 3>(v_row, v_row));
-  //   }
-
-  //   while (!imu_history_->Empty()) {
-  //     // NOTE(milo): Don't store these measurements in PredictAndUpdate()! Endless loop!
-  //     const ImuMeasurement& imu = imu_history_->Pop();
-  //     PredictAndUpdate(imu, false);
-  //   }
-  // }
-
+  ThreadsafeSetState(state.timestamp, state.state);
   is_initialized_ = true;
+  imu_bias_ = imu_bias;
 }
 
 
