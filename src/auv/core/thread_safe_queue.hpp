@@ -25,6 +25,7 @@ class ThreadsafeQueue {
         drop_oldest_if_full_(drop_oldest_if_full) {}
 
   // Push an item onto the queue.
+  // NOTE(milo): If Item has a move constructor, this avoids a copy.
   bool Push(Item item)
   {
     bool did_push = false;
@@ -33,11 +34,11 @@ class ThreadsafeQueue {
       if (drop_oldest_if_full_) {
         LOG(WARNING) << "Dropping item from ThreadSafeQueue!" << std::endl;
         q_.pop();
-        q_.push(item);
+        q_.push(std::move(item));
         did_push = true;
       }
     } else {
-      q_.push(item);
+      q_.push(std::move(item));
       did_push = true;
     }
     lock_.unlock();
@@ -47,14 +48,15 @@ class ThreadsafeQueue {
   // Pop the item at the front of the queue (oldest).
   // NOTE(milo): This could cause problems if there are MULTIPLE things popping from the queue! Only
   // use with a single consumer!
+  // NOTE(milo): If Item has a move constructor, this avoids a copy.
   Item Pop()
   {
     lock_.lock();
     CHECK_GT(q_.size(), 0) << "Tried to pop from empty ThreadSafeQueue!" << std::endl;
-    const Item item = q_.front();
+    Item item = std::move(q_.front());
     q_.pop();
     lock_.unlock();
-    return item;
+    return std::move(item);
   }
 
   // Check if the queue is empty and pop the front item if so. This is safe to use with multiple
@@ -64,7 +66,7 @@ class ThreadsafeQueue {
     lock_.lock();
     const bool nonempty = !q_.empty();
     if (nonempty) {
-      item = q_.front();
+      item = std::move(q_.front());
       q_.pop();
     }
     lock_.unlock();

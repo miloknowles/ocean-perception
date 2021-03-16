@@ -30,10 +30,10 @@ using namespace core;
 // Used to pass a camera pose (with an optional image) to the visualizer.
 struct CameraPoseData
 {
-  CameraPoseData(uid_t cam_id,
-                 const Image1b& left_image,
-                 const Matrix4d& T_world_cam,
-                 bool is_keyframe)
+  explicit CameraPoseData(uid_t cam_id,
+                          const Image1b& left_image,
+                          const Matrix4d& T_world_cam,
+                          bool is_keyframe)
       : cam_id(cam_id),
         left_image(left_image),
         T_world_cam(T_world_cam),
@@ -64,9 +64,10 @@ class Visualizer3D final {
     }
   };
 
-  MACRO_DELETE_COPY_CONSTRUCTORS(Visualizer3D);
+  MACRO_DELETE_COPY_CONSTRUCTORS(Visualizer3D)
+  MACRO_DELETE_DEFAULT_CONSTRUCTOR(Visualizer3D)
 
-  Visualizer3D(const Params& params, const StereoCamera& stereo_rig)
+  explicit Visualizer3D(const Params& params, const StereoCamera& stereo_rig)
       : params_(params), stereo_rig_(stereo_rig) {}
 
   ~Visualizer3D();

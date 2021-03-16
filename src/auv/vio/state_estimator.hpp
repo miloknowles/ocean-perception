@@ -94,7 +94,9 @@ class StateEstimator final {
     }
   };
 
-  MACRO_DELETE_COPY_CONSTRUCTORS(StateEstimator);
+  MACRO_DELETE_COPY_CONSTRUCTORS(StateEstimator)
+  MACRO_DELETE_DEFAULT_CONSTRUCTOR(StateEstimator)
+
   StateEstimator(const Params& params, const StereoCamera& stereo_rig);
 
   void ReceiveStereo(const StereoImage& stereo_pair);

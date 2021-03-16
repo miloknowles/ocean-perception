@@ -37,7 +37,8 @@ class StereoMatcher final {
     }
   };
 
-  MACRO_DELETE_COPY_CONSTRUCTORS(StereoMatcher);
+  MACRO_DELETE_COPY_CONSTRUCTORS(StereoMatcher)
+  MACRO_DELETE_DEFAULT_CONSTRUCTOR(StereoMatcher)
 
   explicit StereoMatcher(const Params& params) : params_(params) {}
 

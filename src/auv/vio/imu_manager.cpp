@@ -43,7 +43,7 @@ PimResult ImuManager::Preintegrate(seconds_t from_time, seconds_t to_time)
 {
   // If no measurements, return failure.
   if (queue_.Empty()) {
-    return PimResult(false, kMinSeconds, kMaxSeconds, PimC());
+    return std::move(PimResult(false, kMinSeconds, kMaxSeconds, PimC()));
   }
 
   // Requesting a from_time that is too far before our earliest measurement.

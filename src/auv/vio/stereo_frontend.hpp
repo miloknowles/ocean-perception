@@ -85,6 +85,10 @@ class StereoFrontend final {
   // Result from tracking points from previous stereo frames into the current one.
   struct Result final
   {
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+    MACRO_DELETE_COPY_CONSTRUCTORS(Result)
+    MACRO_DELETE_DEFAULT_CONSTRUCTOR(Result)
+
     explicit Result(timestamp_t timestamp,
                     timestamp_t timestamp_lkf,
                     uid_t camera_id,
@@ -93,6 +97,8 @@ class StereoFrontend final {
           timestamp_lkf(timestamp_lkf),
           camera_id(camera_id),
           camera_id_lkf(camera_id_lkf) {}
+
+    Result(Result&&) = default; // Default move constructor.
 
     bool is_keyframe = false;                         // Did this image trigger a keyframe?
     int status = 0;                                   // Contains several flags about parts of the VO pipeline.
@@ -106,6 +112,7 @@ class StereoFrontend final {
   };
 
   MACRO_DELETE_COPY_CONSTRUCTORS(StereoFrontend);
+  MACRO_DELETE_DEFAULT_CONSTRUCTOR(StereoFrontend);
 
   // Construct with params.
   explicit StereoFrontend(const Params& params, const StereoCamera& stereo_rig);

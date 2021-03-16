@@ -20,9 +20,8 @@ set(VIO_TEST_SOURCES
   vio/state_estimator_test.cpp
   vio/state_ekf_test.cpp)
 
-# Add one big executable with all of the tests. Filter for specific tests with:
-# --gtest_filter=TestModuleName.UnitTestName.
-SET(TEST_EXECUTABLE_NAME ${PROJECT_NAME}_gtest_all)
+set(SANDBOX_TEST_SOURCES
+  test_move.cpp)
 
 # Function for defining a test executable.
 function(MakeTestExecutable test_name test_sources)
@@ -43,9 +42,11 @@ function(MakeTestExecutable test_name test_sources)
   add_test(NAME ${test_name} COMMAND ${test_name} --gtest_color=yes)
 endfunction()
 
-MakeTestExecutable(core_gtest_all ${CORE_TEST_SOURCES})
-MakeTestExecutable(dataset_gtest_all ${DATASET_TEST_SOURCES})
-MakeTestExecutable(vio_gtest_all ${VIO_TEST_SOURCES})
+# https://stackoverflow.com/questions/5248749/passing-a-list-to-a-cmake-macro
+MakeTestExecutable(core_gtest_all "${CORE_TEST_SOURCES}")
+MakeTestExecutable(dataset_gtest_all "${DATASET_TEST_SOURCES}")
+MakeTestExecutable(vio_gtest_all "${VIO_TEST_SOURCES}")
+MakeTestExecutable(sandbox_gtest_all "${SANDBOX_TEST_SOURCES}")
 
 # NOTE(milo): Using the "copy" command didn't seem to work...
 # Move resource files to the install location so that tests can use them.

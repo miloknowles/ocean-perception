@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/macros.hpp"
 #include "core/timestamp.hpp"
 #include "core/uid.hpp"
 #include "core/cv_types.hpp"
@@ -10,8 +11,16 @@ namespace core {
 
 struct StereoImage final
 {
-  StereoImage(timestamp_t timestamp, uid_t camera_id, const Image1b& l, const Image1b& r)
-    : timestamp(timestamp), camera_id(camera_id), left_image(l), right_image(r) {}
+  MACRO_DELETE_DEFAULT_CONSTRUCTOR(StereoImage)
+
+  explicit StereoImage(timestamp_t timestamp,
+                       uid_t camera_id,
+                       const Image1b& l,
+                       const Image1b& r)
+    : timestamp(timestamp),
+      camera_id(camera_id),
+      left_image(l),
+      right_image(r) {}
 
   timestamp_t timestamp;
   uid_t camera_id;

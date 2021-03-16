@@ -74,8 +74,8 @@ bool DataProvider::Step(bool verbose)
     // Load the images and convert to grayscale if needed.
     timestamp_t timestamp = stereo_data.at(next_stereo_idx_).timestamp;
 
-    const std::string path_left = stereo_data.at(next_stereo_idx_).path_left;
-    const std::string path_right = stereo_data.at(next_stereo_idx_).path_right;
+    const std::string& path_left = stereo_data.at(next_stereo_idx_).path_left;
+    const std::string& path_right = stereo_data.at(next_stereo_idx_).path_right;
 
     if (!Exists(path_left)) {
       throw std::runtime_error("ERROR: Left image filepath is invalid:\n  " + path_left);
@@ -84,11 +84,14 @@ bool DataProvider::Step(bool verbose)
       throw std::runtime_error("ERROR: Right image filepath is invalid:\n  " + path_right);
     }
 
-    const Image1b& imgl = ReadAndConvertToGrayScale(path_left, false);
-    const Image1b& imgr = ReadAndConvertToGrayScale(path_right, false);
+    // NOTE(milo): Using non-const left/right images so that we can avoid copy them into the
+    // stereo image (use std::move instead to steal the underlying data).
+    Image1b imgl = ReadAndConvertToGrayScale(path_left, false);
+    Image1b imgr = ReadAndConvertToGrayScale(path_right, false);
+    const StereoImage stereo_image(timestamp, next_stereo_idx_, std::move(imgl), std::move(imgr));
 
     for (const StereoCallback& function : stereo_callbacks_) {
-      function(StereoImage(timestamp, next_stereo_idx_, imgl, imgr));
+      function(stereo_image);
     }
     ++next_stereo_idx_;
   }

@@ -36,13 +36,9 @@ void StateEstimator::ReceiveStereo(const StereoImage& stereo_pair)
 
 void StateEstimator::ReceiveImu(const ImuMeasurement& imu_data)
 {
-  // IMPORTANT: Rotate the raw IMU measurement so that it is expressed in the BODY frame.
-  // const ImuMeasurement imu_body_frame(imu_data.timestamp,
-  //                                     params_.P_body_imu.rotation() * imu_data.w,
-  //                                     params_.P_body_imu.rotation() * imu_data.a);
-  // smoother_imu_manager_.Push(imu_body_frame);
-  // filter_imu_manager_.Push(imu_body_frame);
-
+  // NOTE(milo): This raw imu_data is expressed in the IMU frame. Internally, the GTSAM IMU
+  // preintegratino will account for body_P_sensor and convert measurements to the body frame.
+  // Also, the StateEKf will account for T_body_imu. So no need to "pre-rotate" these measurements.
   smoother_imu_manager_.Push(imu_data);
   filter_imu_manager_.Push(imu_data);
 }
