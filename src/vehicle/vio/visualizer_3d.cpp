@@ -201,6 +201,10 @@ void Visualizer3D::RedrawThread()
       UpdateCameraPose(update_camera_pose_queue_.Pop());
     }
 
+    while (!update_body_pose_queue_.Empty()) {
+      UpdateBodyPose(update_body_pose_queue_.Pop());
+    }
+
     // NOTE(milo): Need to sleep for a bit to let other functions get the mutex.
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
   }

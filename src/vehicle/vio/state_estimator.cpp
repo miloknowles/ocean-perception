@@ -284,11 +284,11 @@ void StateEstimator::FilterLoop(seconds_t t0, const gtsam::Pose3& P0_world_body)
       const SmootherResult result = smoother_result_;
       mutex_smoother_result_.unlock();
 
-      const Vector3d& t = result.P_world_body.translation();
-      const Quaterniond& q = result.P_world_body.rotation().toQuaternion().normalized();
-      const Vector3d& v = result.v_world_body;
-      const Vector3d& a = Vector3d::Zero();   // The filter should use its own acceleration.
-      const Vector3d& w = Vector3d::Zero();   // The filter should use its own angular velocity.
+      // const Vector3d& t = result.P_world_body.translation();
+      // const Quaterniond& q = result.P_world_body.rotation().toQuaternion().normalized();
+      // const Vector3d& v = result.v_world_body;
+      // const Vector3d& a = Vector3d::Zero();   // The filter should use its own acceleration.
+      // const Vector3d& w = Vector3d::Zero();   // The filter should use its own angular velocity.
 
       // Make the initial covariance matrix based on the smoother result.
       StateCovariance S;
@@ -309,7 +309,7 @@ void StateEstimator::FilterLoop(seconds_t t0, const gtsam::Pose3& P0_world_body)
       filter.Rewind(result.timestamp);
       filter.UpdateImuBias(result.imu_bias);
       filter.PredictAndUpdate(result.timestamp,
-                              result.P_world_body.rotation().toQuaternion(),
+                              result.P_world_body.rotation().toQuaternion().normalized(),
                               result.P_world_body.translation(),
                               result.cov_pose);
       filter.PredictAndUpdate(result.timestamp,

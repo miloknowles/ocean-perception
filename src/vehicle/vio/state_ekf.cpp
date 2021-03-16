@@ -213,11 +213,12 @@ static State UpdatePose(const State& x,
   // state.q. Then, we express that error in the TANGENT space (angle-axis), where it is valid to
   // apply a linear Kalman gain. Finally, we take the gain-weighted tangent space differential
   // rotation (d_uq), convert it back to a quaternion, and apply it.
-  const Quaterniond& err_quat = q_world_body * x.q.inverse();
-  const AngleAxisd err_angleaxis(err_quat);
+  // q_obs_pred = q_wo
+  const Quaterniond& q_err = q_world_body * x.q.inverse();
+  const AngleAxisd uq_err(q_err);
 
   Vector6d y;
-  y.block<3, 1>(0, 0) = err_angleaxis.angle() * err_angleaxis.axis();
+  y.block<3, 1>(0, 0) = uq_err.angle() * uq_err.axis();
   y.block<3, 1>(3, 0) = (t_world_body - x.t);
 
   const Vector15d& dx = K*y;
