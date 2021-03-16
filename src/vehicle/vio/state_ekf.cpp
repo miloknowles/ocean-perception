@@ -213,8 +213,8 @@ static State UpdatePose(const State& x,
   // state.q. Then, we express that error in the TANGENT space (angle-axis), where it is valid to
   // apply a linear Kalman gain. Finally, we take the gain-weighted tangent space differential
   // rotation (d_uq), convert it back to a quaternion, and apply it.
-  // q_obs_pred = q_wo
-  const Quaterniond& q_err = q_world_body * x.q.inverse();
+  // q_pred_true = q_pred_world * q_world_true = q_world_pred.inverse() * q_world_true
+  const Quaterniond& q_err = x.q.inverse() * q_world_body;
   const AngleAxisd uq_err(q_err);
 
   Vector6d y;
@@ -222,12 +222,14 @@ static State UpdatePose(const State& x,
   y.block<3, 1>(3, 0) = (t_world_body - x.t);
 
   const Vector15d& dx = K*y;
-  const AngleAxisd d_uq(dx.block<3, 1>(0, 0).norm(), dx.block<3, 1>(0, 0).normalized());
+  const AngleAxisd d_uq(dx.block<3, 1>(uq_row, 0).norm(), dx.block<3, 1>(uq_row, 0).normalized());
 
   State xu = x;
   xu.t += dx.block<3, 1>(3, 0);
-  xu.q = Quaterniond(d_uq) * xu.q;  // Left-multiply dq * q.
-  xu.q = xu.q.normalized(); // Just to be safe.
+  // xu.q = Quaterniond(d_uq) * xu.q;  // Left-multiply dq * q.
+  // xu.q = xu.q.normalized(); // Just to be safe.
+  xu.q = xu.q * Quaterniond(d_uq);
+  xu.q = xu.q.normalized();
   xu.S = (Matrix15d::Identity() - K*H) * x.S;
 
   return xu;
