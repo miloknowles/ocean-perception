@@ -15,6 +15,7 @@ SET(LIBRARY_SRC
   visualization_2d.hpp
   optimize_odometry.cpp
   optimize_odometry.hpp
+  single_axis_factor.hpp
   stereo_frontend.cpp
   stereo_frontend.hpp
   visualizer_3d.cpp

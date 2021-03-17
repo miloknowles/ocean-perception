@@ -11,6 +11,7 @@ SET(DATASET_TEST_SOURCES
   dataset/himb_dataset_test.cpp)
 
 set(VIO_TEST_SOURCES
+  vio/single_axis_factor_test.cpp
   vio/imu_manager_test.cpp
   vio/feature_detector_test.cpp
   vio/feature_tracker_test.cpp
