@@ -28,7 +28,7 @@ using namespace vio;
 
 TEST(VioTest, TestStateEstimator1)
 {
-  const std::string toplevel_folder = "/home/milo/datasets/Unity3D/farmsim/euroc_test3";
+  const std::string toplevel_folder = "/home/milo/datasets/Unity3D/farmsim/euroc_noise1";
   dataset::EurocDataset dataset(toplevel_folder);
 
   const std::vector<dataset::GroundtruthItem>& groundtruth_poses = dataset.GroundtruthPoses();
