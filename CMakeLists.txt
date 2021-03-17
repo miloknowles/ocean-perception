@@ -11,6 +11,7 @@ list(INSERT CMAKE_MODULE_PATH 0 ${CMAKE_SOURCE_DIR}/cmake)
 # NOTE(milo): The "-faligned-new" flag solves Eigen alignment issues.
 # See: http://eigen.tuxfamily.org/dox-devel/group__TopicStlContainers.html
 # These seemed to show up when creating a shared_ptr for a struct that has Eigen member types.
+# NOTE(milo): Add -03 or -0fast for much faster code.
 add_compile_options(-std=c++11 -Wall -Wextra -O3 -faligned-new -g -ggdb -march=native)
 
 ## Find catkin macros and libraries

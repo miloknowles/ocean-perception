@@ -10,14 +10,10 @@
 #include "core/imu_measurement.hpp"
 #include "core/stereo_camera.hpp"
 #include "vio/imu_manager.hpp"
-#include "vio/stereo_frontend.hpp"
 #include "vio/gtsam_types.hpp"
+#include "vio/vo_result.hpp"
 
-#include <gtsam/navigation/NavState.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
-#include <gtsam/nonlinear/Values.h>
-#include <gtsam/inference/Key.h>
-#include <gtsam/inference/Symbol.h>
 #include <gtsam/nonlinear/ISAM2.h>
 
 namespace bm {
@@ -155,7 +151,7 @@ class Smoother final {
   // Add a new keypose using a keyframe from the stereo frontend. If pim_result_ptr is supplied,
   // a preintegrated IMU factor is added also.
   // NOTE: pim_result should be integrated in the BODY frame!
-  SmootherResult UpdateGraphWithVision(const StereoFrontend::Result& frontend_result,
+  SmootherResult UpdateGraphWithVision(const VoResult& frontend_result,
                                        const PimResult::ConstPtr& pim_result_ptr = nullptr);
 
   // Threadsafe access to the latest result.

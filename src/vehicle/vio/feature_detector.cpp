@@ -1,7 +1,6 @@
 #include <numeric>
 
 #include <opencv2/imgproc.hpp>
-
 #include <glog/logging.h>
 
 #include "vio/feature_detector.hpp"

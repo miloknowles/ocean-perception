@@ -1,12 +1,12 @@
 #pragma once
 
-#include <fstream>
-#include <iostream>
 #include <string>
 
 #include <glog/logging.h>
 
 #include <opencv2/core/core.hpp>
+#include <opencv2/core/cvstd.hpp>
+#include <opencv2/core/persistence.hpp>
 
 #include "core/eigen_types.hpp"
 

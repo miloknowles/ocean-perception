@@ -62,6 +62,6 @@ int main() {
     string s = serial.readBytesUntil('\n');
     parse(s);
   }
-  
+
   return 0;
 }

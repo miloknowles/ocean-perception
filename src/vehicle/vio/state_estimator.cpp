@@ -1,11 +1,8 @@
-#include <unordered_set>
-
 #include <glog/logging.h>
 
 #include <opencv2/highgui.hpp>
 
 #include "vio/state_estimator.hpp"
-#include "vio/item_history.hpp"
 #include "core/timer.hpp"
 
 
@@ -112,7 +109,7 @@ void StateEstimator::StereoFrontendLoop()
 
     // Process a stereo image pair (KLT tracking, odometry estimation, etc.)
     // TODO(milo): Use initial odometry estimate other than identity!
-    StereoFrontend::Result result = stereo_frontend_.Track(
+    VoResult result = stereo_frontend_.Track(
         raw_stereo_queue_.Pop(), Matrix4d::Identity(), false);
 
     if (params_.show_feature_tracks) {
@@ -172,7 +169,7 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
   //====================================== INITIALIZATION ==========================================
   bool initialized = false;
   while (!initialized) {
-    const bool no_vo = WaitForResultOrTimeout<ThreadsafeQueue<StereoFrontend::Result>>(
+    const bool no_vo = WaitForResultOrTimeout<ThreadsafeQueue<VoResult>>(
         smoother_vo_queue_, params_.smoother_init_wait_vision_sec);
 
     smoother_imu_manager_.DiscardBefore(t0);
@@ -210,7 +207,7 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
         params_.max_sec_btw_keyposes + 0.1:       // Add a small epsilon to account for latency.
         0.005;                                    // This should be a tiny delay to process IMU ASAP.
 
-    const bool did_timeout = WaitForResultOrTimeout<ThreadsafeQueue<StereoFrontend::Result>>(smoother_vo_queue_, wait_sec);
+    const bool did_timeout = WaitForResultOrTimeout<ThreadsafeQueue<VoResult>>(smoother_vo_queue_, wait_sec);
 
     // Update the smoother mode.
     smoother_mode_ = did_timeout ? SmootherMode::VISION_UNAVAILABLE : SmootherMode::VISION_AVAILABLE;
@@ -231,7 +228,7 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
 
     // VO AVAILABLE ==> Add a keyframe and smooth.
     } else {
-      const StereoFrontend::Result frontend_result = smoother_vo_queue_.Pop();
+      const VoResult frontend_result = smoother_vo_queue_.Pop();
       const seconds_t to_time = ConvertToSeconds(frontend_result.timestamp);
       const PimResult pim = smoother_imu_manager_.Preintegrate(from_time, to_time);
       OnSmootherResult(smoother.UpdateGraphWithVision(

@@ -1,6 +1,3 @@
-#include <iostream>
-#include <fstream>
-
 #include <glog/logging.h>
 
 #include "dataset/himb_dataset.hpp"

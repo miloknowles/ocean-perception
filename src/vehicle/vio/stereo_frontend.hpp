@@ -16,6 +16,7 @@
 #include "vio/feature_detector.hpp"
 #include "vio/feature_tracker.hpp"
 #include "vio/stereo_matcher.hpp"
+#include "vio/vo_result.hpp"
 
 namespace bm {
 namespace vio {
@@ -82,35 +83,6 @@ class StereoFrontend final {
     NO_FEATURES_FROM_LAST_KF = 1 << 3    // Couldn't track because there were no features from the last keyframe (just initialized or vision lost).
   };
 
-  // Result from tracking points from previous stereo frames into the current one.
-  struct Result final
-  {
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-    MACRO_DELETE_COPY_CONSTRUCTORS(Result)
-    MACRO_DELETE_DEFAULT_CONSTRUCTOR(Result)
-
-    explicit Result(timestamp_t timestamp,
-                    timestamp_t timestamp_lkf,
-                    uid_t camera_id,
-                    uid_t camera_id_lkf)
-        : timestamp(timestamp),
-          timestamp_lkf(timestamp_lkf),
-          camera_id(camera_id),
-          camera_id_lkf(camera_id_lkf) {}
-
-    Result(Result&&) = default; // Default move constructor.
-
-    bool is_keyframe = false;                         // Did this image trigger a keyframe?
-    int status = 0;                                   // Contains several flags about parts of the VO pipeline.
-    timestamp_t timestamp;                            // Timestamp of the image with camera_id.
-    timestamp_t timestamp_lkf;
-    uid_t camera_id;
-    uid_t camera_id_lkf;
-    std::vector<LandmarkObservation> lmk_obs;         // List of landmarks observed in this image.
-    Matrix4d T_lkf_cam = Matrix4d::Identity();        // Pose of the camera in the last kf frame.
-    double avg_reprojection_err = -1.0;               // Avg. error after LM pose optimization.
-  };
-
   MACRO_DELETE_COPY_CONSTRUCTORS(StereoFrontend);
   MACRO_DELETE_DEFAULT_CONSTRUCTOR(StereoFrontend);
 
@@ -119,9 +91,9 @@ class StereoFrontend final {
 
   // Track known visual landmarks into the current stereo pair, possibly initializing new ones.
   // T_prev_cur_prior could be an initial guess on the odometry from IMU.
-  Result Track(const StereoImage& stereo_pair,
-               const Matrix4d& T_prev_cur_prior,
-               bool force_keyframe = false);
+  VoResult Track(const StereoImage& stereo_pair,
+                 const Matrix4d& T_prev_cur_prior,
+                 bool force_keyframe = false);
 
   // Draws current feature tracks:
   // BLUE = Newly detected feature

@@ -1,10 +1,7 @@
 #pragma once
 
-#include <eigen3/Eigen/Core>
 #include <eigen3/Eigen/Dense>
 #include <eigen3/Eigen/Geometry>
-
-#include <vector>
 
 namespace bm {
 namespace core {

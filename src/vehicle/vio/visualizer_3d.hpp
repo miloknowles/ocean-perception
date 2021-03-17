@@ -1,14 +1,11 @@
 #pragma once
 
-#include <unordered_map>
 #include <unordered_set>
-#include <set>
 #include <vector>
 #include <thread>
 #include <mutex>
 #include <queue>
 
-#include <opencv2/highgui.hpp>
 #include <opencv2/viz.hpp>
 
 #include "core/params_base.hpp"
@@ -18,7 +15,6 @@
 #include "core/uid.hpp"
 #include "core/pinhole_camera.hpp"
 #include "core/stereo_camera.hpp"
-#include "core/fixed_queue.hpp"
 #include "core/thread_safe_queue.hpp"
 #include "vio/landmark_observation.hpp"
 

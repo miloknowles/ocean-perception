@@ -33,8 +33,6 @@ function(MakeTestExecutable test_name test_sources)
     ${PROJECT_NAME}_core
     ${PROJECT_NAME}_vio
     ${PROJECT_NAME}_dataset
-    ${PROJECT_NAME}_imaging
-    ${PROJECT_NAME}_stereo_matching
     ${OpenCV_LIBRARIES}
     ${OpenCV_LIBS}
     gtsam

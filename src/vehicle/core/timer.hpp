@@ -1,7 +1,6 @@
 #pragma once
 
 #include <chrono>
-#include <iostream>
 
 #include "core/timedelta.hpp"
 
@@ -51,8 +50,6 @@ class Timer {
     }
     return Timedelta(Seconds(t1_-t0_).count());
   }
-
-  void PrintElapsed() { printf("[Timer] elapsed=%lf ms\n", Elapsed().milliseconds()); }
 
  private:
   bool running_ = false;

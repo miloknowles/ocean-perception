@@ -4,15 +4,13 @@
 
 #include <string>
 #include <functional>
-#include <memory>
-#include <thread>
-#include <utility>
+#include <vector>
 
 #include "core/cv_types.hpp"
-#include "core/stereo_image.hpp"
-#include "core/imu_measurement.hpp"
 #include "core/timestamp.hpp"
 #include "core/uid.hpp"
+#include "core/stereo_image.hpp"
+#include "core/imu_measurement.hpp"
 
 namespace bm {
 namespace dataset {
@@ -25,6 +23,8 @@ enum DataSource { STEREO, IMU };
 // Callback function signatures.
 typedef std::function<void(const StereoImage&)> StereoCallback;
 typedef std::function<void(const ImuMeasurement&)> ImuCallback;
+
+
 
 
 // Represents a stereo image pair stored on disk.
@@ -59,8 +59,6 @@ struct GroundtruthItem
 
 class DataProvider {
  public:
-  // EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-
   DataProvider() = default;
 
   void RegisterStereoCallback(StereoCallback cb) { stereo_callbacks_.emplace_back(cb); }

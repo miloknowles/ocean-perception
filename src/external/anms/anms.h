@@ -25,7 +25,7 @@ SOFTWARE.
 #pragma once
 
 #include <stdlib.h>
-#include <iostream>
+#include <iosfwd>
 #include <vector>
 
 #include <opencv2/opencv.hpp>

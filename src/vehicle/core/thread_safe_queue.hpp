@@ -1,9 +1,7 @@
 #pragma once
 
-#include <atomic>
 #include <mutex>
 #include <queue>
-#include <string>
 #include <utility>
 
 #include <eigen3/Eigen/StdDeque>

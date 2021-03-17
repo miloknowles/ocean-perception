@@ -145,13 +145,13 @@ class StateEstimator final {
   SmootherResult smoother_result_;
   std::atomic_bool smoother_update_flag_{false};
   ImuManager smoother_imu_manager_;
-  ThreadsafeQueue<StereoFrontend::Result> smoother_vo_queue_;
+  ThreadsafeQueue<VoResult> smoother_vo_queue_;
   std::vector<SmootherResult::Callback> smoother_result_callbacks_;
   //================================================================================================
   std::mutex mutex_filter_result_;
   StateStamped filter_state_;
   ImuManager filter_imu_manager_;
-  ThreadsafeQueue<StereoFrontend::Result> filter_vo_queue_;
+  ThreadsafeQueue<VoResult> filter_vo_queue_;
   std::vector<StateStamped::Callback> filter_result_callbacks_;
   //================================================================================================
 };

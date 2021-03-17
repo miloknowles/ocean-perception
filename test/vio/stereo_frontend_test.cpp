@@ -41,7 +41,7 @@ TEST(VioTest, TestFrontendFarmSim)
   dataset::StereoCallback callback = [&](const StereoImage& stereo_data)
   {
     Matrix4d T_prev_cur_prior = Matrix4d::Identity();
-    const StereoFrontend::Result& result = stereo_frontend.Track(stereo_data, T_prev_cur_prior);
+    const VoResult& result = stereo_frontend.Track(stereo_data, T_prev_cur_prior);
     const Image3b viz = stereo_frontend.VisualizeFeatureTracks();
     cv::imshow("StereoTracking", viz);
     cv::waitKey(1);
@@ -102,7 +102,7 @@ TEST(VioTest, TestFrontendHimb)
   dataset::StereoCallback callback = [&](const StereoImage& stereo_data)
   {
     Matrix4d T_prev_cur_prior = Matrix4d::Identity();
-    const StereoFrontend::Result& result = stereo_frontend.Track(stereo_data, T_prev_cur_prior);
+    const VoResult& result = stereo_frontend.Track(stereo_data, T_prev_cur_prior);
     const Image3b viz = stereo_frontend.VisualizeFeatureTracks();
     cv::imshow("StereoTracking", viz);
     cv::waitKey(1);

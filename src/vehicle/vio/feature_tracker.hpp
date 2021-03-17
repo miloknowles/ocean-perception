@@ -2,9 +2,8 @@
 
 #include <vector>
 
-#include "core/params_base.hpp"
 #include "core/macros.hpp"
-#include "core/eigen_types.hpp"
+#include "core/params_base.hpp"
 #include "core/cv_types.hpp"
 
 namespace bm {

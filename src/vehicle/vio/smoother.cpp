@@ -1,4 +1,10 @@
+#include <gtsam/navigation/NavState.h>
+#include <gtsam/inference/Symbol.h>
+#include <gtsam/nonlinear/Values.h>
+#include <gtsam/inference/Key.h>
+
 #include "vio/smoother.hpp"
+#include "vio/vo_result.hpp"
 
 namespace bm {
 namespace vio {
@@ -211,7 +217,7 @@ SmootherResult Smoother::UpdateGraphNoVision(const PimResult& pim_result)
 
 
 SmootherResult Smoother::UpdateGraphWithVision(
-    const StereoFrontend::Result& odom_result,
+    const VoResult& odom_result,
     const PimResult::ConstPtr& pim_result_ptr)
 {
   CHECK(odom_result.is_keyframe) << "Smoother shouldn't receive a non-keyframe odometry result" << std::endl;

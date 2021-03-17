@@ -17,7 +17,6 @@ namespace vio {
 
 
 // Preintegrated IMU types.
-typedef gtsam::PreintegratedImuMeasurements Pim;
 typedef gtsam::PreintegratedCombinedMeasurements PimC;
 typedef gtsam::imuBias::ConstantBias ImuBias;
 

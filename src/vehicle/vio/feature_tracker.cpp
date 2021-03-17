@@ -1,6 +1,4 @@
 #include <glog/logging.h>
-
-#include <opencv2/features2d/features2d.hpp>
 #include <opencv2/video/tracking.hpp>
 
 #include "vio/feature_tracker.hpp"
@@ -10,11 +8,11 @@ namespace vio {
 
 
 void FeatureTracker::Track(const Image1b& ref_img,
-                          const Image1b& cur_img,
-                          const VecPoint2f& px_ref,
-                          VecPoint2f& px_cur,
-                          std::vector<uchar>& status,
-                          std::vector<float>& error)
+                           const Image1b& cur_img,
+                           const VecPoint2f& px_ref,
+                           VecPoint2f& px_cur,
+                           std::vector<uchar>& status,
+                           std::vector<float>& error)
 {
   status.clear();
   error.clear();

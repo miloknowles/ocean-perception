@@ -1,4 +1,3 @@
-#include <iostream>
 #include <fstream>
 
 #include <glog/logging.h>
@@ -158,7 +157,6 @@ void EurocDataset::ParseGroundtruth(const std::string& gt_path)
     Matrix4d T_world_body = Matrix4d::Identity();
     T_world_body.block<3, 3>(0, 0) = q.normalized().toRotationMatrix();
     T_world_body.block<3, 1>(0, 3) = t;
-    std::cout << T_world_body << std::endl;
 
     const timestamp_t timestamp = std::stoull(ns);
     pose_data.emplace_back(GroundtruthItem(timestamp, T_world_body));

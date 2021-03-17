@@ -87,11 +87,11 @@ static bool FindObservationFromCameraId(const VecLandmarkObservation& lmk_obs, u
 }
 
 
-StereoFrontend::Result StereoFrontend::Track(const StereoImage& stereo_pair,
-                                             const Matrix4d& T_prev_cur_prior,
-                                             bool force_keyframe)
+VoResult StereoFrontend::Track(const StereoImage& stereo_pair,
+                               const Matrix4d& T_prev_cur_prior,
+                               bool force_keyframe)
 {
-  StereoFrontend::Result result(stereo_pair.timestamp, timestamp_lkf_, stereo_pair.camera_id, prev_keyframe_id_);
+  VoResult result(stereo_pair.timestamp, timestamp_lkf_, stereo_pair.camera_id, prev_keyframe_id_);
 
   std::vector<uid_t> live_lmk_ids;
   std::vector<uid_t> live_cam_ids;

@@ -1,25 +1,19 @@
-#include <stdexcept>
-#include <utility>
-
+#include <thread>
 #include <glog/logging.h>
 
 #include "dataset/data_provider.hpp"
 
 #include "core/file_utils.hpp"
 #include "core/image_util.hpp"
-#include "core/make_unique.hpp"
 
 namespace bm {
 namespace dataset {
 
 
-static const timestamp_t kMaximumTimestamp = std::numeric_limits<timestamp_t>::max();
-
-
 std::pair<timestamp_t, DataSource> DataProvider::NextTimestamp() const
 {
-  timestamp_t next_stereo_time = kMaximumTimestamp;
-  timestamp_t next_imu_time = kMaximumTimestamp;
+  timestamp_t next_stereo_time = kMaxTimestamp;
+  timestamp_t next_imu_time = kMaxTimestamp;
 
   if (next_stereo_idx_ < stereo_data.size()) {
     next_stereo_time = stereo_data.at(next_stereo_idx_).timestamp;
@@ -39,8 +33,8 @@ std::pair<timestamp_t, DataSource> DataProvider::NextTimestamp() const
 
 bool DataProvider::Step(bool verbose)
 {
-  timestamp_t next_stereo_time = kMaximumTimestamp;
-  timestamp_t next_imu_time = kMaximumTimestamp;
+  timestamp_t next_stereo_time = kMaxTimestamp;
+  timestamp_t next_imu_time = kMaxTimestamp;
 
   if (next_stereo_idx_ < stereo_data.size()) {
     next_stereo_time = stereo_data.at(next_stereo_idx_).timestamp;
@@ -50,7 +44,7 @@ bool DataProvider::Step(bool verbose)
   }
 
   // If no data left, return "false".
-  if (next_stereo_time == kMaximumTimestamp && next_imu_time == kMaximumTimestamp) {
+  if (next_stereo_time == kMaxTimestamp && next_imu_time == kMaxTimestamp) {
     return false;
   }
 
@@ -107,7 +101,7 @@ void DataProvider::PlaybackWorker(float speed, bool verbose)
   while (Step(verbose)) {
     const timestamp_t next_time = NextTimestamp().first;
 
-    if (next_time == kMaximumTimestamp) {
+    if (next_time == kMaxTimestamp) {
       break;
     }
 
