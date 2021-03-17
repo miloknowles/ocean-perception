@@ -15,10 +15,10 @@ using namespace vio;
 
 TEST(VioTest, TestStereoMatcherSingle)
 {
-  StereoMatcher::Options opt;
+  StereoMatcher::Params opt;
   StereoMatcher matcher(opt);
 
-  FeatureDetector::Options dopt;
+  FeatureDetector::Params dopt;
   FeatureDetector detector(dopt);
 
   const Image1b iml = cv::imread("./resources/farmsim_01_left.png", cv::IMREAD_GRAYSCALE);
@@ -37,10 +37,10 @@ TEST(VioTest, TestStereoMatcherSingle)
 
 TEST(VioTest, TestStereoMatcherSequence)
 {
-  StereoMatcher::Options opt;
+  StereoMatcher::Params opt;
   StereoMatcher matcher(opt);
 
-  FeatureDetector::Options dopt;
+  FeatureDetector::Params dopt;
   FeatureDetector detector(dopt);
 
   // const std::string toplevel_folder = "/home/milo/datasets/euroc/V1_01_EASY";

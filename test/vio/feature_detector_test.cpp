@@ -19,8 +19,8 @@ TEST(VioTest, TestDetectSingle)
   const Image1b iml = cv::imread("./resources/caddy_32_left.jpg", cv::IMREAD_GRAYSCALE);
   const Image1b imr = cv::imread("./resources/caddy_32_right.jpg", cv::IMREAD_GRAYSCALE);
 
-  FeatureDetector::Options opt;
-  FeatureDetector detector(opt);
+  FeatureDetector::Params params;
+  FeatureDetector detector(params);
 
   VecPoint2f tracked_kp, new_kp, new_kp2;
   detector.Detect(iml, tracked_kp, new_kp);
@@ -52,8 +52,8 @@ TEST(VioTest, TestDetectSingle)
 
 TEST(VioTest, TestDetectSequence)
 {
-  FeatureDetector::Options opt;
-  FeatureDetector detector(opt);
+  FeatureDetector::Params params;
+  FeatureDetector detector(params);
 
   // const std::string toplevel_folder = "/home/milo/datasets/euroc/V1_01_EASY";
   const std::string toplevel_folder = "/home/milo/datasets/Unity3D/farmsim/euroc_test1";

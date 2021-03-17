@@ -4,8 +4,8 @@ alias source_bm='source ~/bluemeadow/catkin_ws/devel/setup.bash'
 
 # Terminal navigation.
 alias bm='cd ~/bluemeadow'
-alias ws='cd ~/bluemeadow/catkin_ws/src/auv/'
-alias gt='cd ~/bluemeadow/catkin_ws/devel/lib/auv/'
+alias ws='cd ~/bluemeadow/catkin_ws/src/vehicle/'
+alias gt='cd ~/bluemeadow/catkin_ws/devel/lib/vehicle/'
 alias sim='cd ~/bluemeadow/farmsim/'
 
 # Starts up the Unity launcher.

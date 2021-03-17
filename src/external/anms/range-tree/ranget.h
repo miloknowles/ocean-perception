@@ -38,7 +38,7 @@
 #endif
 
 #include <stdio.h>
-#include <iostream>
+#include <iosfwd>
 #include <algorithm>
 #include <vector>
 #include <math.h>

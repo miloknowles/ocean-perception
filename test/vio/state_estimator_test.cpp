@@ -1,20 +1,13 @@
 #include <gtest/gtest.h>
 #include <glog/logging.h>
+
 #include <utility>
 #include <unordered_map>
 
 #include <opencv2/highgui.hpp>
 #include <opencv2/calib3d.hpp>
 
-#include <gtsam_unstable/nonlinear/IncrementalFixedLagSmoother.h>
-#include <gtsam_unstable/slam/SmartStereoProjectionPoseFactor.h>
-
-#include <gtsam/slam/BetweenFactor.h>
-#include <gtsam/nonlinear/NonlinearFactorGraph.h>
-#include <gtsam/nonlinear/Values.h>
-#include <gtsam/inference/Key.h>
-#include <gtsam/geometry/Pose3.h>
-
+#include "core/eigen_types.hpp"
 #include "dataset/euroc_dataset.hpp"
 #include "dataset/himb_dataset.hpp"
 #include "core/pinhole_camera.hpp"
@@ -35,17 +28,22 @@ using namespace vio;
 
 TEST(VioTest, TestStateEstimator1)
 {
-  const std::string toplevel_folder = "/home/milo/datasets/Unity3D/farmsim/euroc_test1";
+  const std::string toplevel_folder = "/home/milo/datasets/Unity3D/farmsim/euroc_noise1";
   dataset::EurocDataset dataset(toplevel_folder);
+
+  const std::vector<dataset::GroundtruthItem>& groundtruth_poses = dataset.GroundtruthPoses();
+  CHECK(!groundtruth_poses.empty()) << "No groundtruth poses" << std::endl;
+
+  const Matrix4d T0_world_cam = groundtruth_poses.at(0).T_world_body;
 
   const PinholeCamera camera_model(415.876509, 415.876509, 375.5, 239.5, 480, 752);
   const StereoCamera stereo_rig(camera_model, 0.2);
 
-  StateEstimator::Params params("/home/milo/bluemeadow/catkin_ws/src/auv/config/auv_base/StateEstimator_params.yaml",
-                                "/home/milo/bluemeadow/catkin_ws/src/auv/config/auv_base/shared_params.yaml");
+  StateEstimator::Params params("/home/milo/bluemeadow/catkin_ws/src/vehicle/config/auv_base/StateEstimator_params.yaml",
+                                "/home/milo/bluemeadow/catkin_ws/src/vehicle/config/auv_base/shared_params.yaml");
   StateEstimator state_estimator(params, stereo_rig);
 
-  Visualizer3D::Params viz_params("/home/milo/bluemeadow/catkin_ws/src/auv/config/auv_base/Visualizer3D_params.yaml");
+  Visualizer3D::Params viz_params("/home/milo/bluemeadow/catkin_ws/src/vehicle/config/auv_base/Visualizer3D_params.yaml");
   Visualizer3D viz(viz_params, stereo_rig);
 
   SmootherResult::Callback smoother_callback = [&](const SmootherResult& result)
@@ -62,6 +60,11 @@ TEST(VioTest, TestStateEstimator1)
     viz.UpdateBodyPose("imu0", T_world_body);
   };
 
+  for (size_t i = 0; i < groundtruth_poses.size(); ++i) {
+    const Matrix4d T_world_cam = T0_world_cam.inverse() * groundtruth_poses.at(i).T_world_body;
+    viz.AddGroundtruthPose(i, T_world_cam);
+  }
+
   viz.Start();
 
   state_estimator.RegisterSmootherResultCallback(smoother_callback);
@@ -72,7 +75,7 @@ TEST(VioTest, TestStateEstimator1)
 
   state_estimator.Initialize(ConvertToSeconds(dataset.FirstTimestamp()), gtsam::Pose3::identity());
 
-  dataset.Playback(10.0f, false);
+  dataset.Playback(1.0f, false);
 
   state_estimator.BlockUntilFinished();
   state_estimator.Shutdown();

@@ -17,8 +17,8 @@ using namespace vio;
 
 TEST(VioTest, TestTrackLR)
 {
-  FeatureDetector::Options dopt;
-  FeatureTracker::Options topt;
+  FeatureDetector::Params dopt;
+  FeatureTracker::Params topt;
   FeatureDetector detector(dopt);
   FeatureTracker tracker(topt);
   const Image1b iml = cv::imread("./resources/caddy_32_left.jpg", cv::IMREAD_GRAYSCALE);

@@ -1,7 +1,0 @@
-add_subdirectory(./core)
-add_subdirectory(./imaging)
-add_subdirectory(./dataset)
-add_subdirectory(./tag_detector)
-# add_subdirectory(./ros)
-add_subdirectory(./stereo_matching)
-add_subdirectory(./vio)
