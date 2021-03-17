@@ -18,6 +18,7 @@ SET(LIBRARY_SRC
   timer.hpp
   timestamp.hpp
   imu_measurement.hpp
+  depth_measurement.hpp
   stereo_image.hpp
   make_unique.hpp
   fixed_queue.hpp

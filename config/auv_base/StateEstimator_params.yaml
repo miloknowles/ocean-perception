@@ -4,8 +4,10 @@
 max_size_raw_stereo_queue: 100
 max_size_smoother_vo_queue: 100
 max_size_smoother_imu_queue: 1000
+max_size_smoother_depth_queue: 1000
 max_size_filter_vo_queue: 100
 max_size_filter_imu_queue: 1000
+max_size_filter_depth_queue: 1000
 
 reliable_vision_min_lmks: 12
 max_sec_btw_keyposes: 2.0

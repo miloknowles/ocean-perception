@@ -20,9 +20,11 @@ class EurocDataset : public DataProvider {
                         std::vector<timestamp_t>& output_timestamps,
                         std::vector<std::string>& output_filenames);
 
-  void ParseImu(const std::string& imu0_path);
+  void ParseImu(const std::string& imu_csv_path);
 
   void ParseGroundtruth(const std::string& gt_path);
+
+  void ParseDepth(const std::string& depth_csv_path);
 };
 
 

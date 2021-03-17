@@ -18,8 +18,10 @@ StateEstimator::StateEstimator(const Params& params, const StereoCamera& stereo_
       raw_stereo_queue_(params_.max_size_raw_stereo_queue, true),
       smoother_imu_manager_(params_.imu_manager_params),
       smoother_vo_queue_(params_.max_size_smoother_vo_queue, true),
+      smoother_depth_queue_(params_.max_size_smoother_depth_queue, true),
       filter_imu_manager_(params.imu_manager_params),
-      filter_vo_queue_(params_.max_size_filter_vo_queue, true)
+      filter_vo_queue_(params_.max_size_filter_vo_queue, true),
+      filter_depth_queue_(params_.max_size_filter_depth_queue, true)
 {
   LOG(INFO) << "Constructed StateEstimator!" << std::endl;
 }
@@ -38,6 +40,13 @@ void StateEstimator::ReceiveImu(const ImuMeasurement& imu_data)
   // Also, the StateEKf will account for T_body_imu. So no need to "pre-rotate" these measurements.
   smoother_imu_manager_.Push(imu_data);
   filter_imu_manager_.Push(imu_data);
+}
+
+
+void StateEstimator::ReceiveDepth(const DepthMeasurement& depth_data)
+{
+  smoother_depth_queue_.Push(depth_data);
+  filter_depth_queue_.Push(depth_data);
 }
 
 
@@ -259,6 +268,10 @@ void StateEstimator::FilterLoop(seconds_t t0, const gtsam::Pose3& P0_world_body)
   while (!is_shutdown_) {
     if (!filter_vo_queue_.Empty()) {
       filter_vo_queue_.Pop(); // Keep clearing this queue for now.
+    }
+
+    if (!filter_depth_queue_.Empty()) {
+      filter_depth_queue_.Pop();
     }
 
     filter_imu_manager_.DiscardBefore(filter_state_.timestamp);

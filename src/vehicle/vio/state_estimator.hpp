@@ -10,6 +10,7 @@
 #include "core/thread_safe_queue.hpp"
 #include "core/stereo_image.hpp"
 #include "core/imu_measurement.hpp"
+#include "core/depth_measurement.hpp"
 #include "vio/stereo_frontend.hpp"
 #include "vio/imu_manager.hpp"
 #include "vio/state_estimator_util.hpp"
@@ -52,8 +53,10 @@ class StateEstimator final {
     int max_size_raw_stereo_queue = 100;      // Images for the stereo frontend to process.
     int max_size_smoother_vo_queue = 100;     // Holds keyframe VO estimates for the smoother to process.
     int max_size_smoother_imu_queue = 1000;   // Holds IMU measurements for the smoother to process.
+    int max_size_smoother_depth_queue = 1000;
     int max_size_filter_vo_queue = 100;       // Holds all VO estimates for the filter to process.
     int max_size_filter_imu_queue = 1000;     // Holds IMU measurements for the filter to process.
+    int max_size_filter_depth_queue = 1000;
 
     int reliable_vision_min_lmks = 12;        // Vision is "unreliable" if not many features can be detected.
 
@@ -78,8 +81,10 @@ class StateEstimator final {
       parser.GetYamlParam("max_size_raw_stereo_queue", &max_size_raw_stereo_queue);
       parser.GetYamlParam("max_size_smoother_vo_queue", &max_size_smoother_vo_queue);
       parser.GetYamlParam("max_size_smoother_imu_queue", &max_size_smoother_imu_queue);
+      parser.GetYamlParam("max_size_smoother_depth_queue", &max_size_smoother_depth_queue);
       parser.GetYamlParam("max_size_filter_vo_queue", &max_size_filter_vo_queue);
       parser.GetYamlParam("max_size_filter_imu_queue", &max_size_filter_imu_queue);
+      parser.GetYamlParam("max_size_filter_depth_queue", &max_size_filter_depth_queue);
       parser.GetYamlParam("reliable_vision_min_lmks", &reliable_vision_min_lmks);
       parser.GetYamlParam("max_sec_btw_keyposes", &max_sec_btw_keyposes);
       parser.GetYamlParam("min_sec_btw_keyposes", &min_sec_btw_keyposes);
@@ -101,6 +106,7 @@ class StateEstimator final {
 
   void ReceiveStereo(const StereoImage& stereo_pair);
   void ReceiveImu(const ImuMeasurement& imu_data);
+  void ReceiveDepth(const DepthMeasurement& depth_data);
 
   // Add a function that gets called whenever the smoother finished an update.
   // NOTE(milo): Callbacks will block the smoother thread, so keep them fast!
@@ -146,12 +152,14 @@ class StateEstimator final {
   std::atomic_bool smoother_update_flag_{false};
   ImuManager smoother_imu_manager_;
   ThreadsafeQueue<VoResult> smoother_vo_queue_;
+  ThreadsafeQueue<DepthMeasurement> smoother_depth_queue_;
   std::vector<SmootherResult::Callback> smoother_result_callbacks_;
   //================================================================================================
   std::mutex mutex_filter_result_;
   StateStamped filter_state_;
   ImuManager filter_imu_manager_;
   ThreadsafeQueue<VoResult> filter_vo_queue_;
+  ThreadsafeQueue<DepthMeasurement> filter_depth_queue_;
   std::vector<StateStamped::Callback> filter_result_callbacks_;
   //================================================================================================
 };
