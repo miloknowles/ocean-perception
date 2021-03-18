@@ -1,5 +1,7 @@
 #pragma once
 
+#include "core/axis3.hpp"
+
 #include <gtsam/nonlinear/NonlinearFactor.h>
 #include <gtsam/geometry/Pose3.h>
 
@@ -7,10 +9,8 @@ namespace gtsam {
 
 class SingleAxisFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
  public:
-  enum Axis { X = 0, Y = 1, Z = 2 };
-
   explicit SingleAxisFactor(gtsam::Key pose_key,
-                            Axis axis,
+                            bm::core::Axis3 axis,
                             double value,
                             gtsam::SharedNoiseModel noise_model)
       : gtsam::NoiseModelFactor1<gtsam::Pose3>(noise_model, pose_key),
@@ -32,7 +32,7 @@ class SingleAxisFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
   }
 
  private:
-  Axis axis_;
+  bm::core::Axis3 axis_;
   double value_;
   gtsam::Matrix16 J_ = gtsam::Matrix16::Zero();
 };

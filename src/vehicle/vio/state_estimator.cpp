@@ -2,9 +2,9 @@
 
 #include <opencv2/highgui.hpp>
 
-#include "vio/state_estimator.hpp"
 #include "core/timer.hpp"
-
+#include "core/transform_util.hpp"
+#include "vio/state_estimator.hpp"
 
 namespace bm {
 namespace vio {
@@ -18,12 +18,17 @@ StateEstimator::StateEstimator(const Params& params, const StereoCamera& stereo_
       raw_stereo_queue_(params_.max_size_raw_stereo_queue, true),
       smoother_imu_manager_(params_.imu_manager_params),
       smoother_vo_queue_(params_.max_size_smoother_vo_queue, true),
-      smoother_depth_queue_(params_.max_size_smoother_depth_queue, true),
+      smoother_depth_manager_(params_.max_size_smoother_depth_queue, true),
       filter_imu_manager_(params.imu_manager_params),
       filter_vo_queue_(params_.max_size_filter_vo_queue, true),
-      filter_depth_queue_(params_.max_size_filter_depth_queue, true)
+      filter_depth_manager_(params_.max_size_filter_depth_queue, true)
 {
   LOG(INFO) << "Constructed StateEstimator!" << std::endl;
+
+  Vector3d n_gravity_unit;
+  depth_axis_ = GetGravityAxis(params_.n_gravity, n_gravity_unit);
+  depth_sign_ = n_gravity_unit(depth_axis_) >= 0 ? 1.0 : -1.0;
+  LOG(INFO) << "Unit GRAVITY/DEPTH axis: " << n_gravity_unit.transpose() << std::endl;
 }
 
 
@@ -45,8 +50,8 @@ void StateEstimator::ReceiveImu(const ImuMeasurement& imu_data)
 
 void StateEstimator::ReceiveDepth(const DepthMeasurement& depth_data)
 {
-  smoother_depth_queue_.Push(depth_data);
-  filter_depth_queue_.Push(depth_data);
+  // smoother_depth_manager_.Push(depth_data);
+  filter_depth_manager_.Push(depth_data);
 }
 
 
@@ -254,6 +259,9 @@ void StateEstimator::FilterLoop(seconds_t t0, const gtsam::Pose3& P0_world_body)
 {
   StateEkf filter(params_.filter_params);
 
+  StateCovariance S0 = 0.1 * StateCovariance::Identity();
+  // S0.block<3, 3>(t_row, t_row) = 0.03 * Matrix3d::Identity();
+
   filter.Initialize(StateStamped(t0, State(
       P0_world_body.translation(),
       Vector3d::Zero(),
@@ -263,32 +271,47 @@ void StateEstimator::FilterLoop(seconds_t t0, const gtsam::Pose3& P0_world_body)
       0.1 * Matrix15d::Identity())),
       ImuBias());
 
-  filter_state_ = filter.GetState();
-
   while (!is_shutdown_) {
     if (!filter_vo_queue_.Empty()) {
       filter_vo_queue_.Pop(); // Keep clearing this queue for now.
     }
 
-    if (!filter_depth_queue_.Empty()) {
-      filter_depth_queue_.Pop();
-    }
+    // Clear out any sensor data before the current state.
+    filter_imu_manager_.DiscardBefore(filter.GetTimestamp());
+    filter_depth_manager_.DiscardBefore(filter.GetTimestamp());
 
-    filter_imu_manager_.DiscardBefore(filter_state_.timestamp);
-    if (!filter_imu_manager_.Empty()) {
-      mutex_filter_result_.lock();
-      filter_state_ = filter.PredictAndUpdate(filter_imu_manager_.Pop());
+    if ((!filter_imu_manager_.Empty()) || (!filter_depth_manager_.Empty())) {
+      // Figure out which sensor data is next.
+      const seconds_t next_imu_timestamp = filter_imu_manager_.Empty() ? kMaxSeconds : filter_imu_manager_.Oldest();
+      const seconds_t next_depth_timestamp = filter_depth_manager_.Empty() ? kMaxSeconds : filter_depth_manager_.Oldest();
+      const seconds_t next_timestamp = std::min({next_imu_timestamp, next_depth_timestamp});
 
-      for (const StateStamped::Callback& cb : filter_result_callbacks_) {
-        cb(filter_state_);
+      // LOG(INFO) << "IMU: " << next_imu_timestamp << " DEPTH: " << next_depth_timestamp << " NEXT: " << next_timestamp << " CURRENT: " << filter.GetTimestamp() << std::endl;
+
+      // Update the EKF using one data sample.
+      if (next_timestamp == next_imu_timestamp) {
+        filter.PredictAndUpdate(filter_imu_manager_.Pop());
+      } else if (next_timestamp == next_depth_timestamp) {
+        const DepthMeasurement depth_data = filter_depth_manager_.Pop();
+        filter.PredictAndUpdate(next_depth_timestamp,
+                                depth_axis_,
+                                depth_sign_ * depth_data.depth,
+                                params_.filter_params.sigma_R_depth);
+      } else {
+        LOG(FATAL) << "No sensor was chosen for filter update, something is wrong" << std::endl;
       }
-      mutex_filter_result_.unlock();
+
+      // Process all callbacks with the updated state. These will block so they should be fast!
+      const StateStamped state = filter.GetState();
+      for (const StateStamped::Callback& cb : filter_result_callbacks_) {
+        cb(state);
+      }
     }
 
     //================================== SYNCHRONIZE WITH SMOOTHER =================================
-    const bool sync_with_smoother = smoother_update_flag_.exchange(false);
+    const bool do_sync_with_smoother = smoother_update_flag_.exchange(false);
 
-    if (sync_with_smoother) {
+    if (do_sync_with_smoother) {
       // Get a copy of the latest smoother state to make sure it doesn't change during the sync.
       mutex_smoother_result_.lock();
       const SmootherResult result = smoother_result_;
@@ -299,7 +322,7 @@ void StateEstimator::FilterLoop(seconds_t t0, const gtsam::Pose3& P0_world_body)
 
       // Pose covariance order is: [ rx ry rz tx ty tz ]
       S.block<3, 3>(t_row, t_row) = result.cov_pose.block<3, 3>(3, 3);
-      S.block<3, 3>(uq_row, uq_row) = result.cov_pose.block<3, 3>(0, 0);  // TODO
+      S.block<3, 3>(uq_row, uq_row) = result.cov_pose.block<3, 3>(0, 0);
       S.block<3, 3>(v_row, v_row) = result.cov_vel;
 
       // NOTE(milo): Since the smoother doesn't give us acceleration or angular velocity, we
@@ -318,15 +341,11 @@ void StateEstimator::FilterLoop(seconds_t t0, const gtsam::Pose3& P0_world_body)
                               result.cov_vel);
       filter.ReapplyImu();
 
-      mutex_filter_result_.lock();
-      filter_state_ = filter.GetState();
-
+      const StateStamped state = filter.GetState();
       for (const StateStamped::Callback& cb : filter_result_callbacks_) {
-        cb(filter_state_);
+        cb(state);
       }
-      mutex_filter_result_.unlock();
-    } // end if (sync_with_smoother)
-    //==============================================================================================
+    } // end if (do_sync_with_smoother)
   } // end while (!is_shutdown)
 
   LOG(INFO) << "FilterLoop() exiting" << std::endl;

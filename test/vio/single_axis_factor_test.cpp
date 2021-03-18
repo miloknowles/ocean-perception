@@ -12,7 +12,7 @@ TEST(VioTest, TestSingleAxisFactor_01)
   const gtsam::Symbol pose1_sym('X', 0);
   const IsotropicModel::shared_ptr noise_model = IsotropicModel::Sigma(1, 3.0);
 
-  const gtsam::SingleAxisFactor f(pose1_sym, gtsam::SingleAxisFactor::Axis::X, 123.456, noise_model);
+  const gtsam::SingleAxisFactor f(pose1_sym, core::Axis3::X, 123.456, noise_model);
 
   const gtsam::Pose3 pose1 = gtsam::Pose3::identity();
 

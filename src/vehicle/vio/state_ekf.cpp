@@ -4,13 +4,6 @@ namespace bm {
 namespace vio {
 
 
-typedef Eigen::Matrix<double, 6, 15> Matrix6x15;
-typedef Eigen::Matrix<double, 15, 6> Matrix15x6;
-
-typedef Eigen::Matrix<double, 3, 15> Matrix3x15;
-typedef Eigen::Matrix<double, 15, 3> Matrix15x3;
-
-
 StateEkf::StateEkf(const Params& params)
     : params_(params),
       state_(0, State())
@@ -234,6 +227,30 @@ static State UpdatePose(const State& x,
 }
 
 
+static State UpdateSingleAxisTranslation(const State& x,
+                                         Axis3 axis,
+                                         double meas_t_world_body,
+                                         double R_axis_sigma)
+{
+  CHECK_GT(R_axis_sigma, 0) << "R_axis_sigma (stdev) must be > 0" << std::endl;
+
+  // Get the translation along desired axis.
+  const double pred_t_world_body = x.t(axis);
+  const double S_axis_sigma = x.S(t_row + axis, t_row + axis);
+
+  const double S_axis_sigma_updated = S_axis_sigma + R_axis_sigma;
+
+  // 1D Kalman gain.
+  const double k = S_axis_sigma / (S_axis_sigma + R_axis_sigma);
+
+  State xu = x;
+  xu.t(axis) += k * (meas_t_world_body - pred_t_world_body);
+  xu.S(t_row + axis, t_row + axis) = (1.0 - k) * S_axis_sigma;
+
+  return xu;
+}
+
+
 void StateEkf::Initialize(const StateStamped& state, const ImuBias& imu_bias)
 {
   ThreadsafeSetState(state.timestamp, state.state);
@@ -289,6 +306,21 @@ StateStamped StateEkf::PredictAndUpdate(seconds_t timestamp,
 
   // UPDATE STEP: Compute redidual errors, Kalman gain, and apply update.
   const State& xu = UpdatePose(xp, q_world_body, t_world_body, R_pose);
+
+  return ThreadsafeSetState(timestamp, xu);
+}
+
+
+StateStamped StateEkf::PredictAndUpdate(seconds_t timestamp,
+                                        Axis3 axis,
+                                        double meas_t_world_body,
+                                        double R_axis_sigma)
+{
+  // PREDICT STEP: Simulate the system forward to the current timestep.
+  const State& xp = PredictIfTimeElapsed(timestamp);
+
+  // UPDATE STEP: Compute redidual errors, Kalman gain, and apply update.
+  const State& xu = UpdateSingleAxisTranslation(xp, axis, meas_t_world_body, R_axis_sigma);
 
   return ThreadsafeSetState(timestamp, xu);
 }

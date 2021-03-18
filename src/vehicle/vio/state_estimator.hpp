@@ -7,11 +7,13 @@
 #include "core/macros.hpp"
 #include "core/eigen_types.hpp"
 #include "core/cv_types.hpp"
+#include "core/axis3.hpp"
 #include "core/thread_safe_queue.hpp"
 #include "core/stereo_image.hpp"
 #include "core/imu_measurement.hpp"
 #include "core/depth_measurement.hpp"
 #include "vio/stereo_frontend.hpp"
+#include "vio/data_manager.hpp"
 #include "vio/imu_manager.hpp"
 #include "vio/state_estimator_util.hpp"
 #include "vio/state_ekf.hpp"
@@ -21,6 +23,8 @@
 
 namespace bm {
 namespace vio {
+
+typedef DataManager<DepthMeasurement> DepthManager;
 
 
 // The smoother changes its behavior depending on whether vision is available/unavailable.
@@ -69,6 +73,7 @@ class StateEstimator final {
 
     gtsam::Pose3 P_body_imu = gtsam::Pose3::identity();
     gtsam::Pose3 P_body_cam = gtsam::Pose3::identity();
+    Vector3d n_gravity = Vector3d(0, 9.81, 0);
 
    private:
     void LoadParams(const YamlParser& parser) override
@@ -91,6 +96,7 @@ class StateEstimator final {
       parser.GetYamlParam("smoother_init_wait_vision_sec", &smoother_init_wait_vision_sec);
       parser.GetYamlParam("show_feature_tracks", &show_feature_tracks);
 
+      YamlToVector<Vector3d>(parser.GetYamlNode("/shared/n_gravity"), n_gravity);
       Matrix4d T_body_imu, T_body_cam;
       YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/imu0/T_body_imu"), T_body_imu);
       YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/cam0/T_body_cam"), T_body_cam);
@@ -138,6 +144,9 @@ class StateEstimator final {
   StereoCamera stereo_rig_;
   std::atomic_bool is_shutdown_;  // Set this to trigger a *graceful* shutdown.
 
+  Axis3 depth_axis_ = Axis3::Y;
+  double depth_sign_ = 1.0;
+
   StereoFrontend stereo_frontend_;
   ThreadsafeQueue<StereoImage> raw_stereo_queue_;
 
@@ -152,14 +161,14 @@ class StateEstimator final {
   std::atomic_bool smoother_update_flag_{false};
   ImuManager smoother_imu_manager_;
   ThreadsafeQueue<VoResult> smoother_vo_queue_;
-  ThreadsafeQueue<DepthMeasurement> smoother_depth_queue_;
+  DepthManager smoother_depth_manager_;
   std::vector<SmootherResult::Callback> smoother_result_callbacks_;
   //================================================================================================
-  std::mutex mutex_filter_result_;
-  StateStamped filter_state_;
+  // std::mutex mutex_filter_result_;
+  // StateStamped filter_state_;
   ImuManager filter_imu_manager_;
+  DepthManager filter_depth_manager_;
   ThreadsafeQueue<VoResult> filter_vo_queue_;
-  ThreadsafeQueue<DepthMeasurement> filter_depth_queue_;
   std::vector<StateStamped::Callback> filter_result_callbacks_;
   //================================================================================================
 };

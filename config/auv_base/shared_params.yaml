@@ -2,10 +2,9 @@
 
 # Acceleration of gravity in the world frame.
 # For example, in a RDF world, n_gravity = [0, 9.81, 0].
+# NOTE: This is also used to determine the DEPTH axis (same as gravity).
 n_gravity: [0, 9.81, 0]
 
-# Should be a unit vector in the direction of increasing depth.
-depth_axis: [0, 1, 0]
 
 imu0:
   frame_id: imu0

@@ -89,6 +89,7 @@ class DataProvider {
   // Start the dataset back over at the beginning.
   void Reset();
 
+  Matrix4d InitialPose() const;
   timestamp_t FirstTimestamp() const;
 
   const std::vector<GroundtruthItem>& GroundtruthPoses() const { return pose_data; }

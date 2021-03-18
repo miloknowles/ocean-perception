@@ -45,6 +45,8 @@ StateEkfParams:
   sigma_R_imu_a: 0.0003924
   sigma_R_imu_w: 0.000205689024915
 
+  sigma_R_depth: 0.05 # m
+
 #===============================================================================
 StereoFrontend:
   stereo_max_depth: 100.0 # m

@@ -153,6 +153,18 @@ void DataProvider::Reset()
 }
 
 
+Matrix4d DataProvider::InitialPose() const
+{
+  Matrix4d T_world_body = Matrix4d::Identity();
+
+  if (pose_data.size() > 0) {
+    T_world_body = pose_data.front().T_world_body;
+  }
+
+  return T_world_body;
+}
+
+
 timestamp_t DataProvider::FirstTimestamp() const
 {
   CHECK(!(imu_data.empty() && stereo_data.empty() && depth_data.empty()));
