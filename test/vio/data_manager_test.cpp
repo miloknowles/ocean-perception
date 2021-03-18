@@ -1,10 +1,63 @@
 #include <gtest/gtest.h>
 
+#include "core/depth_measurement.hpp"
+#include "vio/data_manager.hpp"
 #include "vio/imu_manager.hpp"
 
 using namespace bm;
 using namespace core;
 using namespace vio;
+
+
+TEST(VioTest, TestDataManager_01)
+{
+  // Queue holds 3 items, drop oldest.
+  DataManager<DepthMeasurement> m(3, true);
+
+  EXPECT_EQ(0ul, m.Size());
+  EXPECT_TRUE(m.Empty());
+
+  m.Push(DepthMeasurement(123, 0.3));
+
+  EXPECT_EQ(1ul, m.Size());
+  EXPECT_FALSE(m.Empty());
+
+  EXPECT_EQ(ConvertToSeconds(123), m.Newest());
+  EXPECT_EQ(ConvertToSeconds(123), m.Oldest());
+
+  // This shouldn't cause the data at 123 to be dropped.
+  m.DiscardBefore(ConvertToSeconds(122));
+
+  EXPECT_EQ(1ul, m.Size());
+  EXPECT_FALSE(m.Empty());
+  EXPECT_EQ(ConvertToSeconds(123), m.Newest());
+  EXPECT_EQ(ConvertToSeconds(123), m.Oldest());
+
+  // This also shouldn't cause a drop.
+  m.DiscardBefore(ConvertToSeconds(123));
+
+  EXPECT_EQ(1ul, m.Size());
+  EXPECT_FALSE(m.Empty());
+  EXPECT_EQ(ConvertToSeconds(123), m.Newest());
+  EXPECT_EQ(ConvertToSeconds(123), m.Oldest());
+
+  // This one should.
+  m.DiscardBefore(ConvertToSeconds(124));
+  EXPECT_EQ(0ul, m.Size());
+  EXPECT_TRUE(m.Empty());
+  EXPECT_EQ(kMaxSeconds, m.Newest());
+  EXPECT_EQ(kMinSeconds, m.Oldest());
+
+  m.Push(DepthMeasurement(123, 0.3));
+  m.Push(DepthMeasurement(124, 0.3));
+  m.Push(DepthMeasurement(125, 0.3));
+  m.Push(DepthMeasurement(126, 0.3));
+
+  // Should drop the first measurement.
+  EXPECT_EQ(3ul, m.Size());
+  EXPECT_EQ(ConvertToSeconds(126), m.Newest());
+  EXPECT_EQ(ConvertToSeconds(124), m.Oldest());
+}
 
 
 TEST(VioTest, TestImuManager_01)

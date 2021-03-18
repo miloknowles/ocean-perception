@@ -5,6 +5,7 @@ SET(LIBRARY_SRC
   state_estimator_util.hpp
   landmark_observation.hpp
   vo_result.hpp
+  data_manager.hpp
   feature_detector.cpp
   feature_detector.hpp
   feature_tracker.cpp

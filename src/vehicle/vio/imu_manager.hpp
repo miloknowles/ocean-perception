@@ -89,7 +89,6 @@ class ImuManager final {
 
   MACRO_DELETE_COPY_CONSTRUCTORS(ImuManager)
   MACRO_DELETE_DEFAULT_CONSTRUCTOR(ImuManager)
-  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
   // Construct with options that control the noise model.
   explicit ImuManager(const Params& params);
