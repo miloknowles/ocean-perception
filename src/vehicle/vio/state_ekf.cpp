@@ -238,8 +238,6 @@ static State UpdateSingleAxisTranslation(const State& x,
   const double pred_t_world_body = x.t(axis);
   const double S_axis_sigma = x.S(t_row + axis, t_row + axis);
 
-  const double S_axis_sigma_updated = S_axis_sigma + R_axis_sigma;
-
   // 1D Kalman gain.
   const double k = S_axis_sigma / (S_axis_sigma + R_axis_sigma);
 

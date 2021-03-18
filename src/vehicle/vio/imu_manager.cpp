@@ -39,12 +39,12 @@ PimResult ImuManager::Preintegrate(seconds_t from_time, seconds_t to_time)
   }
 
   // Requesting a from_time that is too far before our earliest measurement.
-  if (Oldest() > (from_time + params_.allowed_misalignment_sec)) {
+  if (Oldest() > (from_time + params_.allowed_misalignment_sec) && (from_time != kMinSeconds)) {
     return PimResult(false, kMinSeconds, kMaxSeconds, PimC());
   }
 
   // Requesting a to_time that is too far after our newest measurement.
-  if (Newest() < (to_time - params_.allowed_misalignment_sec)) {
+  if (Newest() < (to_time - params_.allowed_misalignment_sec) && (to_time != kMaxSeconds)) {
     return PimResult(false, kMinSeconds, kMaxSeconds, PimC());
   }
 

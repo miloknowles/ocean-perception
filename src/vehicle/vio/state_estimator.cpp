@@ -20,8 +20,8 @@ StateEstimator::StateEstimator(const Params& params, const StereoCamera& stereo_
       smoother_vo_queue_(params_.max_size_smoother_vo_queue, true),
       smoother_depth_manager_(params_.max_size_smoother_depth_queue, true),
       filter_imu_manager_(params.imu_manager_params),
-      filter_vo_queue_(params_.max_size_filter_vo_queue, true),
-      filter_depth_manager_(params_.max_size_filter_depth_queue, true)
+      filter_depth_manager_(params_.max_size_filter_depth_queue, true),
+      filter_vo_queue_(params_.max_size_filter_vo_queue, true)
 {
   LOG(INFO) << "Constructed StateEstimator!" << std::endl;
 
@@ -50,7 +50,7 @@ void StateEstimator::ReceiveImu(const ImuMeasurement& imu_data)
 
 void StateEstimator::ReceiveDepth(const DepthMeasurement& depth_data)
 {
-  // smoother_depth_manager_.Push(depth_data);
+  smoother_depth_manager_.Push(depth_data);
   filter_depth_manager_.Push(depth_data);
 }
 
@@ -183,6 +183,7 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
   //====================================== INITIALIZATION ==========================================
   bool initialized = false;
   while (!initialized) {
+    LOG(INFO) << "Will wait " << params_.smoother_init_wait_vision_sec << " seconds for vision" << std::endl;
     const bool no_vo = WaitForResultOrTimeout<ThreadsafeQueue<VoResult>>(
         smoother_vo_queue_, params_.smoother_init_wait_vision_sec);
 
@@ -234,10 +235,21 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
     if (did_timeout) {
       const bool imu_is_available = !smoother_imu_manager_.Empty() &&
                                     (smoother_imu_manager_.Newest() > from_time);
-      const seconds_t time_since_last_keypose = (smoother_imu_manager_.Newest() - from_time);
+      const seconds_t to_time = smoother_imu_manager_.Newest();
+      const seconds_t time_since_last_keypose = (to_time - from_time);
+
       if (imu_is_available && (time_since_last_keypose > params_.min_sec_btw_keyposes)) {
-        const PimResult& pim = smoother_imu_manager_.Preintegrate(from_time);
-        OnSmootherResult(smoother.UpdateGraphNoVision(pim));
+        smoother_depth_manager_.DiscardBefore(to_time, true);
+        const seconds_t offset_imu_depth = std::fabs(to_time - smoother_depth_manager_.Oldest());
+
+        const bool depth_is_aligned = !smoother_depth_manager_.Empty() &&
+                                      (offset_imu_depth < params_.depth_timestamp_epsilon_sec);
+
+        const auto maybe_depth_ptr = depth_is_aligned ? std::make_shared<DepthMeasurement>(
+            smoother_depth_manager_.Pop()) : nullptr;
+
+        const PimResult& pim = smoother_imu_manager_.Preintegrate(from_time, to_time);
+        OnSmootherResult(smoother.UpdateGraphNoVision(pim, maybe_depth_ptr));
       }
 
     // VO AVAILABLE ==> Add a keyframe and smooth.
@@ -245,8 +257,21 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
       const VoResult frontend_result = smoother_vo_queue_.Pop();
       const seconds_t to_time = ConvertToSeconds(frontend_result.timestamp);
       const PimResult pim = smoother_imu_manager_.Preintegrate(from_time, to_time);
+
+      const auto maybe_pim_ptr = pim.timestamps_aligned ? std::make_shared<PimResult>(pim) : nullptr;
+
+      smoother_depth_manager_.DiscardBefore(to_time, true);
+      const seconds_t offset_odom_depth = std::fabs(to_time - smoother_depth_manager_.Oldest());
+
+      const bool depth_is_aligned = !smoother_depth_manager_.Empty() &&
+                                    (offset_odom_depth < params_.depth_timestamp_epsilon_sec);
+
+      const auto maybe_depth_ptr = depth_is_aligned ? std::make_shared<DepthMeasurement>(smoother_depth_manager_.Pop()) : nullptr;
+
       OnSmootherResult(smoother.UpdateGraphWithVision(
-          frontend_result, pim.timestamps_aligned ? std::make_shared<PimResult>(pim) : nullptr));
+          frontend_result,
+          maybe_pim_ptr,
+          maybe_depth_ptr));
     }
 
   } // end while (!is_shutdown)
@@ -260,7 +285,7 @@ void StateEstimator::FilterLoop(seconds_t t0, const gtsam::Pose3& P0_world_body)
   StateEkf filter(params_.filter_params);
 
   StateCovariance S0 = 0.1 * StateCovariance::Identity();
-  // S0.block<3, 3>(t_row, t_row) = 0.03 * Matrix3d::Identity();
+  S0.block<3, 3>(t_row, t_row) = 0.03 * Matrix3d::Identity();
 
   filter.Initialize(StateStamped(t0, State(
       P0_world_body.translation(),
@@ -268,7 +293,7 @@ void StateEstimator::FilterLoop(seconds_t t0, const gtsam::Pose3& P0_world_body)
       Vector3d::Zero(),
       P0_world_body.rotation().toQuaternion().normalized(),
       Vector3d::Zero(),
-      0.1 * Matrix15d::Identity())),
+      S0)),
       ImuBias());
 
   while (!is_shutdown_) {

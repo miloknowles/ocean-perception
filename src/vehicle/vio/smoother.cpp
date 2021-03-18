@@ -3,8 +3,10 @@
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/inference/Key.h>
 
+#include "core/transform_util.hpp"
 #include "vio/smoother.hpp"
 #include "vio/vo_result.hpp"
+#include "vio/single_axis_factor.hpp"
 
 namespace bm {
 namespace vio {
@@ -36,6 +38,11 @@ Smoother::Smoother(const Params& params,
 
   // https://bitbucket.org/gtborg/gtsam/issues/420/problem-with-isam2-stereo-smart-factors-no
   lmk_stereo_factor_params_ = gtsam::SmartStereoProjectionParams(gtsam::JACOBIAN_SVD, gtsam::ZERO_ON_DEGENERACY);
+
+  Vector3d n_gravity_unit;
+  depth_axis_ = GetGravityAxis(params_.n_gravity, n_gravity_unit);
+  depth_sign_ = n_gravity_unit(depth_axis_) >= 0 ? 1.0 : -1.0;
+  LOG(INFO) << "Unit GRAVITY/DEPTH axis: " << n_gravity_unit.transpose() << std::endl;
 }
 
 
@@ -155,7 +162,8 @@ static void AddImuFactors(uid_t keypose_id,
 }
 
 
-SmootherResult Smoother::UpdateGraphNoVision(const PimResult& pim_result)
+SmootherResult Smoother::UpdateGraphNoVision(const PimResult& pim_result,
+                                             DepthMeasurement::ConstPtr maybe_depth_ptr)
 {
   CHECK(pim_result.timestamps_aligned) << "Preintegrated IMU invalid" << std::endl;
 
@@ -183,6 +191,19 @@ SmootherResult Smoother::UpdateGraphNoVision(const PimResult& pim_result)
       new_values,
       new_factors,
       params_);
+
+  //========================================= DEPTH FACTOR =========================================
+  if (maybe_depth_ptr) {
+    // NOTE(milo): If positive depth is along a NEGATIVE axis (e.g -y), we need to flip the sign.
+    // Then we can treat it as a measurement of translation along the POSITIVE axis.
+    const double measured_depth = depth_sign_ * maybe_depth_ptr->depth;
+
+    new_factors.push_back(gtsam::SingleAxisFactor(
+        keypose_sym,
+        depth_axis_,
+        measured_depth,
+        params_.depth_sensor_noise_model));
+  }
 
   //==================================== UPDATE FACTOR GRAPH =======================================
   smoother_.update(new_factors, new_values);
@@ -218,7 +239,8 @@ SmootherResult Smoother::UpdateGraphNoVision(const PimResult& pim_result)
 
 SmootherResult Smoother::UpdateGraphWithVision(
     const VoResult& odom_result,
-    const PimResult::ConstPtr& pim_result_ptr)
+    PimResult::ConstPtr pim_result_ptr,
+    DepthMeasurement::ConstPtr maybe_depth_ptr)
 {
   CHECK(odom_result.is_keyframe) << "Smoother shouldn't receive a non-keyframe odometry result" << std::endl;
   CHECK(odom_result.lmk_obs.size() > 0) << "Smoother shouln't receive a keyframe with no observations" << std::endl;
@@ -306,6 +328,19 @@ SmootherResult Smoother::UpdateGraphWithVision(
   if (pim_result_ptr && pim_result_ptr->timestamps_aligned) {
     AddImuFactors(keypose_id, *pim_result_ptr, result_, !graph_has_vo_btw_factor, new_values, new_factors, params_);
     graph_has_imu_btw_factor = true;
+  }
+
+  //========================================= DEPTH FACTOR =========================================
+  if (maybe_depth_ptr) {
+    // NOTE(milo): If positive depth is along a NEGATIVE axis (e.g -y), we need to flip the sign.
+    // Then we can treat it as a measurement of translation along the POSITIVE axis.
+    const double measured_depth = depth_sign_ * maybe_depth_ptr->depth;
+
+    new_factors.push_back(gtsam::SingleAxisFactor(
+        keypose_sym,
+        depth_axis_,
+        measured_depth,
+        params_.depth_sensor_noise_model));
   }
 
   //================================= FACTOR GRAPH SAFETY CHECK ====================================

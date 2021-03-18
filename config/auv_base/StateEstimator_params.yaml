@@ -12,8 +12,8 @@ max_size_filter_depth_queue: 1000
 reliable_vision_min_lmks: 12
 max_sec_btw_keyposes: 2.0
 min_sec_btw_keyposes: 0.2
-
-smoother_init_wait_vision_sec: 2.0
+depth_timestamp_epsilon_sec: 0.05
+smoother_init_wait_vision_sec: 3.0
 
 show_feature_tracks: 1
 
@@ -21,9 +21,10 @@ show_feature_tracks: 1
 SmootherParams:
   pose_prior_noise_model: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01]    # rad, rad, rad, m, m, m
   frontend_vo_noise_model: [0.05, 0.05, 0.05, 0.3, 0.3, 0.3]      # rad, rad, rad, m, m, m
-  lmk_mono_reproj_err_sigma: 3.0    # px in u and v
-  lmk_stereo_reproj_err_sigma: 2.0  # px in u and v
-  velocity_sigma: 0.3 # m/s
+  lmk_mono_reproj_err_sigma: 3.0        # px in u and v
+  lmk_stereo_reproj_err_sigma: 2.0      # px in u and v
+  depth_sensor_noise_model_sigma: 0.05  # m
+  velocity_sigma: 0.3                   # m/s
   extra_smoothing_iters: 1
 
   # Noise model for the zero-prior on IMU bias.

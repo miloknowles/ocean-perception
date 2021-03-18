@@ -57,6 +57,11 @@ TEST(VioTest, TestDataManager_01)
   EXPECT_EQ(3ul, m.Size());
   EXPECT_EQ(ConvertToSeconds(126), m.Newest());
   EXPECT_EQ(ConvertToSeconds(124), m.Oldest());
+
+  // Make sure it saves at least one measurement when we require it.
+  m.DiscardBefore(ConvertToSeconds(130), true);
+  EXPECT_EQ(1ul, m.Size());
+  EXPECT_FALSE(m.Empty());
 }
 
 

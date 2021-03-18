@@ -8,6 +8,7 @@
 #include "core/uid.hpp"
 #include "core/timestamp.hpp"
 #include "core/imu_measurement.hpp"
+#include "core/depth_measurement.hpp"
 #include "core/stereo_camera.hpp"
 #include "vio/imu_manager.hpp"
 #include "vio/gtsam_types.hpp"
@@ -85,8 +86,11 @@ class Smoother final {
     IsotropicModel::shared_ptr bias_prior_noise_model = IsotropicModel::Sigma(6, 1e-2);
     IsotropicModel::shared_ptr bias_drift_noise_model = IsotropicModel::Sigma(6, 1e-3);
 
+    IsotropicModel::shared_ptr depth_sensor_noise_model = IsotropicModel::Sigma(1, 0.05);
+
     gtsam::Pose3 P_body_imu = gtsam::Pose3::identity();
     gtsam::Pose3 P_body_cam = gtsam::Pose3::identity();
+    Vector3d n_gravity = Vector3d(0, 9.81, 0);
 
   private:
     void LoadParams(const YamlParser& parser) override
@@ -120,11 +124,17 @@ class Smoother final {
       bias_prior_noise_model = IsotropicModel::Sigma(6, bias_prior_noise_model_sigma);
       bias_drift_noise_model = IsotropicModel::Sigma(6, bias_drift_noise_model_sigma);
 
+      double depth_sensor_noise_model_sigma;
+      parser.GetYamlParam("depth_sensor_noise_model_sigma", &depth_sensor_noise_model_sigma);
+      depth_sensor_noise_model = IsotropicModel::Sigma(1, depth_sensor_noise_model_sigma);
+
       Matrix4d T_body_imu, T_body_cam;
       YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/imu0/T_body_imu"), T_body_imu);
       YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/cam0/T_body_cam"), T_body_cam);
       P_body_imu = gtsam::Pose3(T_body_imu);
       P_body_cam = gtsam::Pose3(T_body_cam);
+
+      YamlToVector<Vector3d>(parser.GetYamlNode("/shared/n_gravity"), n_gravity);
     }
   };
 
@@ -146,13 +156,15 @@ class Smoother final {
   // Add a new keypose WITHOUT vision information. For now, we use a preintegrated IMU measurement
   // to provide odometry. Eventually, this could include APS also.
   // NOTE: pim_result should be integrated in the BODY frame!
-  SmootherResult UpdateGraphNoVision(const PimResult& pim_result);
+  SmootherResult UpdateGraphNoVision(const PimResult& pim_result,
+                                     DepthMeasurement::ConstPtr maybe_depth_ptr = nullptr);
 
   // Add a new keypose using a keyframe from the stereo frontend. If pim_result_ptr is supplied,
   // a preintegrated IMU factor is added also.
   // NOTE: pim_result should be integrated in the BODY frame!
   SmootherResult UpdateGraphWithVision(const VoResult& frontend_result,
-                                       const PimResult::ConstPtr& pim_result_ptr = nullptr);
+                                       PimResult::ConstPtr pim_result_ptr = nullptr,
+                                       DepthMeasurement::ConstPtr maybe_depth_ptr = nullptr);
 
   // Threadsafe access to the latest result.
   SmootherResult GetResult();
@@ -182,6 +194,9 @@ class Smoother final {
 
   gtsam::SmartProjectionParams lmk_stereo_factor_params_;
   gtsam::Cal3_S2Stereo::shared_ptr cal3_stereo_;
+
+  Axis3 depth_axis_ = Axis3::Y;
+  double depth_sign_ = 1.0;
 };
 
 }

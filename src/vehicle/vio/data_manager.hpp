@@ -12,18 +12,6 @@ namespace vio {
 using namespace core;
 
 
-// Let the compiler decide which of these functions to use, depending on whether the undelying
-// DataType uses timestamp_t or seconds_t timestamps.
-static seconds_t MaybeConvertToSeconds(seconds_t t)
-{
-  return t;
-}
-static seconds_t MaybeConvertToSeconds(timestamp_t t)
-{
-  return ConvertToSeconds(t);
-}
-
-
 template <typename DataType>
 class DataManager {
  public:
@@ -44,10 +32,13 @@ class DataManager {
   // Get the oldest measurement (first in) from the queue.
   DataType Pop() { return queue_.Pop(); }
 
-  // Throw away measurements before (but NOT equal to) timestamp.
-  void DiscardBefore(seconds_t timestamp)
+  // Throw away measurements before (but NOT equal to) timestamp. If save_at_least_one is true,
+  // we don't pop the only remaining item, no matter what timestamp it has.
+  void DiscardBefore(seconds_t timestamp, bool save_at_least_one = false)
   {
-    while (!queue_.Empty() && MaybeConvertToSeconds(queue_.PeekFront().timestamp) < timestamp) {
+    while (!queue_.Empty() &&
+           !(queue_.Size() == 1 && save_at_least_one) &&
+           (MaybeConvertToSeconds(queue_.PeekFront().timestamp) < timestamp)) {
       queue_.Pop();
     }
   }
@@ -66,6 +57,20 @@ class DataManager {
 
  protected:
   ThreadsafeQueue<DataType> queue_;
+
+ private:
+  seconds_t MaybeConvertToSeconds(timestamp_t t) const
+  {
+    return ConvertToSeconds(t);
+  }
+
+  // Let the compiler decide which of these functions to use, depending on whether the undelying
+  // DataType uses timestamp_t or seconds_t timestamps.
+  // TODO(milo): Uncomment if we every switch from nanosecond to second timestamps!
+  // static seconds_t MaybeConvertToSeconds(seconds_t t)
+  // {
+  //   return t;
+  // }
 };
 
 

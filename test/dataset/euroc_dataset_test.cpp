@@ -10,12 +10,11 @@ using namespace dataset;
 
 TEST(DatasetTest, TestEurocDataset)
 {
-  // const std::string toplevel_folder = "/home/milo/datasets/euroc/V1_01_EASY";
   const std::string toplevel_folder = "/home/milo/datasets/Unity3D/farmsim/euroc_test1";
   EurocDataset dataset(toplevel_folder);
 
-  StereoCallback stereo_cb = [](const StereoImage& stereo_data) {};
-  ImuCallback imu_cb = [](const ImuMeasurement& imu_data) {};
+  StereoCallback stereo_cb = [](const StereoImage&) {};
+  ImuCallback imu_cb = [](const ImuMeasurement&) {};
 
   dataset.RegisterStereoCallback(stereo_cb);
   dataset.RegisterImuCallback(imu_cb);
