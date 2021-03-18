@@ -25,6 +25,8 @@ class EurocDataset : public DataProvider {
   void ParseGroundtruth(const std::string& gt_path);
 
   void ParseDepth(const std::string& depth_csv_path);
+
+  void ParseRange(const std::string& range_csv_path);
 };
 
 

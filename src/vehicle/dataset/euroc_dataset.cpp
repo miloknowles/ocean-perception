@@ -37,6 +37,13 @@ EurocDataset::EurocDataset(const std::string& toplevel_path) : DataProvider()
   } else {
     LOG(WARNING) << "[MISSING DATA] No depth measurements found!" << std::endl;
   }
+
+  const std::string& range_csv = Join(mav0_path, "aps0/data.csv");
+  if (Exists(range_csv)) {
+    ParseRange(range_csv);
+  } else {
+    LOG(WARNING) << "[MISSING DATA] No range measurements found!" << std::endl;
+  }
 }
 
 
@@ -207,23 +214,69 @@ void EurocDataset::ParseDepth(const std::string& depth_csv_path)
     comma_idx = line.find_first_of(',');
     const double depth = std::stod(line.substr(0, comma_idx));
 
-    CHECK_GT(timestamp, prev_timestamp) << "Euroc IMU data is not in chronological order!";
+    CHECK_GT(timestamp, prev_timestamp) << "EuRoC depth data is not in chronological order!";
 
     min_depth = std::min(min_depth, depth);
     max_depth = std::max(max_depth, depth);
 
     depth_data.emplace_back(DepthMeasurement(timestamp, depth));
-
     prev_timestamp = timestamp;
   }
 
   fin.close();
 
-  LOG(INFO) << "Read in " << depth_data.size() << " depth measurements.\n"
+  LOG(INFO) << "Read in " << depth_data.size() << " DEPTH measurements.\n"
             << "  earliest=" << depth_data.front().timestamp
             << "  latest=" << depth_data.back().timestamp << "\n"
-            << "  min_depth=" << min_depth << " max_depth=" << max_depth << std::endl;
+            << "  min=" << min_depth << " max=" << max_depth << std::endl;
 }
+
+
+void EurocDataset::ParseRange(const std::string& range_csv_path)
+{
+  std::ifstream fin(range_csv_path.c_str());
+  CHECK(fin.is_open()) << "Could not open file: " << range_csv_path << std::endl;
+
+  // Skip the first line, containing the header.
+  std::string line;
+  std::getline(fin, line);
+
+  double min_range = std::numeric_limits<double>::max();
+  double max_range = std::numeric_limits<double>::min();
+  timestamp_t prev_timestamp = 0;
+
+  // Read/store imu measurements, line by line.
+  while (std::getline(fin, line)) {
+    std::stringstream iss(line);
+
+    std::string ns, r, tx, ty, tz;
+    std::getline(iss, ns, ',');
+    std::getline(iss, r, ',');
+    std::getline(iss, tx, ',');
+    std::getline(iss, ty, ',');
+    std::getline(iss, tz, ',');
+
+    const timestamp_t timestamp = std::stoll(ns);
+    const double range = std::stod(r);
+    const Vector3d t(std::stod(tx), std::stod(ty), std::stod(tz));
+
+    CHECK_GT(timestamp, prev_timestamp) << "EuRoC range data is not in chronological order!";
+
+    min_range = std::min(min_range, range);
+    max_range = std::max(max_range, range);
+
+    range_data.emplace_back(RangeMeasurement(timestamp, range, t));
+    prev_timestamp = timestamp;
+  }
+
+  fin.close();
+
+  LOG(INFO) << "Read in " << range_data.size() << " RANGE measurements.\n"
+            << "  earliest=" << range_data.front().timestamp
+            << "  latest=" << range_data.back().timestamp << "\n"
+            << "  min=" << min_range << " max=" << max_range << std::endl;
+}
+
 
 }
 }

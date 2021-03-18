@@ -20,6 +20,7 @@ SET(LIBRARY_SRC
   timestamp.hpp
   imu_measurement.hpp
   depth_measurement.hpp
+  range_measurement.hpp
   stereo_image.hpp
   make_unique.hpp
   fixed_queue.hpp
