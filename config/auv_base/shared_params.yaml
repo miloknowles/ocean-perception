@@ -4,6 +4,9 @@
 # For example, in a RDF world, n_gravity = [0, 9.81, 0].
 n_gravity: [0, 9.81, 0]
 
+# Should be a unit vector in the direction of increasing depth.
+depth_axis: [0, 1, 0]
+
 imu0:
   frame_id: imu0
 

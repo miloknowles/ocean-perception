@@ -2,10 +2,9 @@
 
 #include "core/params_base.hpp"
 #include "core/macros.hpp"
-#include "core/eigen_types.hpp"
 #include "core/imu_measurement.hpp"
 #include "core/uid.hpp"
-#include "core/thread_safe_queue.hpp"
+#include "vio/data_manager.hpp"
 #include "vio/gtsam_types.hpp"
 
 namespace bm {
@@ -37,7 +36,7 @@ struct PimResult final
 };
 
 
-class ImuManager final {
+class ImuManager final : public DataManager<ImuMeasurement> {
  public:
   struct Params final : public ParamsBase
   {
@@ -93,18 +92,6 @@ class ImuManager final {
   // Construct with options that control the noise model.
   explicit ImuManager(const Params& params);
 
-  // Add new IMU data to the queue.
-  void Push(const ImuMeasurement& imu);
-
-  // Is the IMU queue empty?
-  bool Empty() { return queue_.Empty(); }
-
-  // Returns the size of the IMU queue.
-  size_t Size() { return queue_.Size(); }
-
-  // Get the oldest IMU measurement (first in) from the queue.
-  ImuMeasurement Pop() { return queue_.Pop(); }
-
   // Preintegrate queued IMU measurements, optionally within a time range [from_time, to_time].
   // If not time range is given, all available result are integrated. Integration is reset inside
   // of this function once all IMU measurements are incorporated. Internally, GTSAM converts raw
@@ -117,19 +104,9 @@ class ImuManager final {
   // Call this after getting a new bias estimate from the smoother update.
   void ResetAndUpdateBias(const ImuBias& bias);
 
-  // Throw away IMU measurements before (but NOT equal to) time.
-  void DiscardBefore(seconds_t time);
-
-  // Timestamp of the newest IMU measurement in the queue. If empty, returns kMaxSeconds.
-  seconds_t Newest();
-
-  // Timestamp of the oldest IMU measurement in the queue. If empty, returns kMinSeconds.
-  seconds_t Oldest();
-
  private:
   Params params_;
   PimC::Params pim_params_;
-  ThreadsafeQueue<ImuMeasurement> queue_;
   PimC pim_;
 };
 

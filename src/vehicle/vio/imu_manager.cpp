@@ -5,8 +5,8 @@ namespace vio {
 
 
 ImuManager::ImuManager(const Params& params)
-    : params_(params),
-      queue_(params_.max_queue_size, true)
+    : DataManager<ImuMeasurement>(params_.max_queue_size, true),
+      params_(params)
 {
   // https://github.com/haidai/gtsam/blob/master/examples/ImuFactorsExample.cpp
   const gtsam::Matrix3 measured_acc_cov = gtsam::I_3x3 * std::pow(params_.accel_noise_sigma, 2);
@@ -31,18 +31,10 @@ ImuManager::ImuManager(const Params& params)
 }
 
 
-void ImuManager::Push(const ImuMeasurement& imu)
-{
-  // TODO(milo): Eventually deal with dropped IMU measurements (preintegrate them out).
-  CHECK(queue_.Empty() || ConvertToSeconds(imu.timestamp) > Newest()) << "Trying to add IMU measurement out of order" << std::endl;
-  queue_.Push(std::move(imu));
-}
-
-
 PimResult ImuManager::Preintegrate(seconds_t from_time, seconds_t to_time)
 {
   // If no measurements, return failure.
-  if (queue_.Empty()) {
+  if (Empty()) {
     return std::move(PimResult(false, kMinSeconds, kMaxSeconds, PimC()));
   }
 
@@ -57,15 +49,15 @@ PimResult ImuManager::Preintegrate(seconds_t from_time, seconds_t to_time)
   }
 
   // Get the first measurement >= from_time.
-  ImuMeasurement imu = queue_.Pop();
+  ImuMeasurement imu = Pop();
   while (ConvertToSeconds(queue_.PeekFront().timestamp) <= from_time) {
-    imu = queue_.Pop();
+    imu = Pop();
   }
 
-  const double earliest_imu_sec = ConvertToSeconds(imu.timestamp);
+  const seconds_t earliest_imu_sec = ConvertToSeconds(imu.timestamp);
 
   // FAIL: No measurement close to (specified) from_time.
-  const double offset_from_sec = (from_time != kMinSeconds) ? std::fabs(earliest_imu_sec - from_time) : 0.0;
+  const seconds_t offset_from_sec = (from_time != kMinSeconds) ? std::fabs(earliest_imu_sec - from_time) : 0.0;
   if (offset_from_sec > params_.allowed_misalignment_sec) {
     return PimResult(false, kMinSeconds, kMaxSeconds, PimC());
   }
@@ -78,18 +70,18 @@ PimResult ImuManager::Preintegrate(seconds_t from_time, seconds_t to_time)
   }
 
   // Integrate all measurements < to_time.
-  double last_imu_time_sec = earliest_imu_sec;
-  while (!queue_.Empty() && ConvertToSeconds(queue_.PeekFront().timestamp) < to_time) {
-    imu = queue_.Pop();
-    const double dt = ConvertToSeconds(imu.timestamp) - last_imu_time_sec;
+  seconds_t last_imu_time_sec = earliest_imu_sec;
+  while (!Empty() && ConvertToSeconds(queue_.PeekFront().timestamp) < to_time) {
+    imu = Pop();
+    const seconds_t dt = ConvertToSeconds(imu.timestamp) - last_imu_time_sec;
     if (dt > 0) { pim_.integrateMeasurement(imu.a, imu.w, dt); }
     last_imu_time_sec = ConvertToSeconds(imu.timestamp);
   }
 
-  const double latest_imu_sec = ConvertToSeconds(imu.timestamp);
+  const seconds_t latest_imu_sec = ConvertToSeconds(imu.timestamp);
 
   // FAIL: No measurement close to (specified) to_time.
-  const double offset_to_sec = (to_time != kMaxSeconds) ? std::fabs(latest_imu_sec - to_time) : 0.0;
+  const seconds_t offset_to_sec = (to_time != kMaxSeconds) ? std::fabs(latest_imu_sec - to_time) : 0.0;
   if (offset_to_sec > params_.allowed_misalignment_sec) {
     pim_.resetIntegration();
     return PimResult(false, kMinSeconds, kMaxSeconds, PimC());
@@ -110,26 +102,6 @@ PimResult ImuManager::Preintegrate(seconds_t from_time, seconds_t to_time)
 void ImuManager::ResetAndUpdateBias(const ImuBias& bias)
 {
   pim_.resetIntegrationAndSetBias(bias);
-}
-
-
-void ImuManager::DiscardBefore(seconds_t time)
-{
-  while (!queue_.Empty() && ConvertToSeconds(queue_.PeekFront().timestamp) < time) {
-    queue_.Pop();
-  }
-}
-
-
-seconds_t ImuManager::Newest()
-{
-  return queue_.Empty() ? kMaxSeconds : ConvertToSeconds(queue_.PeekBack().timestamp);
-}
-
-
-seconds_t ImuManager::Oldest()
-{
-  return queue_.Empty() ? kMinSeconds : ConvertToSeconds(queue_.PeekFront().timestamp);
 }
 
 

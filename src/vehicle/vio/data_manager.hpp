@@ -64,7 +64,7 @@ class DataManager {
     return queue_.Empty() ? kMinSeconds : MaybeConvertToSeconds(queue_.PeekFront().timestamp);
   }
 
- private:
+ protected:
   ThreadsafeQueue<DataType> queue_;
 };
 
