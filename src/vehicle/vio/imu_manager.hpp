@@ -52,6 +52,7 @@ class ImuManager final : public DataManager<ImuMeasurement> {
     double gyro_noise_sigma =     0.000205689024915;
     double accel_bias_rw_sigma =  0.004905;
     double gyro_bias_rw_sigma =   0.000001454441043;
+    double integration_error_sigma = 1e-4;
 
     IsotropicModel::shared_ptr bias_prior_noise_model = IsotropicModel::Sigma(6, 1e-2);
     IsotropicModel::shared_ptr bias_drift_noise_model = IsotropicModel::Sigma(6, 1e-3);
@@ -72,6 +73,7 @@ class ImuManager final : public DataManager<ImuMeasurement> {
       parser.GetYamlParam("gyro_noise_sigma", &gyro_noise_sigma);
       parser.GetYamlParam("accel_bias_rw_sigma", &accel_bias_rw_sigma);
       parser.GetYamlParam("gyro_bias_rw_sigma", &gyro_bias_rw_sigma);
+      parser.GetYamlParam("integration_error_sigma", &integration_error_sigma);
 
       double bias_prior_noise_model_sigma, bias_drift_noise_model_sigma;
       parser.GetYamlParam("bias_prior_noise_model_sigma", &bias_prior_noise_model_sigma);
@@ -83,6 +85,7 @@ class ImuManager final : public DataManager<ImuMeasurement> {
       Matrix4d T_body_imu;
       YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/imu0/T_body_imu"), T_body_imu);
       P_body_imu = gtsam::Pose3(T_body_imu);
+      CHECK(T_body_imu(3, 3) == 1.0) << "T_body_imu is invalid" << std::endl;
     }
   };
 

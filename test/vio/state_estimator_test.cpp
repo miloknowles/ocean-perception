@@ -28,7 +28,7 @@ using namespace vio;
 
 TEST(VioTest, TestStateEstimator1)
 {
-  const std::string toplevel_folder = "/home/milo/datasets/Unity3D/farmsim/euroc_noise1";
+  const std::string toplevel_folder = "/home/milo/datasets/Unity3D/farmsim/euroc_test1";
   dataset::EurocDataset dataset(toplevel_folder);
 
   const std::vector<dataset::GroundtruthItem>& groundtruth_poses = dataset.GroundtruthPoses();
@@ -65,10 +65,10 @@ TEST(VioTest, TestStateEstimator1)
   state_estimator.RegisterSmootherResultCallback(smoother_callback);
   state_estimator.RegisterFilterResultCallback(filter_callback);
 
-  dataset.RegisterStereoCallback(std::bind(&StateEstimator::ReceiveStereo, &state_estimator, std::placeholders::_1));
+  // dataset.RegisterStereoCallback(std::bind(&StateEstimator::ReceiveStereo, &state_estimator, std::placeholders::_1));
   dataset.RegisterImuCallback(std::bind(&StateEstimator::ReceiveImu, &state_estimator, std::placeholders::_1));
-  dataset.RegisterDepthCallback(std::bind(&StateEstimator::ReceiveDepth, &state_estimator, std::placeholders::_1));
-  dataset.RegisterRangeCallback(std::bind(&StateEstimator::ReceiveRange, &state_estimator, std::placeholders::_1));
+  // dataset.RegisterDepthCallback(std::bind(&StateEstimator::ReceiveDepth, &state_estimator, std::placeholders::_1));
+  // dataset.RegisterRangeCallback(std::bind(&StateEstimator::ReceiveRange, &state_estimator, std::placeholders::_1));
 
   gtsam::Pose3 P0_world_body(dataset.InitialPose());
   state_estimator.Initialize(ConvertToSeconds(dataset.FirstTimestamp()), P0_world_body);

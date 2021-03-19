@@ -15,6 +15,9 @@ using namespace core;
 template <typename DataType>
 class DataManager {
  public:
+  MACRO_DELETE_DEFAULT_CONSTRUCTOR(DataManager);
+  MACRO_DELETE_COPY_CONSTRUCTORS(DataManager);
+
   DataManager(size_t max_queue_size, bool drop_old) : queue_(max_queue_size, drop_old) {}
 
   void Push(const DataType& item)
@@ -55,7 +58,7 @@ class DataManager {
     return queue_.Empty() ? kMinSeconds : MaybeConvertToSeconds(queue_.PeekFront().timestamp);
   }
 
- protected:
+ private:
   ThreadsafeQueue<DataType> queue_;
 
  private:
@@ -66,11 +69,10 @@ class DataManager {
 
   // Let the compiler decide which of these functions to use, depending on whether the undelying
   // DataType uses timestamp_t or seconds_t timestamps.
-  // TODO(milo): Uncomment if we every switch from nanosecond to second timestamps!
-  // static seconds_t MaybeConvertToSeconds(seconds_t t)
-  // {
-  //   return t;
-  // }
+  static seconds_t MaybeConvertToSeconds(seconds_t t)
+  {
+    return t;
+  }
 };
 
 

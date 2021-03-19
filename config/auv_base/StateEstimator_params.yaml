@@ -25,15 +25,15 @@ SmootherParams:
   frontend_vo_noise_model: [0.05, 0.05, 0.05, 0.3, 0.3, 0.3]      # rad, rad, rad, m, m, m
   lmk_mono_reproj_err_sigma: 3.0        # px in u and v
   lmk_stereo_reproj_err_sigma: 2.0      # px in u and v
-  depth_sensor_noise_model_sigma: 0.05  # m
+  depth_sensor_noise_model_sigma: 0.5   # m
   velocity_sigma: 0.3                   # m/s
-  extra_smoothing_iters: 1
+  extra_smoothing_iters: 3
 
   # Noise model for the zero-prior on IMU bias.
-  bias_prior_noise_model_sigma: 0.01
+  bias_prior_noise_model_sigma: 0.001
 
   # Noise model for the IMU bias between factors.
-  bias_drift_noise_model_sigma: 0.001
+  bias_drift_noise_model_sigma: 0.0001
 
 #===============================================================================
 StateEkfParams:
@@ -107,9 +107,10 @@ ImuManager:
   gyro_noise_sigma:     0.000205689024915
   accel_bias_rw_sigma:  0.004905
   gyro_bias_rw_sigma:   0.000001454441043
+  integration_error_sigma: 0.0001
 
   # Noise model for the zero-prior on IMU bias.
-  bias_prior_noise_model_sigma: 0.01
+  bias_prior_noise_model_sigma: 0.001
 
   # Noise model for the IMU bias between factors.
-  bias_drift_noise_model_sigma: 0.001
+  bias_drift_noise_model_sigma: 0.0001

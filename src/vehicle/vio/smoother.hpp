@@ -135,6 +135,9 @@ class Smoother final {
       P_body_cam = gtsam::Pose3(T_body_cam);
 
       YamlToVector<Vector3d>(parser.GetYamlNode("/shared/n_gravity"), n_gravity);
+
+      CHECK(T_body_imu(3, 3) == 1.0);
+      CHECK(T_body_cam(3, 3) == 1.0);
     }
   };
 

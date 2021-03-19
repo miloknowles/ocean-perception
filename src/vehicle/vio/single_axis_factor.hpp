@@ -8,38 +8,34 @@
 namespace gtsam {
 
 
-// See tutorial for custom factors: https://gtsam.org/tutorials/intro.html
 class SingleAxisFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
  public:
-  explicit SingleAxisFactor(gtsam::Key pose_key,
+  explicit SingleAxisFactor(gtsam::Key key,
                             bm::core::Axis3 axis,
                             double measured,
                             const gtsam::SharedNoiseModel& noise_model)
-      : gtsam::NoiseModelFactor1<gtsam::Pose3>(noise_model, pose_key),
+      : gtsam::NoiseModelFactor1<gtsam::Pose3>(noise_model, key),
         axis_(axis),
-        measured_(measured)
-  {
-    // Precompute the Jacobian based on which axis corresponds to depth.
-    // Pose variables: [ rx ry rz tx ty tz ].
-    const int pose_axis_index = (3 + axis_);
-    H_precomputed_(0, pose_axis_index) = 1.0;
-  }
+        measured_(measured) {}
 
-  // Returns the error and Jacobian of this factor at a linearization point.
-  gtsam::Vector evaluateError(const gtsam::Pose3& P_world_body,
+  // Returns the error and Jacobian (1x6) of this factor, linearized at the current world_P_body.
+  gtsam::Vector evaluateError(const gtsam::Pose3& world_P_body,
                               boost::optional<gtsam::Matrix&> H1 = boost::none) const override
   {
+    gtsam::Matrix36 H_world_t_body;
+    const gtsam::Point3 world_t_body = world_P_body.translation(H_world_t_body);
+
     if (H1) {
-      *H1 = H_precomputed_;
+      *H1 = H_world_t_body.row(axis_);
     }
-    const double h = P_world_body.y();
+
+    const double h = world_t_body(axis_);
     return (Vector(1) << h - measured_).finished();
   }
 
  private:
   bm::core::Axis3 axis_;
   double measured_;
-  gtsam::Matrix16 H_precomputed_ = gtsam::Matrix16::Zero();
 };
 
 

@@ -43,7 +43,7 @@ void StateEstimator::ReceiveStereo(const StereoImage& stereo_pair)
 void StateEstimator::ReceiveImu(const ImuMeasurement& imu_data)
 {
   // NOTE(milo): This raw imu_data is expressed in the IMU frame. Internally, the GTSAM IMU
-  // preintegratino will account for body_P_sensor and convert measurements to the body frame.
+  // preintegration will account for body_P_sensor and convert measurements to the body frame.
   // Also, the StateEKf will account for T_body_imu. So no need to "pre-rotate" these measurements.
   smoother_imu_manager_.Push(imu_data);
   filter_imu_manager_.Push(imu_data);
@@ -246,6 +246,7 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
                                     (smoother_imu_manager_.Newest() > from_time);
       const seconds_t to_time = smoother_imu_manager_.Newest();
       const seconds_t time_since_last_keypose = (to_time - from_time);
+      CHECK(time_since_last_keypose > 0);
 
       if (imu_is_available && (time_since_last_keypose > params_.min_sec_btw_keyposes)) {
         smoother_depth_manager_.DiscardBefore(to_time, true);
@@ -257,7 +258,7 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
         const auto maybe_depth_ptr = depth_is_aligned ? std::make_shared<DepthMeasurement>(
             smoother_depth_manager_.Pop()) : nullptr;
 
-        const PimResult& pim = smoother_imu_manager_.Preintegrate(from_time, to_time);
+        const PimResult pim = smoother_imu_manager_.Preintegrate(from_time, to_time);
         OnSmootherResult(smoother.UpdateGraphNoVision(pim, maybe_depth_ptr));
       }
 
@@ -352,43 +353,43 @@ void StateEstimator::FilterLoop(seconds_t t0, const gtsam::Pose3& P0_world_body)
     }
 
     //================================== SYNCHRONIZE WITH SMOOTHER =================================
-    const bool do_sync_with_smoother = smoother_update_flag_.exchange(false);
+    // const bool do_sync_with_smoother = smoother_update_flag_.exchange(false);
 
-    if (do_sync_with_smoother) {
-      // Get a copy of the latest smoother state to make sure it doesn't change during the sync.
-      mutex_smoother_result_.lock();
-      const SmootherResult result = smoother_result_;
-      mutex_smoother_result_.unlock();
+    // if (do_sync_with_smoother) {
+    //   // Get a copy of the latest smoother state to make sure it doesn't change during the sync.
+    //   mutex_smoother_result_.lock();
+    //   const SmootherResult result = smoother_result_;
+    //   mutex_smoother_result_.unlock();
 
-      // Make the initial covariance matrix based on the smoother result.
-      StateCovariance S;
+    //   // Make the initial covariance matrix based on the smoother result.
+    //   StateCovariance S;
 
-      // Pose covariance order is: [ rx ry rz tx ty tz ]
-      S.block<3, 3>(t_row, t_row) = result.cov_pose.block<3, 3>(3, 3);
-      S.block<3, 3>(uq_row, uq_row) = result.cov_pose.block<3, 3>(0, 0);
-      S.block<3, 3>(v_row, v_row) = result.cov_vel;
+    //   // Pose covariance order is: [ rx ry rz tx ty tz ]
+    //   S.block<3, 3>(t_row, t_row) = result.cov_pose.block<3, 3>(3, 3);
+    //   S.block<3, 3>(uq_row, uq_row) = result.cov_pose.block<3, 3>(0, 0);
+    //   S.block<3, 3>(v_row, v_row) = result.cov_vel;
 
-      // NOTE(milo): Since the smoother doesn't give us acceleration or angular velocity, we
-      // initialize them to zero but set a high covariance so that the filter quickly corrects them.
-      S.block<3, 3>(a_row, a_row) = 0.5*Matrix3d::Identity();
-      S.block<3, 3>(w_row, w_row) = 0.1*Matrix3d::Identity();
+    //   // NOTE(milo): Since the smoother doesn't give us acceleration or angular velocity, we
+    //   // initialize them to zero but set a high covariance so that the filter quickly corrects them.
+    //   S.block<3, 3>(a_row, a_row) = 0.5*Matrix3d::Identity();
+    //   S.block<3, 3>(w_row, w_row) = 0.1*Matrix3d::Identity();
 
-      filter.Rewind(result.timestamp);
-      filter.UpdateImuBias(result.imu_bias);
-      filter.PredictAndUpdate(result.timestamp,
-                              result.P_world_body.rotation().toQuaternion().normalized(),
-                              result.P_world_body.translation(),
-                              result.cov_pose);
-      filter.PredictAndUpdate(result.timestamp,
-                              result.v_world_body,
-                              result.cov_vel);
-      filter.ReapplyImu();
+    //   filter.Rewind(result.timestamp);
+    //   filter.UpdateImuBias(result.imu_bias);
+    //   filter.PredictAndUpdate(result.timestamp,
+    //                           result.P_world_body.rotation().toQuaternion().normalized(),
+    //                           result.P_world_body.translation(),
+    //                           result.cov_pose);
+    //   filter.PredictAndUpdate(result.timestamp,
+    //                           result.v_world_body,
+    //                           result.cov_vel);
+    //   filter.ReapplyImu();
 
-      const StateStamped state = filter.GetState();
-      for (const StateStamped::Callback& cb : filter_result_callbacks_) {
-        cb(state);
-      }
-    } // end if (do_sync_with_smoother)
+    //   const StateStamped state = filter.GetState();
+    //   for (const StateStamped::Callback& cb : filter_result_callbacks_) {
+    //     cb(state);
+    //   }
+    // } // end if (do_sync_with_smoother)
   } // end while (!is_shutdown)
 
   LOG(INFO) << "FilterLoop() exiting" << std::endl;

@@ -110,6 +110,9 @@ class StateEstimator final {
       YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/cam0/T_body_cam"), T_body_cam);
       P_body_imu = gtsam::Pose3(T_body_imu);
       P_body_cam = gtsam::Pose3(T_body_cam);
+
+      CHECK(T_body_imu(3, 3) == 1.0) << "T_body_imu is invalid" << std::endl;
+      CHECK(T_body_cam(3, 3) == 1.0) << "T_body_cam is invalid" << std::endl;
     }
   };
 
