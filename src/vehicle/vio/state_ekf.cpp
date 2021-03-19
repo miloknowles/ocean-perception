@@ -249,6 +249,36 @@ static State UpdateSingleAxisTranslation(const State& x,
 }
 
 
+static State UpdateRange(const State& x,
+                         double range,
+                         const Vector3d point,
+                         double sigma_R_range)
+{
+  CHECK_GT(sigma_R_range, 0) << "sigma_R_range (stdev) must be > 0" << std::endl;
+
+  Matrix1x15 H = Matrix1x15::Zero();
+
+  // Example: dr/tx = 1/2 * (dx^2 + dy^2 + dz^2)^-1/2 * 2 * (tx - px)
+  // Gradient is the unit vector from the point to the robot (direction of increasing range).
+  H.block<1, 3>(0, t_row) = (x.t - point).normalized().transpose();
+
+  const Matrix1d& S = H * x.S * H.transpose() + (Matrix1d() << sigma_R_range).finished();
+  const Matrix15x1& K = x.S * H.transpose() * S.inverse();
+
+  // If predicted range is LESS than observed range, move the robot farther from point.
+  // If predicted range is MORE than observed range, move the robot closer to point.
+  const double h_range = (x.t - point).norm();
+  const double y = (range - h_range);
+  const Vector15d dx = K*y;
+
+  State xu = x;
+  xu.t += dx.block<3, 1>(t_row, 0);
+  xu.S = (Matrix15d::Identity() - K*H) * x.S;
+
+  return xu;
+}
+
+
 void StateEkf::Initialize(const StateStamped& state, const ImuBias& imu_bias)
 {
   ThreadsafeSetState(state.timestamp, state.state);
@@ -322,6 +352,22 @@ StateStamped StateEkf::PredictAndUpdate(seconds_t timestamp,
 
   return ThreadsafeSetState(timestamp, xu);
 }
+
+
+StateStamped StateEkf::PredictAndUpdate(seconds_t timestamp,
+                                        double range,
+                                        const Vector3d point,
+                                        double sigma_R_range)
+{
+  // PREDICT STEP: Simulate the system forward to the current timestep.
+  const State& xp = PredictIfTimeElapsed(timestamp);
+
+    // UPDATE STEP: Compute redidual errors, Kalman gain, and apply update.
+  const State& xu = UpdateRange(xp, range, point, sigma_R_range);
+
+  return ThreadsafeSetState(timestamp, xu);
+}
+
 
 
 State StateEkf::PredictIfTimeElapsed(seconds_t timestamp)

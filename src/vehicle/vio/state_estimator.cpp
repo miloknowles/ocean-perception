@@ -19,8 +19,10 @@ StateEstimator::StateEstimator(const Params& params, const StereoCamera& stereo_
       smoother_imu_manager_(params_.imu_manager_params),
       smoother_vo_queue_(params_.max_size_smoother_vo_queue, true),
       smoother_depth_manager_(params_.max_size_smoother_depth_queue, true),
+      smoother_range_manager_(params_.max_size_smoother_range_queue, true),
       filter_imu_manager_(params.imu_manager_params),
       filter_depth_manager_(params_.max_size_filter_depth_queue, true),
+      filter_range_manager_(params_.max_size_filter_range_queue, true),
       filter_vo_queue_(params_.max_size_filter_vo_queue, true)
 {
   LOG(INFO) << "Constructed StateEstimator!" << std::endl;
@@ -52,6 +54,13 @@ void StateEstimator::ReceiveDepth(const DepthMeasurement& depth_data)
 {
   smoother_depth_manager_.Push(depth_data);
   filter_depth_manager_.Push(depth_data);
+}
+
+
+void StateEstimator::ReceiveRange(const RangeMeasurement& range_data)
+{
+  // smoother_range_manager_.Push(range_data);
+  filter_range_manager_.Push(range_data);
 }
 
 
@@ -304,14 +313,17 @@ void StateEstimator::FilterLoop(seconds_t t0, const gtsam::Pose3& P0_world_body)
     // Clear out any sensor data before the current state.
     filter_imu_manager_.DiscardBefore(filter.GetTimestamp());
     filter_depth_manager_.DiscardBefore(filter.GetTimestamp());
+    filter_range_manager_.DiscardBefore(filter.GetTimestamp());
 
-    if ((!filter_imu_manager_.Empty()) || (!filter_depth_manager_.Empty())) {
+    if ((!filter_imu_manager_.Empty()) ||
+        (!filter_depth_manager_.Empty()) ||
+        (!filter_range_manager_.Empty())) {
+
       // Figure out which sensor data is next.
       const seconds_t next_imu_timestamp = filter_imu_manager_.Empty() ? kMaxSeconds : filter_imu_manager_.Oldest();
       const seconds_t next_depth_timestamp = filter_depth_manager_.Empty() ? kMaxSeconds : filter_depth_manager_.Oldest();
-      const seconds_t next_timestamp = std::min({next_imu_timestamp, next_depth_timestamp});
-
-      // LOG(INFO) << "IMU: " << next_imu_timestamp << " DEPTH: " << next_depth_timestamp << " NEXT: " << next_timestamp << " CURRENT: " << filter.GetTimestamp() << std::endl;
+      const seconds_t next_range_timestamp = filter_range_manager_.Empty() ? kMaxSeconds : filter_range_manager_.Oldest();
+      const seconds_t next_timestamp = std::min({next_imu_timestamp, next_depth_timestamp, next_range_timestamp});
 
       // Update the EKF using one data sample.
       if (next_timestamp == next_imu_timestamp) {
@@ -322,6 +334,12 @@ void StateEstimator::FilterLoop(seconds_t t0, const gtsam::Pose3& P0_world_body)
                                 depth_axis_,
                                 depth_sign_ * depth_data.depth,
                                 params_.filter_params.sigma_R_depth);
+      } else if (next_timestamp == next_range_timestamp) {
+        const RangeMeasurement range_data = filter_range_manager_.Pop();
+        filter.PredictAndUpdate(next_range_timestamp,
+                                range_data.range,
+                                range_data.point,
+                                params_.filter_params.sigma_R_range);
       } else {
         LOG(FATAL) << "No sensor was chosen for filter update, something is wrong" << std::endl;
       }

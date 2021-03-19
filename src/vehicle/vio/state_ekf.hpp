@@ -112,6 +112,7 @@ class StateEkf final {
     double sigma_R_imu_w = 0.000205689024915;
 
     double sigma_R_depth = 0.05; // m
+    double sigma_R_range = 0.1;  // m
 
     // Shared params.
     Vector3d n_gravity = Vector3d(0, 9.81, 0);
@@ -173,6 +174,12 @@ class StateEkf final {
                                 double meas_t_world_body,
                                 double R_axis_sigma);
 
+  // Update with an external range from a known point (e.g APS).
+  StateStamped PredictAndUpdate(seconds_t timestamp,
+                                double range,
+                                const Vector3d point,
+                                double R_range);
+
   // Retrieve the current state.
   StateStamped GetState()
   {
@@ -182,6 +189,7 @@ class StateEkf final {
     return out;
   }
 
+  // Retrieve the timestamp of the current state.
   seconds_t GetTimestamp() const
   {
     return state_.timestamp;
