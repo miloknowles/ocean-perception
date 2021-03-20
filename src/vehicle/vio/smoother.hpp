@@ -10,6 +10,7 @@
 #include "core/imu_measurement.hpp"
 #include "core/depth_measurement.hpp"
 #include "core/stereo_camera.hpp"
+#include "vio/attitude_measurement.hpp"
 #include "vio/imu_manager.hpp"
 #include "vio/gtsam_types.hpp"
 #include "vio/vo_result.hpp"
@@ -87,6 +88,7 @@ class Smoother final {
     IsotropicModel::shared_ptr bias_drift_noise_model = IsotropicModel::Sigma(6, 1e-3);
 
     IsotropicModel::shared_ptr depth_sensor_noise_model = IsotropicModel::Sigma(1, 0.05);
+    IsotropicModel::shared_ptr attitude_noise_model = IsotropicModel::Sigma(2, 0.1);
 
     gtsam::Pose3 P_body_imu = gtsam::Pose3::identity();
     gtsam::Pose3 P_body_cam = gtsam::Pose3::identity();
@@ -128,6 +130,10 @@ class Smoother final {
       parser.GetYamlParam("depth_sensor_noise_model_sigma", &depth_sensor_noise_model_sigma);
       depth_sensor_noise_model = IsotropicModel::Sigma(1, depth_sensor_noise_model_sigma);
 
+      double atti_noise_model_sigma;
+      parser.GetYamlParam("attitude_noise_model_sigma", &atti_noise_model_sigma);
+      attitude_noise_model = IsotropicModel::Sigma(2, atti_noise_model_sigma);
+
       Matrix4d T_body_imu, T_body_cam;
       YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/imu0/T_body_imu"), T_body_imu);
       YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/cam0/T_body_cam"), T_body_cam);
@@ -157,10 +163,10 @@ class Smoother final {
                   bool imu_available);
 
   // Add a new keypose WITHOUT vision information. For now, we use a preintegrated IMU measurement
-  // to provide odometry. Eventually, this could include APS also.
-  // NOTE: pim_result should be integrated in the BODY frame!
+  // to provide odometry.
   SmootherResult UpdateGraphNoVision(const PimResult& pim_result,
-                                     DepthMeasurement::ConstPtr maybe_depth_ptr = nullptr);
+                                     DepthMeasurement::ConstPtr maybe_depth_ptr = nullptr,
+                                     AttitudeMeasurement::ConstPtr maybe_attitude_ptr = nullptr);
 
   // Add a new keypose using a keyframe from the stereo frontend. If pim_result_ptr is supplied,
   // a preintegrated IMU factor is added also.

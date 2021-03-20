@@ -1,4 +1,5 @@
 #include <gtsam/navigation/NavState.h>
+#include <gtsam/navigation/AttitudeFactor.h>
 #include <gtsam/inference/Symbol.h>
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/inference/Key.h>
@@ -154,6 +155,7 @@ static void AddImuFactors(uid_t keypose_id,
                                             keypose_sym, vel_sym,
                                             last_bias_sym, bias_sym,
                                             pim_result.pim);
+
   new_factors.push_back(imu_factor);
 
   // Add a prior on the change in bias.
@@ -163,7 +165,8 @@ static void AddImuFactors(uid_t keypose_id,
 
 
 SmootherResult Smoother::UpdateGraphNoVision(const PimResult& pim_result,
-                                             DepthMeasurement::ConstPtr maybe_depth_ptr)
+                                             DepthMeasurement::ConstPtr maybe_depth_ptr,
+                                             AttitudeMeasurement::ConstPtr maybe_attitude_ptr)
 {
   CHECK(pim_result.timestamps_aligned) << "Preintegrated IMU invalid" << std::endl;
 
@@ -191,6 +194,17 @@ SmootherResult Smoother::UpdateGraphNoVision(const PimResult& pim_result,
       new_values,
       new_factors,
       params_);
+
+  //======================================= ATTITUDE FACTOR ========================================
+  // if (maybe_attitude_ptr) {
+  //   LOG(INFO) << "ATTITUDE" << std::endl;
+  //   const gtsam::Pose3AttitudeFactor attitude_factor(
+  //       keypose_sym,
+  //       gtsam::Unit3(maybe_attitude_ptr->body_n_gravity.normalized()),
+  //       params_.attitude_noise_model,
+  //       gtsam::Unit3(params_.n_gravity.normalized()));
+  //   new_factors.push_back(attitude_factor);
+  // }
 
   //========================================= DEPTH FACTOR =========================================
   if (maybe_depth_ptr) {

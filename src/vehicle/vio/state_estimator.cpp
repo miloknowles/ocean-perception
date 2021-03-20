@@ -259,7 +259,12 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
             smoother_depth_manager_.Pop()) : nullptr;
 
         const PimResult pim = smoother_imu_manager_.Preintegrate(from_time, to_time);
-        OnSmootherResult(smoother.UpdateGraphNoVision(pim, maybe_depth_ptr));
+
+        // TODO(milo): How do we estimate gravity when force is applied?
+        const Vector3d body_n_gravity = Vector3d(0.0, 1.0, 0.0);
+        const auto maybe_attitude_ptr = std::make_shared<AttitudeMeasurement>(to_time, body_n_gravity);
+
+        OnSmootherResult(smoother.UpdateGraphNoVision(pim, maybe_depth_ptr, maybe_attitude_ptr));
       }
 
     // VO AVAILABLE ==> Add a keyframe and smooth.
