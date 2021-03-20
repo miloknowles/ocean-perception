@@ -208,7 +208,6 @@ SmootherResult Smoother::UpdateGraphNoVision(const PimResult& pim_result,
 
   //========================================= DEPTH FACTOR =========================================
   if (maybe_depth_ptr) {
-    assert(false); // TODO
     // NOTE(milo): If positive depth is along a NEGATIVE axis (e.g -y), we need to flip the sign.
     // Then we can treat it as a measurement of translation along the POSITIVE axis.
     const double measured_depth = depth_sign_ * maybe_depth_ptr->depth;
