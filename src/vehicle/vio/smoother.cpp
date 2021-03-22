@@ -349,6 +349,21 @@ SmootherResult Smoother::UpdateGraphWithVision(
     graph_has_imu_btw_factor = true;
   }
 
+  //======================================= ATTITUDE FACTOR ========================================
+  if (maybe_attitude_ptr) {
+    const Vector3d body_nG_unit = maybe_attitude_ptr->body_nG.normalized();
+    const Vector3d world_nG_unit = params_.n_gravity.normalized();
+
+    // NOTE(milo): GTSAM computes error as: nZ_.error(nRb * bRef_).
+    // So if we measure body_nG, we should plug it in for bRef_, and use the world_nG as nZ_.
+    const gtsam::Pose3AttitudeFactor attitude_factor(
+        keypose_sym,
+        gtsam::Unit3(world_nG_unit),
+        params_.attitude_noise_model,
+        gtsam::Unit3(body_nG_unit));
+    new_factors.push_back(attitude_factor);
+  }
+
   //========================================= DEPTH FACTOR =========================================
   if (maybe_depth_ptr) {
     // NOTE(milo): If positive depth is along a NEGATIVE axis (e.g -y), we need to flip the sign.
