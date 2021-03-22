@@ -59,7 +59,7 @@ void StateEstimator::ReceiveDepth(const DepthMeasurement& depth_data)
 
 void StateEstimator::ReceiveRange(const RangeMeasurement& range_data)
 {
-  // smoother_range_manager_.Push(range_data);
+  smoother_range_manager_.Push(range_data);
   filter_range_manager_.Push(range_data);
 }
 
@@ -260,9 +260,9 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
 
         const PimResult pim = smoother_imu_manager_.Preintegrate(from_time, to_time);
 
-        // TODO(milo): How do we estimate gravity when force is applied?
-        const Vector3d body_n_gravity = Vector3d(0.0, 1.0, 0.0);
-        const auto maybe_attitude_ptr = std::make_shared<AttitudeMeasurement>(to_time, body_n_gravity);
+        Vector3d imu_nG;
+        const bool only_gravity = EstimateAttitude(pim.to_imu.a, imu_nG, params_.n_gravity.norm(), params_.body_nG_tol);
+        const auto maybe_attitude_ptr = only_gravity ? std::make_shared<AttitudeMeasurement>(to_time, params_.P_body_imu * imu_nG) : nullptr;
 
         OnSmootherResult(smoother.UpdateGraphNoVision(pim, maybe_depth_ptr, maybe_attitude_ptr));
       }
@@ -273,20 +273,35 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
       const seconds_t to_time = ConvertToSeconds(frontend_result.timestamp);
       const PimResult pim = smoother_imu_manager_.Preintegrate(from_time, to_time);
 
-      const auto maybe_pim_ptr = pim.timestamps_aligned ? std::make_shared<PimResult>(pim) : nullptr;
+      PimResult::ConstPtr maybe_pim_ptr = pim.timestamps_aligned ?
+          std::make_shared<PimResult>(pim) : nullptr;
 
+      AttitudeMeasurement::Ptr maybe_attitude_ptr = nullptr;
+
+      // Check if we have a good measurement of attitude.
+      if (pim.timestamps_aligned) {
+        Vector3d imu_nG;
+        const bool only_gravity = EstimateAttitude(pim.to_imu.a, imu_nG, params_.n_gravity.norm(), params_.body_nG_tol);
+        if (only_gravity) {
+          maybe_attitude_ptr = std::make_shared<AttitudeMeasurement>(to_time, params_.P_body_imu * imu_nG);
+        }
+      }
+
+      // Check if we have a good measurement of depth.
       smoother_depth_manager_.DiscardBefore(to_time, true);
       const seconds_t offset_odom_depth = std::fabs(to_time - smoother_depth_manager_.Oldest());
 
       const bool depth_is_aligned = !smoother_depth_manager_.Empty() &&
                                     (offset_odom_depth < params_.depth_timestamp_epsilon_sec);
 
-      const auto maybe_depth_ptr = depth_is_aligned ? std::make_shared<DepthMeasurement>(smoother_depth_manager_.Pop()) : nullptr;
+      DepthMeasurement::ConstPtr maybe_depth_ptr = depth_is_aligned ?
+          std::make_shared<DepthMeasurement>(smoother_depth_manager_.Pop()) : nullptr;
 
       OnSmootherResult(smoother.UpdateGraphWithVision(
           frontend_result,
           maybe_pim_ptr,
-          maybe_depth_ptr));
+          maybe_depth_ptr,
+          maybe_attitude_ptr));
     }
 
   } // end while (!is_shutdown)

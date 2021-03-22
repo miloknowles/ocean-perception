@@ -196,15 +196,19 @@ SmootherResult Smoother::UpdateGraphNoVision(const PimResult& pim_result,
       params_);
 
   //======================================= ATTITUDE FACTOR ========================================
-  // if (maybe_attitude_ptr) {
-  //   LOG(INFO) << "ATTITUDE" << std::endl;
-  //   const gtsam::Pose3AttitudeFactor attitude_factor(
-  //       keypose_sym,
-  //       gtsam::Unit3(maybe_attitude_ptr->body_n_gravity.normalized()),
-  //       params_.attitude_noise_model,
-  //       gtsam::Unit3(params_.n_gravity.normalized()));
-  //   new_factors.push_back(attitude_factor);
-  // }
+  if (maybe_attitude_ptr) {
+    const Vector3d body_nG_unit = maybe_attitude_ptr->body_nG.normalized();
+    const Vector3d world_nG_unit = params_.n_gravity.normalized();
+
+    // NOTE(milo): GTSAM computes error as: nZ_.error(nRb * bRef_).
+    // So if we measure body_nG, we should plug it in for bRef_, and use the world_nG as nZ_.
+    const gtsam::Pose3AttitudeFactor attitude_factor(
+        keypose_sym,
+        gtsam::Unit3(world_nG_unit),
+        params_.attitude_noise_model,
+        gtsam::Unit3(body_nG_unit));
+    new_factors.push_back(attitude_factor);
+  }
 
   //========================================= DEPTH FACTOR =========================================
   if (maybe_depth_ptr) {
@@ -241,7 +245,7 @@ SmootherResult Smoother::UpdateGraphNoVision(const PimResult& pim_result,
       estimate.at<gtsam::Pose3>(keypose_sym),
       true,
       estimate.at<gtsam::Vector3>(vel_sym),
-      kZeroImuBias, //estimate.at<ImuBias>(bias_sym),
+      estimate.at<ImuBias>(bias_sym),
       cov_pose,
       cov_vel,
       cov_bias);
@@ -254,7 +258,8 @@ SmootherResult Smoother::UpdateGraphNoVision(const PimResult& pim_result,
 SmootherResult Smoother::UpdateGraphWithVision(
     const VoResult& odom_result,
     PimResult::ConstPtr pim_result_ptr,
-    DepthMeasurement::ConstPtr maybe_depth_ptr)
+    DepthMeasurement::ConstPtr maybe_depth_ptr,
+    AttitudeMeasurement::ConstPtr maybe_attitude_ptr)
 {
   CHECK(odom_result.is_keyframe) << "Smoother shouldn't receive a non-keyframe odometry result" << std::endl;
   CHECK(odom_result.lmk_obs.size() > 0) << "Smoother shouln't receive a keyframe with no observations" << std::endl;

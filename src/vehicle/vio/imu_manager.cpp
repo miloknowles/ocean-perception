@@ -38,17 +38,17 @@ PimResult ImuManager::Preintegrate(seconds_t from_time, seconds_t to_time)
 
   // If no measurements, return failure.
   if (Empty()) {
-    return std::move(PimResult(false, kMinSeconds, kMaxSeconds, PimC()));
+    return std::move(PimResult(false, kMinSeconds, kMaxSeconds));
   }
 
   // Requesting a from_time that is too far before our earliest measurement.
   if (Oldest() > (from_time + params_.allowed_misalignment_sec) && (from_time != kMinSeconds)) {
-    return PimResult(false, kMinSeconds, kMaxSeconds, PimC());
+    return PimResult(false, kMinSeconds, kMaxSeconds);
   }
 
   // Requesting a to_time that is too far after our newest measurement.
   if (Newest() < (to_time - params_.allowed_misalignment_sec) && (to_time != kMaxSeconds)) {
-    return PimResult(false, kMinSeconds, kMaxSeconds, PimC());
+    return PimResult(false, kMinSeconds, kMaxSeconds);
   }
 
   // Get the first measurement >= from_time.
@@ -62,8 +62,10 @@ PimResult ImuManager::Preintegrate(seconds_t from_time, seconds_t to_time)
   // FAIL: No measurement close to (specified) from_time.
   const seconds_t offset_from_sec = (from_time != kMinSeconds) ? std::fabs(earliest_imu_sec - from_time) : 0.0;
   if (offset_from_sec > params_.allowed_misalignment_sec) {
-    return PimResult(false, kMinSeconds, kMaxSeconds, PimC());
+    return PimResult(false, kMinSeconds, kMaxSeconds);
   }
+
+  const ImuMeasurement from_imu = imu;  // Copy.
 
   // Assume CONSTANT acceleration between from_time and nearest IMU measurement.
   // https://github.com/borglab/gtsam/blob/develop/gtsam/navigation/CombinedImuFactor.cpp
@@ -87,15 +89,17 @@ PimResult ImuManager::Preintegrate(seconds_t from_time, seconds_t to_time)
   // FAIL: No measurement close to (specified) to_time.
   const seconds_t offset_to_sec = (to_time != kMaxSeconds) ? std::fabs(to_time - latest_imu_sec) : 0.0;
   if (offset_to_sec > params_.allowed_misalignment_sec) {
-    return PimResult(false, kMinSeconds, kMaxSeconds, PimC());
+    return PimResult(false, kMinSeconds, kMaxSeconds);
   }
+
+  const ImuMeasurement to_imu = imu;
 
   // Assume CONSTANT acceleration between to_time and nearest IMU measurement.
   if (offset_to_sec > 0) {
     pim_.integrateMeasurement(imu.a, imu.w, offset_to_sec);
   }
 
-  return PimResult(true, from_time, to_time, pim_);
+  return PimResult(true, from_time, to_time, pim_, from_imu, to_imu);
 }
 
 

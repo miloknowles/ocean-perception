@@ -19,6 +19,8 @@ smoother_init_wait_vision_sec: 3.0
 
 show_feature_tracks: 1
 
+body_nG_tol: 0.001
+
 #===============================================================================
 SmootherParams:
   pose_prior_noise_model: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01]    # rad, rad, rad, m, m, m
@@ -26,7 +28,7 @@ SmootherParams:
   lmk_mono_reproj_err_sigma: 3.0        # px in u and v
   lmk_stereo_reproj_err_sigma: 2.0      # px in u and v
   depth_sensor_noise_model_sigma: 0.5   # m
-  attitude_noise_model_sigma: 0.1      # rad
+  attitude_noise_model_sigma: 0.25      # rad
   velocity_sigma: 0.3                   # m/s
   extra_smoothing_iters: 3
 

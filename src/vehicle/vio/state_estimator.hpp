@@ -77,6 +77,8 @@ class StateEstimator final {
 
     int show_feature_tracks = 0;
 
+    double body_nG_tol = 0.01;  // Treat accelerometer measurements as attitude measurements if they are this close to 1G.
+
     gtsam::Pose3 P_body_imu = gtsam::Pose3::identity();
     gtsam::Pose3 P_body_cam = gtsam::Pose3::identity();
     Vector3d n_gravity = Vector3d(0, 9.81, 0);
@@ -103,6 +105,7 @@ class StateEstimator final {
       parser.GetYamlParam("min_sec_btw_keyposes", &min_sec_btw_keyposes);
       parser.GetYamlParam("smoother_init_wait_vision_sec", &smoother_init_wait_vision_sec);
       parser.GetYamlParam("show_feature_tracks", &show_feature_tracks);
+      parser.GetYamlParam("body_nG_tol", &body_nG_tol);
 
       YamlToVector<Vector3d>(parser.GetYamlNode("/shared/n_gravity"), n_gravity);
       Matrix4d T_body_imu, T_body_cam;
@@ -110,7 +113,6 @@ class StateEstimator final {
       YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/cam0/T_body_cam"), T_body_cam);
       P_body_imu = gtsam::Pose3(T_body_imu);
       P_body_cam = gtsam::Pose3(T_body_cam);
-
       CHECK(T_body_imu(3, 3) == 1.0) << "T_body_imu is invalid" << std::endl;
       CHECK(T_body_cam(3, 3) == 1.0) << "T_body_cam is invalid" << std::endl;
     }

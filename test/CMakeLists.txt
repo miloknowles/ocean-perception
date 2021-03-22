@@ -20,7 +20,8 @@ set(VIO_TEST_SOURCES
   vio/viz_test.cpp
   vio/state_estimator_test.cpp
   vio/state_ekf_test.cpp
-  vio/imu_manager_test.cpp)
+  vio/imu_manager_test.cpp
+  vio/attitude_factor_test.cpp)
 
 set(SANDBOX_TEST_SOURCES
   test_move.cpp)

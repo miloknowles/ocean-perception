@@ -12,31 +12,33 @@
 #include <gtsam/nonlinear/NonlinearFactor.h>
 #include <gtsam/nonlinear/Marginals.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
+#include <gtsam/base/numericalDerivative.h>
 
 using namespace bm;
 using namespace vio;
 using namespace core;
 
 
-TEST(VioTest, TestSingleAxisFactor_01)
-{
-  const gtsam::Symbol pose1_sym('X', 0);
-  const IsotropicModel::shared_ptr noise_model = IsotropicModel::Sigma(1, 3.0);
+TEST(VioTest, TestSingleAxisFactorJacobian) {
+  gtsam::Key poseKey(1);
+  gtsam::Pose3 measurement(gtsam::Rot3::RzRyRx(0.15, -0.30, 0.45), gtsam::Point3(-5.0, 8.0, -11.0));
+  gtsam::SharedNoiseModel model = gtsam::noiseModel::Isotropic::Sigma(1, 0.25);
 
-  const gtsam::SingleAxisFactor f(pose1_sym, core::Axis3::X, 123.456, noise_model);
+  gtsam::SingleAxisFactor factor(poseKey, core::Axis3::Y, measurement.translation().y(), model);
 
-  const gtsam::Pose3 pose1 = gtsam::Pose3::identity();
+  // Create a linearization point at the zero-error point
+  gtsam::Pose3 pose(gtsam::Rot3::RzRyRx(0.15, -0.30, 0.45), gtsam::Point3(-5.0, 8.0, -11.0));
 
-  gtsam::Matrix J;
-  const gtsam::Vector1& error = f.evaluateError(pose1, J);
+  // Calculate numerical derivatives.
+  gtsam::Matrix expectedH1 = gtsam::numericalDerivative11<gtsam::Vector, gtsam::Pose3>(
+      boost::bind(&gtsam::SingleAxisFactor::evaluateError, &factor, _1, boost::none), pose);
 
-  std::cout << "J:\n" << J << std::endl;
+  // Use the factor to calculate the derivative.
+  gtsam::Matrix actualH1;
+  factor.evaluateError(pose, actualH1);
 
-  gtsam::Matrix16 expected_J;
-  expected_J << 0, 0, 0, 1, 0, 0;
-
-  EXPECT_EQ(expected_J, J);
-  EXPECT_EQ(-123.456, error(0));
+  // Verify we get the expected error.
+  CHECK(gtsam::assert_equal(expectedH1, actualH1, 1e-5));
 }
 
 
@@ -66,8 +68,7 @@ TEST(VioTest, TestSingleAxisFactorGraph)
   // POSE 0: Add prior and y-axis measurement.
   // The initial value has y=35.0, and here we add a measurement at y=40.0
   new_factors.push_back(gtsam::PriorFactor<gtsam::Pose3>(x0, pose0, pose_prior_noise));
-  // new_factors.push_back(gtsam::SingleAxisFactor(x0, core::Axis3::Y, 39.0, depth_noise));
-  new_factors.push_back(gtsam::PartialPriorFactor<gtsam::Pose3>(x0, 4, 40.0, depth_noise));
+  new_factors.push_back(gtsam::SingleAxisFactor(x0, core::Axis3::Y, 39.0, depth_noise));
   new_values.insert(x0, pose0);
   smoother.update(new_factors, new_values);
 
@@ -80,9 +81,7 @@ TEST(VioTest, TestSingleAxisFactorGraph)
 
   // POSE 1: Add prior and y-axis measurement.
   // The initial pose value has y=-20.0, and here we add a measurement at y=-25.0.
-  new_factors.push_back(gtsam::PriorFactor<gtsam::Pose3>(x1, pose1, pose_prior_noise));
-  // new_factors.push_back(gtsam::SingleAxisFactor(x1, core::Axis3::Y, -12.0, depth_noise));
-  new_factors.push_back(gtsam::PartialPriorFactor<gtsam::Pose3>(x1, 4, -25.0, depth_noise));
+  new_factors.push_back(gtsam::SingleAxisFactor(x1, core::Axis3::Y, -12.0, depth_noise));
   new_values.insert(x1, pose1);
   smoother.update(new_factors, new_values);
 
@@ -110,52 +109,6 @@ class UnaryFactor: public gtsam::NoiseModelFactor1<gtsam::Pose2> {
     return (gtsam::Vector(2) << q.x() - mx_, q.y() - my_).finished();
   }
 };
-
-
-// TEST(VioTest, TestTutorial_01)
-// {
-//   // create (deliberately inaccurate) initial estimate
-//   gtsam::Values initial;
-//   gtsam::NonlinearFactorGraph graph;
-
-//   initial.insert(1, gtsam::Pose2(0.5, 0.0, 0.2));
-//   initial.insert(2, gtsam::Pose2(2.3, 0.1, -0.2));
-//   initial.insert(3, gtsam::Pose2(4.1, 0.1, 0.1));
-
-//   // Add a Gaussian prior on pose x_1
-//   gtsam::Pose2 priorMean(0.0, 0.0, 0.0);
-//   gtsam::noiseModel::Diagonal::shared_ptr priorNoise =
-//       gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector3(0.3, 0.3, 0.1));
-//   graph.add(gtsam::PriorFactor<gtsam::Pose2>(1, priorMean, priorNoise));
-
-//   // Add two odometry factors
-//   gtsam::Pose2 odometry(2.0, 0.0, 0.0);
-//   gtsam::noiseModel::Diagonal::shared_ptr odometryNoise =
-//       gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector3(0.2, 0.2, 0.1));
-//   graph.add(gtsam::BetweenFactor<gtsam::Pose2>(1, 2, odometry, odometryNoise));
-//   graph.add(gtsam::BetweenFactor<gtsam::Pose2>(2, 3, odometry, odometryNoise));
-
-//   // add unary measurement factors, like GPS, on all three poses
-//   gtsam::noiseModel::Diagonal::shared_ptr unaryNoise =
-//       gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector2(0.1, 0.1)); // 10cm std on x,y
-//   graph.add(boost::make_shared<UnaryFactor>(1, 0.0, 0.0, unaryNoise));
-//   graph.add(boost::make_shared<UnaryFactor>(2, 2.0, 0.0, unaryNoise));
-//   graph.add(boost::make_shared<UnaryFactor>(3, 4.0, 0.0, unaryNoise));
-
-//     // optimize using Levenberg-Marquardt optimization
-//   gtsam::Values result = gtsam::LevenbergMarquardtOptimizer(graph, initial).optimize();
-//   std::cout << "================================================================" << std::endl;
-//   std::cout << "result: " << std::endl;
-//   result.print();
-
-//   // Query the marginals
-//   std::cout.precision(2);
-//   gtsam::Marginals marginals(graph, result);
-//   std::cout << "================================================================" << std::endl;
-//   std::cout << "x1 covariance:\n" << marginals.marginalCovariance(1) << std::endl;
-//   std::cout << "x2 covariance:\n" << marginals.marginalCovariance(2) << std::endl;
-//   std::cout << "x3 covariance:\n" << marginals.marginalCovariance(3) << std::endl;
-// }
 
 
 TEST(VioTest, TestTutorial_02)

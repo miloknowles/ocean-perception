@@ -23,16 +23,24 @@ struct PimResult final
   explicit PimResult(bool timestamps_aligned,
                      seconds_t from_time,
                      seconds_t to_time,
-                     const PimC& pim)
+                     const PimC& pim = PimC(),
+                     const ImuMeasurement& from_imu = ImuMeasurement(),
+                     const ImuMeasurement& to_imu = ImuMeasurement())
       : timestamps_aligned(timestamps_aligned),
         from_time(from_time),
         to_time(to_time),
-        pim(pim) {}
+        pim(pim),
+        from_imu(from_imu),
+        to_imu(to_imu) {}
 
   bool timestamps_aligned;
   seconds_t from_time;
   seconds_t to_time;
   PimC pim;
+
+  // Stores the first and last measurements used during preintegration.
+  ImuMeasurement from_imu;
+  ImuMeasurement to_imu;
 };
 
 
