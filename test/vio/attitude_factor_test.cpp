@@ -2,8 +2,9 @@
 #include <glog/logging.h>
 
 #include "core/eigen_types.hpp"
-#include "vio/gtsam_types.hpp"
+#include "vio/noise_model.hpp"
 
+#include <gtsam/nonlinear/Symbol.h>
 #include <gtsam/slam/PriorFactor.h>
 #include <gtsam/nonlinear/ISAM2.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>

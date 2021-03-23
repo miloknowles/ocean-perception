@@ -5,12 +5,21 @@
 #include "core/imu_measurement.hpp"
 #include "core/uid.hpp"
 #include "vio/data_manager.hpp"
-#include "vio/gtsam_types.hpp"
+#include "vio/noise_model.hpp"
+
+#include <gtsam/navigation/ImuFactor.h>
+#include <gtsam/navigation/CombinedImuFactor.h>
 
 namespace bm {
 namespace vio {
 
 using namespace core;
+
+// Preintegrated IMU types.
+typedef gtsam::PreintegratedCombinedMeasurements PimC;
+typedef gtsam::imuBias::ConstantBias ImuBias;
+static const ImuBias kZeroImuBias = ImuBias(gtsam::Vector3::Zero(), gtsam::Vector3::Zero());
+static const gtsam::Vector3 kZeroVelocity = gtsam::Vector3::Zero();
 
 
 struct PimResult final

@@ -26,8 +26,8 @@ imu0:
     bias_drift_noise_model_sigma: 0.001 # Noise model for the IMU bias between factors.
 
 # NOTE(milo): Placeholder for acoustic positioning system.
-aps0:
-  frame_id: aps0
+receiver0:
+  frame_id: receiver0
   T_body_imu:
     cols: 4
     rows: 4

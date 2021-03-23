@@ -2,10 +2,13 @@
 #include <glog/logging.h>
 
 #include "core/eigen_types.hpp"
-#include "vio/gtsam_types.hpp"
 #include "vio/single_axis_factor.hpp"
+#include "vio/noise_model.hpp"
 
+#include <gtsam/nonlinear/Symbol.h>
+#include <gtsam/slam/BetweenFactor.h>
 #include <gtsam/slam/PriorFactor.h>
+#include <gtsam/geometry/Pose2.h>
 #include <gtsam/nonlinear/ISAM2.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam_unstable/slam/PartialPriorFactor.h>

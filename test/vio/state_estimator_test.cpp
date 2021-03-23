@@ -68,7 +68,7 @@ TEST(VioTest, TestStateEstimator1)
   // dataset.RegisterStereoCallback(std::bind(&StateEstimator::ReceiveStereo, &state_estimator, std::placeholders::_1));
   dataset.RegisterImuCallback(std::bind(&StateEstimator::ReceiveImu, &state_estimator, std::placeholders::_1));
   dataset.RegisterDepthCallback(std::bind(&StateEstimator::ReceiveDepth, &state_estimator, std::placeholders::_1));
-  // dataset.RegisterRangeCallback(std::bind(&StateEstimator::ReceiveRange, &state_estimator, std::placeholders::_1));
+  dataset.RegisterRangeCallback(std::bind(&StateEstimator::ReceiveRange, &state_estimator, std::placeholders::_1));
 
   gtsam::Pose3 P0_world_body(dataset.InitialPose());
   state_estimator.Initialize(ConvertToSeconds(dataset.FirstTimestamp()), P0_world_body);
@@ -77,7 +77,7 @@ TEST(VioTest, TestStateEstimator1)
   viz.UpdateBodyPose("T0_world_body", P0_world_body.matrix());
   viz.SetViewerPose(P0_world_body.matrix());
 
-  dataset.Playback(1.0f, false);
+  dataset.Playback(4.0f, false);
 
   state_estimator.BlockUntilFinished();
   state_estimator.Shutdown();

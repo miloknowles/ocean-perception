@@ -11,17 +11,31 @@
 #include "core/depth_measurement.hpp"
 #include "core/stereo_camera.hpp"
 #include "vio/attitude_measurement.hpp"
+#include "core/range_measurement.hpp"
 #include "vio/imu_manager.hpp"
-#include "vio/gtsam_types.hpp"
 #include "vio/vo_result.hpp"
+#include "vio/noise_model.hpp"
 
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/ISAM2.h>
+#include <gtsam/geometry/Pose3.h>
+#include <gtsam/geometry/Cal3_S2Stereo.h>
+#include <gtsam/slam/SmartProjectionPoseFactor.h>
+#include <gtsam_unstable/slam/SmartStereoProjectionPoseFactor.h>
 
 namespace bm {
 namespace vio {
 
 using namespace core;
+
+// Stereo/mono vision factors.
+typedef gtsam::SmartStereoProjectionPoseFactor SmartStereoFactor;
+typedef gtsam::SmartProjectionPoseFactor<gtsam::Cal3_S2> SmartMonoFactor;
+
+// Convenient map types.
+typedef std::unordered_map<uid_t, SmartMonoFactor::shared_ptr> SmartMonoFactorMap;
+typedef std::unordered_map<uid_t, SmartStereoFactor::shared_ptr> SmartStereoFactorMap;
+typedef std::map<uid_t, gtsam::FactorIndex> LmkToFactorMap;
 
 
 // Returns a summary of the smoother update.
@@ -89,9 +103,12 @@ class Smoother final {
 
     IsotropicModel::shared_ptr depth_sensor_noise_model = IsotropicModel::Sigma(1, 0.05);
     IsotropicModel::shared_ptr attitude_noise_model = IsotropicModel::Sigma(2, 0.1);
+    IsotropicModel::shared_ptr range_noise_model = IsotropicModel::Sigma(1, 0.5);
+    IsotropicModel::shared_ptr beacon_noise_model = IsotropicModel::Sigma(3, 0.1);
 
     gtsam::Pose3 P_body_imu = gtsam::Pose3::identity();
     gtsam::Pose3 P_body_cam = gtsam::Pose3::identity();
+    gtsam::Pose3 P_body_receiver = gtsam::Pose3::identity();
     Vector3d n_gravity = Vector3d(0, 9.81, 0);
 
   private:
@@ -134,16 +151,23 @@ class Smoother final {
       parser.GetYamlParam("attitude_noise_model_sigma", &atti_noise_model_sigma);
       attitude_noise_model = IsotropicModel::Sigma(2, atti_noise_model_sigma);
 
-      Matrix4d T_body_imu, T_body_cam;
+      double range_noise_model_sigma;
+      parser.GetYamlParam("range_noise_model_sigma", &range_noise_model_sigma);
+      range_noise_model = IsotropicModel::Sigma(1, range_noise_model_sigma);
+
+      Matrix4d T_body_imu, T_body_cam, T_body_receiver;
       YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/imu0/T_body_imu"), T_body_imu);
       YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/cam0/T_body_cam"), T_body_cam);
+      YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/cam0/T_body_receiver"), T_body_receiver);
       P_body_imu = gtsam::Pose3(T_body_imu);
       P_body_cam = gtsam::Pose3(T_body_cam);
+      P_body_receiver = gtsam::Pose3(T_body_receiver);
 
       YamlToVector<Vector3d>(parser.GetYamlNode("/shared/n_gravity"), n_gravity);
 
       CHECK(T_body_imu(3, 3) == 1.0);
       CHECK(T_body_cam(3, 3) == 1.0);
+      CHECK(T_body_receiver(3, 3) == 1.0);
     }
   };
 
@@ -166,7 +190,8 @@ class Smoother final {
   // to provide odometry.
   SmootherResult UpdateGraphNoVision(const PimResult& pim_result,
                                      DepthMeasurement::ConstPtr maybe_depth_ptr = nullptr,
-                                     AttitudeMeasurement::ConstPtr maybe_attitude_ptr = nullptr);
+                                     AttitudeMeasurement::ConstPtr maybe_attitude_ptr = nullptr,
+                                     RangeMeasurement::ConstPtr maybe_range_ptr = nullptr);
 
   // Add a new keypose using a keyframe from the stereo frontend. If pim_result_ptr is supplied,
   // a preintegrated IMU factor is added also.

@@ -16,7 +16,11 @@ class SingleAxisFactor : public gtsam::NoiseModelFactor1<gtsam::Pose3> {
                             const gtsam::SharedNoiseModel& noise_model)
       : gtsam::NoiseModelFactor1<gtsam::Pose3>(noise_model, key),
         axis_(axis),
-        measured_(measured) {}
+        measured_(measured)
+  {
+    assert(axis_ == bm::core::Axis3::Y);
+    assert(measured >= 0);
+  }
 
   // Returns the error and Jacobian (1x6) of this factor, linearized at the current world_P_body.
   gtsam::Vector evaluateError(const gtsam::Pose3& world_P_body,

@@ -3,6 +3,7 @@
 #include <gtsam/inference/Symbol.h>
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/inference/Key.h>
+#include <gtsam/sam/RangeFactor.h>
 
 #include "core/transform_util.hpp"
 #include "vio/smoother.hpp"
@@ -11,6 +12,10 @@
 
 namespace bm {
 namespace vio {
+
+static const double kSetSkewToZero = 0.0;
+
+typedef gtsam::RangeFactorWithTransform<gtsam::Pose3, gtsam::Point3> RangeFactor;
 
 
 Smoother::Smoother(const Params& params,
@@ -166,7 +171,8 @@ static void AddImuFactors(uid_t keypose_id,
 
 SmootherResult Smoother::UpdateGraphNoVision(const PimResult& pim_result,
                                              DepthMeasurement::ConstPtr maybe_depth_ptr,
-                                             AttitudeMeasurement::ConstPtr maybe_attitude_ptr)
+                                             AttitudeMeasurement::ConstPtr maybe_attitude_ptr,
+                                             RangeMeasurement::ConstPtr maybe_range_ptr)
 {
   CHECK(pim_result.timestamps_aligned) << "Preintegrated IMU invalid" << std::endl;
 
@@ -221,6 +227,21 @@ SmootherResult Smoother::UpdateGraphNoVision(const PimResult& pim_result,
         depth_axis_,
         measured_depth,
         params_.depth_sensor_noise_model));
+  }
+
+  //========================================= RANGE FACTOR =========================================
+  if (maybe_range_ptr) {
+    LOG(INFO) << "RANGE FACTOR" << std::endl;
+    const gtsam::Symbol beacon_sym('A', keypose_id);
+    new_values.insert(beacon_sym, maybe_range_ptr->point);
+    new_factors.addPrior(beacon_sym, maybe_range_ptr->point, params_.beacon_noise_model);
+
+    new_factors.push_back(RangeFactor(
+        keypose_sym,
+        beacon_sym,
+        maybe_range_ptr->range,
+        params_.range_noise_model,
+        params_.P_body_receiver));
   }
 
   //==================================== UPDATE FACTOR GRAPH =======================================
