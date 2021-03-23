@@ -185,6 +185,41 @@ void StateEstimator::OnSmootherResult(const SmootherResult& new_result)
 }
 
 
+
+void StateEstimator::GetKeyposeAlignedMeasurements(
+    seconds_t from_time,
+    seconds_t to_time,
+    PimResult::Ptr& maybe_pim_ptr,
+    DepthMeasurement::Ptr& maybe_depth_ptr,
+    AttitudeMeasurement::Ptr& maybe_attitude_ptr,
+    RangeMeasurement::Ptr& maybe_range_ptr,
+    seconds_t allowed_misalignment_sec)
+{
+  smoother_range_manager_.DiscardBefore(to_time, true);
+  const seconds_t range_time_offset = std::fabs(smoother_range_manager_.Oldest() - to_time);
+
+  maybe_range_ptr = (range_time_offset < allowed_misalignment_sec) ?
+      std::make_shared<RangeMeasurement>(smoother_range_manager_.PopNewest()) : nullptr;
+
+  // Check if we have a nearby depth measurement (in time).
+  smoother_depth_manager_.DiscardBefore(to_time, true);
+  const seconds_t depth_time_offset = std::fabs(to_time - smoother_depth_manager_.Oldest());
+
+  maybe_depth_ptr = (depth_time_offset < allowed_misalignment_sec) ?
+      std::make_shared<DepthMeasurement>(smoother_depth_manager_.Pop()) : nullptr;
+
+  // Preintegrate IMU between from_time and to_time.
+  const PimResult pim = smoother_imu_manager_.Preintegrate(from_time, to_time);
+  maybe_pim_ptr = (pim.timestamps_aligned) ? std::make_shared<PimResult>(pim) : nullptr;
+
+  // Check if the accelerometer is giving a reading of attitude.
+  Vector3d imu_nG;
+  const bool only_gravity = EstimateAttitude(pim.to_imu.a, imu_nG, params_.n_gravity.norm(), params_.body_nG_tol);
+  maybe_attitude_ptr = (pim.timestamps_aligned && only_gravity) ?
+      std::make_shared<AttitudeMeasurement>(to_time, params_.P_body_imu * imu_nG) : nullptr;
+}
+
+
 void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_body)
 {
   Smoother smoother(params_.smoother_params, stereo_rig_);
@@ -258,63 +293,48 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
         // Decide when to trigger the next keypose: if range is available prefer that. Otherwise IMU.
         const seconds_t to_time = add_range_keypose ? smoother_range_manager_.Newest() : smoother_imu_manager_.Newest();
 
-        RangeMeasurement::ConstPtr maybe_range_ptr = add_range_keypose ?
-            std::make_shared<RangeMeasurement>(smoother_range_manager_.PopNewest()) : nullptr;
+        PimResult::Ptr maybe_pim_ptr;
+        DepthMeasurement::Ptr maybe_depth_ptr;
+        AttitudeMeasurement::Ptr maybe_attitude_ptr;
+        RangeMeasurement::Ptr maybe_range_ptr;
+        GetKeyposeAlignedMeasurements(
+            from_time, to_time,
+            maybe_pim_ptr,
+            maybe_depth_ptr,
+            maybe_attitude_ptr,
+            maybe_range_ptr,
+            params_.imu_timestamp_epsilon_sec);
 
-        // Check if we have a nearby depth measurement (in time).
-        smoother_depth_manager_.DiscardBefore(to_time, true);
-        const seconds_t time_offset_depth = std::fabs(to_time - smoother_depth_manager_.Oldest());
-        const bool depth_is_available = !smoother_depth_manager_.Empty() &&
-                                        (time_offset_depth < params_.imu_timestamp_epsilon_sec);
-        const auto maybe_depth_ptr = depth_is_available ? std::make_shared<DepthMeasurement>(
-            smoother_depth_manager_.Pop()) : nullptr;
-
-        // Preintegrate IMU from the last keypose until now.
-        const PimResult pim = smoother_imu_manager_.Preintegrate(from_time, to_time);
-
-        // Check if the accelerometer is giving a reading of attitude.
-        Vector3d imu_nG;
-        const bool only_gravity = EstimateAttitude(pim.to_imu.a, imu_nG, params_.n_gravity.norm(), params_.body_nG_tol);
-        const auto maybe_attitude_ptr = only_gravity ? std::make_shared<AttitudeMeasurement>(to_time, params_.P_body_imu * imu_nG) : nullptr;
-
-        OnSmootherResult(smoother.UpdateGraphNoVision(pim, maybe_depth_ptr, maybe_attitude_ptr, maybe_range_ptr));
+        OnSmootherResult(smoother.UpdateGraphNoVision(
+            *maybe_pim_ptr,
+            maybe_depth_ptr,
+            maybe_attitude_ptr,
+            maybe_range_ptr));
       }
 
     // VO AVAILABLE ==> Add a keyframe and smooth.
     } else {
       const VoResult frontend_result = smoother_vo_queue_.Pop();
       const seconds_t to_time = ConvertToSeconds(frontend_result.timestamp);
-      const PimResult pim = smoother_imu_manager_.Preintegrate(from_time, to_time);
 
-      PimResult::ConstPtr maybe_pim_ptr = pim.timestamps_aligned ?
-          std::make_shared<PimResult>(pim) : nullptr;
-
-      AttitudeMeasurement::Ptr maybe_attitude_ptr = nullptr;
-
-      // Check if we have a good measurement of attitude.
-      if (pim.timestamps_aligned) {
-        Vector3d imu_nG;
-        const bool only_gravity = EstimateAttitude(pim.to_imu.a, imu_nG, params_.n_gravity.norm(), params_.body_nG_tol);
-        if (only_gravity) {
-          maybe_attitude_ptr = std::make_shared<AttitudeMeasurement>(to_time, params_.P_body_imu * imu_nG);
-        }
-      }
-
-      // Check if we have a good measurement of depth.
-      smoother_depth_manager_.DiscardBefore(to_time, true);
-      const seconds_t offset_odom_depth = std::fabs(to_time - smoother_depth_manager_.Oldest());
-
-      const bool depth_is_aligned = !smoother_depth_manager_.Empty() &&
-                                    (offset_odom_depth < params_.imu_timestamp_epsilon_sec);
-
-      DepthMeasurement::ConstPtr maybe_depth_ptr = depth_is_aligned ?
-          std::make_shared<DepthMeasurement>(smoother_depth_manager_.Pop()) : nullptr;
+      PimResult::Ptr maybe_pim_ptr;
+      DepthMeasurement::Ptr maybe_depth_ptr;
+      AttitudeMeasurement::Ptr maybe_attitude_ptr;
+      RangeMeasurement::Ptr maybe_range_ptr;
+      GetKeyposeAlignedMeasurements(
+          from_time, to_time,
+          maybe_pim_ptr,
+          maybe_depth_ptr,
+          maybe_attitude_ptr,
+          maybe_range_ptr,
+          params_.imu_timestamp_epsilon_sec);
 
       OnSmootherResult(smoother.UpdateGraphWithVision(
           frontend_result,
           maybe_pim_ptr,
           maybe_depth_ptr,
-          maybe_attitude_ptr));
+          maybe_attitude_ptr,
+          maybe_range_ptr));
     }
 
   } // end while (!is_shutdown)

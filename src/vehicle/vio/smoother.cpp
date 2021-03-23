@@ -279,7 +279,8 @@ SmootherResult Smoother::UpdateGraphWithVision(
     const VoResult& odom_result,
     PimResult::ConstPtr pim_result_ptr,
     DepthMeasurement::ConstPtr maybe_depth_ptr,
-    AttitudeMeasurement::ConstPtr maybe_attitude_ptr)
+    AttitudeMeasurement::ConstPtr maybe_attitude_ptr,
+    RangeMeasurement::ConstPtr maybe_range_ptr)
 {
   CHECK(odom_result.is_keyframe) << "Smoother shouldn't receive a non-keyframe odometry result" << std::endl;
   CHECK(odom_result.lmk_obs.size() > 0) << "Smoother shouln't receive a keyframe with no observations" << std::endl;
@@ -395,6 +396,20 @@ SmootherResult Smoother::UpdateGraphWithVision(
         depth_axis_,
         measured_depth,
         params_.depth_sensor_noise_model));
+  }
+
+  //========================================= RANGE FACTOR =========================================
+  if (maybe_range_ptr) {
+    const gtsam::Symbol beacon_sym('A', keypose_id);
+    new_values.insert(beacon_sym, maybe_range_ptr->point);
+    new_factors.addPrior(beacon_sym, maybe_range_ptr->point, params_.beacon_noise_model);
+
+    new_factors.push_back(RangeFactor(
+        keypose_sym,
+        beacon_sym,
+        maybe_range_ptr->range,
+        params_.range_noise_model,
+        params_.P_body_receiver));
   }
 
   //================================= FACTOR GRAPH SAFETY CHECK ====================================

@@ -199,7 +199,8 @@ class Smoother final {
   SmootherResult UpdateGraphWithVision(const VoResult& frontend_result,
                                        PimResult::ConstPtr pim_result_ptr = nullptr,
                                        DepthMeasurement::ConstPtr maybe_depth_ptr = nullptr,
-                                       AttitudeMeasurement::ConstPtr maybe_attitude_ptr = nullptr);
+                                       AttitudeMeasurement::ConstPtr maybe_attitude_ptr = nullptr,
+                                       RangeMeasurement::ConstPtr maybe_range_ptr = nullptr);
 
   // Threadsafe access to the latest result.
   SmootherResult GetResult();

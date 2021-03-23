@@ -146,6 +146,14 @@ class StateEstimator final {
   // Tracks features from stereo images, and decides what to do with the results.
   void StereoFrontendLoop();
 
+  void GetKeyposeAlignedMeasurements(seconds_t from_time,
+                                     seconds_t to_time,
+                                     PimResult::Ptr& pim_result,
+                                     DepthMeasurement::Ptr& maybe_depth_ptr,
+                                     AttitudeMeasurement::Ptr& maybe_attitude_ptr,
+                                     RangeMeasurement::Ptr& maybe_range_ptr,
+                                     seconds_t allowed_misalignment_sec);
+
   // Smart the backend smoother with an initial timestamp and pose.
   void SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_body);
   void FilterLoop(seconds_t t0, const gtsam::Pose3& P0_world_body);
