@@ -158,7 +158,7 @@ class Smoother final {
       Matrix4d T_body_imu, T_body_cam, T_body_receiver;
       YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/imu0/T_body_imu"), T_body_imu);
       YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/cam0/T_body_cam"), T_body_cam);
-      YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/cam0/T_body_receiver"), T_body_receiver);
+      YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/aps0/T_body_receiver"), T_body_receiver);
       P_body_imu = gtsam::Pose3(T_body_imu);
       P_body_cam = gtsam::Pose3(T_body_cam);
       P_body_receiver = gtsam::Pose3(T_body_receiver);

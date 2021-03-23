@@ -62,6 +62,16 @@ TEST(VioTest, TestDataManager_01)
   m.DiscardBefore(ConvertToSeconds(130), true);
   EXPECT_EQ(1ul, m.Size());
   EXPECT_FALSE(m.Empty());
+
+  // Check that PopNewest works.
+  m.DiscardBefore(kMaxSeconds);
+  m.Push(DepthMeasurement(123, 0.3));
+  m.Push(DepthMeasurement(124, 0.3));
+  m.Push(DepthMeasurement(125, 0.3));
+  m.Push(DepthMeasurement(126, 0.3));
+  const DepthMeasurement& newest = m.PopNewest();
+  EXPECT_TRUE(m.Empty());
+  EXPECT_EQ(126ul, newest.timestamp);
 }
 
 

@@ -242,35 +242,37 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
 
     // VO FAILED ==> Create a keypose with IMU/APS measurements.
     if (did_timeout) {
+      smoother_imu_manager_.DiscardBefore(from_time);
       const bool imu_is_available = !smoother_imu_manager_.Empty() &&
                                     (smoother_imu_manager_.Newest() > from_time);
 
-      const bool range_is_available = !smoother_range_manager_.Empty() &&
-                                      (smoother_range_manager_.Newest() > from_time);
+      smoother_range_manager_.DiscardBefore(from_time);
+      const bool range_is_available = !smoother_range_manager_.Empty();
 
-      // Decide when to trigger the next keypose: if range is available prefer that. Otherwise IMU.
-      const seconds_t to_time = range_is_available ? smoother_range_manager_.Oldest() : smoother_imu_manager_.Newest();
-
-      RangeMeasurement::ConstPtr maybe_range_ptr = range_is_available ?
-          std::make_shared<RangeMeasurement>(smoother_range_manager_.Pop()) : nullptr;
-
-      const seconds_t time_since_last_keypose = (to_time - from_time);
-      CHECK(time_since_last_keypose > 0);
+      const seconds_t time_offset_range = std::fabs(smoother_imu_manager_.Newest() - smoother_range_manager_.Newest());
+      const bool add_range_keypose = (range_is_available && (time_offset_range < params_.imu_timestamp_epsilon_sec));
+      const bool add_imu_keypose = (imu_is_available && (smoother_imu_manager_.Newest() - from_time) > params_.min_sec_btw_keyposes);
 
       // Can't add a new keypose until IMU is available (fully constraint 6DOF motion).
-      if (imu_is_available && (time_since_last_keypose > params_.min_sec_btw_keyposes)) {
+      if (add_range_keypose || add_imu_keypose) {
+        // Decide when to trigger the next keypose: if range is available prefer that. Otherwise IMU.
+        const seconds_t to_time = add_range_keypose ? smoother_range_manager_.Newest() : smoother_imu_manager_.Newest();
+
+        RangeMeasurement::ConstPtr maybe_range_ptr = add_range_keypose ?
+            std::make_shared<RangeMeasurement>(smoother_range_manager_.PopNewest()) : nullptr;
+
+        // Check if we have a nearby depth measurement (in time).
         smoother_depth_manager_.DiscardBefore(to_time, true);
-
         const seconds_t time_offset_depth = std::fabs(to_time - smoother_depth_manager_.Oldest());
-
         const bool depth_is_available = !smoother_depth_manager_.Empty() &&
-                                        (time_offset_depth < params_.depth_timestamp_epsilon_sec);
-
+                                        (time_offset_depth < params_.imu_timestamp_epsilon_sec);
         const auto maybe_depth_ptr = depth_is_available ? std::make_shared<DepthMeasurement>(
             smoother_depth_manager_.Pop()) : nullptr;
 
+        // Preintegrate IMU from the last keypose until now.
         const PimResult pim = smoother_imu_manager_.Preintegrate(from_time, to_time);
 
+        // Check if the accelerometer is giving a reading of attitude.
         Vector3d imu_nG;
         const bool only_gravity = EstimateAttitude(pim.to_imu.a, imu_nG, params_.n_gravity.norm(), params_.body_nG_tol);
         const auto maybe_attitude_ptr = only_gravity ? std::make_shared<AttitudeMeasurement>(to_time, params_.P_body_imu * imu_nG) : nullptr;
@@ -303,7 +305,7 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
       const seconds_t offset_odom_depth = std::fabs(to_time - smoother_depth_manager_.Oldest());
 
       const bool depth_is_aligned = !smoother_depth_manager_.Empty() &&
-                                    (offset_odom_depth < params_.depth_timestamp_epsilon_sec);
+                                    (offset_odom_depth < params_.imu_timestamp_epsilon_sec);
 
       DepthMeasurement::ConstPtr maybe_depth_ptr = depth_is_aligned ?
           std::make_shared<DepthMeasurement>(smoother_depth_manager_.Pop()) : nullptr;

@@ -35,6 +35,17 @@ class DataManager {
   // Get the oldest measurement (first in) from the queue.
   DataType Pop() { return queue_.Pop(); }
 
+  // Get the newest measurement (last in) from the queue. This will discard all measurements except
+  // the newest one.
+  DataType PopNewest()
+  {
+    CHECK(queue_.Size() >= 1);
+    while (queue_.Size() > 1) {
+      queue_.Pop();
+    }
+    return queue_.Pop();
+  }
+
   // Throw away measurements before (but NOT equal to) timestamp. If save_at_least_one is true,
   // we don't pop the only remaining item, no matter what timestamp it has.
   void DiscardBefore(seconds_t timestamp, bool save_at_least_one = false)

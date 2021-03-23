@@ -73,7 +73,7 @@ class StateEstimator final {
     double min_sec_btw_keyposes = 0.5;        // Don't trigger a keypose if it hasn't been long since the last one.
 
     double smoother_init_wait_vision_sec = 3.0;   // Wait this long for VO to arrive during initialization.
-    double depth_timestamp_epsilon_sec = 0.05;    // A depth measurement is considered "aligned" if within this amount of time from other sensors.
+    double imu_timestamp_epsilon_sec = 0.03;      // An IMU measurement is considered "aligned" if within this amount of time from other sensors.
 
     int show_feature_tracks = 0;
 

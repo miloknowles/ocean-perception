@@ -231,7 +231,6 @@ SmootherResult Smoother::UpdateGraphNoVision(const PimResult& pim_result,
 
   //========================================= RANGE FACTOR =========================================
   if (maybe_range_ptr) {
-    LOG(INFO) << "RANGE FACTOR" << std::endl;
     const gtsam::Symbol beacon_sym('A', keypose_id);
     new_values.insert(beacon_sym, maybe_range_ptr->point);
     new_factors.addPrior(beacon_sym, maybe_range_ptr->point, params_.beacon_noise_model);
