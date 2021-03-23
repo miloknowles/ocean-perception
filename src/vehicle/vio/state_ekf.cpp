@@ -3,6 +3,8 @@
 namespace bm {
 namespace vio {
 
+typedef Eigen::Matrix<double, 1, 1> Vector1d;
+
 
 StateEkf::StateEkf(const Params& params)
     : params_(params),
@@ -143,7 +145,13 @@ static State GenericKalmanUpdate(const State& x,
   const Eigen::MatrixXd S = H*P*H.transpose() + R;
   const Eigen::MatrixXd K = P*H.transpose() * S.inverse();
 
-  return State(x.ToVector() + (K*y).cwiseProduct(mask), (Matrix15d::Identity() - K*H) * P);
+  const Matrix15d P_update = (Matrix15d::Identity() - K*H) * P;
+
+  for (size_t i = 0; i < 15; ++i) {
+    CHECK_GT(P_update(i, i), 0) << "New covariance matrix is not PSD!\n" << P_update << std::endl;
+  }
+
+  return State(x.ToVector() + (K*y).cwiseProduct(mask), P_update);
 }
 
 
@@ -180,43 +188,6 @@ static State UpdatePose(const State& x,
   xu.t += dx.block<3, 1>(3, 0);
   xu.q = xu.q * Quaterniond(d_uq);
   xu.q = xu.q.normalized();
-  xu.S = (Matrix15d::Identity() - K*H) * x.S;
-
-  return xu;
-}
-
-
-static State UpdateRange(const State& x,
-                         double range,
-                         const Vector3d point,
-                         double sigma_R_range)
-{
-  CHECK_GT(sigma_R_range, 0) << "sigma_R_range (stdev) must be > 0" << std::endl;
-
-  Matrix1x15 H = Matrix1x15::Zero();
-
-  // Example: dr/tx = 1/2 * (dx^2 + dy^2 + dz^2)^-1/2 * 2 * (tx - px)
-  // Gradient is the unit vector from the point to the robot (direction of increasing range).
-  H.block<1, 3>(0, t_row) = (x.t - point).normalized().transpose();
-  std::cout << "H:\n" << H << std::endl;
-
-
-  const Matrix1d S = H * x.S * H.transpose() + (Matrix1d() << sigma_R_range).finished();
-  const Matrix15x1 K = x.S * H.transpose() * S.inverse();
-  assert(K(0) <= 1.0);
-  std::cout << K << std::endl;
-
-  // If predicted range is LESS than observed range, move the robot farther from point.
-  // If predicted range is MORE than observed range, move the robot closer to point.
-  const double h_range = (x.t - point).norm();
-  const double y = (range - h_range);
-  const Vector15d dx = K*y;
-
-  std::cout << "Range: " << range << " h_range: " << h_range << std::endl;;
-  std::cout << dx << std::endl;
-
-  State xu = x;
-  xu.t += dx.block<3, 1>(t_row, 0);
   xu.S = (Matrix15d::Identity() - K*H) * x.S;
 
   return xu;
@@ -320,15 +291,18 @@ StateStamped StateEkf::PredictAndUpdate(seconds_t timestamp,
 
   // Get the translation along desired axis.
   const double pred_t_world_body = x.t(axis);
-  const double S_axis_sigma = x.S(t_row + axis, t_row + axis);
+  const double P = x.S(t_row + axis, t_row + axis);
 
   // 1D Kalman gain.
-  const double k = S_axis_sigma / (S_axis_sigma + R_axis_sigma);
+  const double k = P / (P + R_axis_sigma*R_axis_sigma);
   CHECK(k >= 0 && k <= 1.0) << "Kalman gain not in [0, 1]" << std::endl;
 
   State xu = x;
-  xu.t(axis) += k * (meas_t_world_body - pred_t_world_body);
-  xu.S(t_row + axis, t_row + axis) = (1.0 - k) * S_axis_sigma;
+
+  const double y = meas_t_world_body - pred_t_world_body;
+
+  xu.t(axis) += k*y;
+  xu.S(t_row + axis, t_row + axis) = (1.0 - k) * P;
 
   return ThreadsafeSetState(timestamp, xu);
 }
@@ -340,12 +314,36 @@ StateStamped StateEkf::PredictAndUpdate(seconds_t timestamp,
                                         double sigma_R_range)
 {
   // PREDICT STEP: Simulate the system forward to the current timestep.
-  const State& xp = PredictIfTimeElapsed(timestamp);
+  const State& x = PredictIfTimeElapsed(timestamp);
 
-    // UPDATE STEP: Compute redidual errors, Kalman gain, and apply update.
-  // const State& xu = UpdateRange(xp, range, point, sigma_R_range);
+  // UPDATE STEP: Compute redidual errors, Kalman gain, and apply update.
+  CHECK_GT(sigma_R_range, 0) << "sigma_R_range (stdev) must be > 0" << std::endl;
 
-  return ThreadsafeSetState(timestamp, xp);
+  Matrix1x15 H = Matrix1x15::Zero();
+
+  // Need to account for the location of the range receiver on the robot.
+  Matrix4d world_T_body = Matrix4d::Identity();
+  world_T_body.block<3, 3>(0, 0) = x.q.normalized().toRotationMatrix();
+  world_T_body.block<3, 1>(0, 3) = x.t;
+
+  const Matrix4d world_T_receiver = world_T_body * params_.T_body_receiver;
+  const Vector3d world_t_receiver = world_T_receiver.block<3, 1>(0, 3);
+
+  // Gradient is the unit vector from the point to the robot (direction of increasing range).
+  H.block<1, 3>(0, t_row) = (world_t_receiver - point).normalized().transpose();
+
+  // If predicted range is LESS than observed range, move the robot farther from point.
+  // If predicted range is MORE than observed range, move the robot closer to point.
+  const double h_range = (x.t - point).norm();
+
+  // y = z - h(x)
+  const Vector1d y = (Vector1d() << range - h_range).finished();
+  const Matrix1d R = Matrix1d::Identity() * sigma_R_range*sigma_R_range;
+  Vector15d mask = Vector15d::Zero();
+  mask.block<3, 1>(t_row, 0) = Vector3d::Ones();
+  const State xu = GenericKalmanUpdate(x, H, y, R, mask);
+
+  return ThreadsafeSetState(timestamp, xu);
 }
 
 

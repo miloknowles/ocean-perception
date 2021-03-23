@@ -60,7 +60,9 @@ void StateEstimator::ReceiveDepth(const DepthMeasurement& depth_data)
 void StateEstimator::ReceiveRange(const RangeMeasurement& range_data)
 {
   smoother_range_manager_.Push(range_data);
-  filter_range_manager_.Push(range_data);
+
+  // NOTE(milo): Don't send range data to the filter for now. Results in jumpy state estimates.
+  // filter_range_manager_.Push(range_data);
 }
 
 

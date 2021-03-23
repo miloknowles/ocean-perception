@@ -66,7 +66,8 @@ struct State final
   Vector3d a;     // Acceleration of body in world.
   Quaterniond q;  // Orientation of bodfy in world.
   Vector3d w;     // Angular velocity in body frame.
-  Matrix15d S;    // Covariance of the state.
+
+  Matrix15d S = 1e-3 * Matrix15d::Identity();    // Covariance of the state.
 
   // Convert to a tangent-space (logmap) state vector.
   Vector15d ToVector() const
@@ -149,6 +150,8 @@ class StateEkf final {
     Vector3d n_gravity = Vector3d(0, 9.81, 0);
     Matrix4d T_body_imu = Matrix4d::Identity();
     Matrix4d T_body_cam = Matrix4d::Identity();
+    Matrix4d T_body_receiver = Matrix4d::Identity();
+
 
    private:
     void LoadParams(const YamlParser& parser) override
@@ -167,6 +170,7 @@ class StateEkf final {
       YamlToVector<Vector3d>(parser.GetYamlNode("/shared/n_gravity"), n_gravity);
       YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/imu0/T_body_imu"), T_body_imu);
       YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/cam0/T_body_cam"), T_body_cam);
+      YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/aps0/T_body_receiver"), T_body_receiver);
     }
   };
 
@@ -206,6 +210,7 @@ class StateEkf final {
                                 double R_axis_sigma);
 
   // Update with an external range from a known point (e.g APS).
+  // NOTE(milo): This leads to jumpy state estimates, don't use for now.
   StateStamped PredictAndUpdate(seconds_t timestamp,
                                 double range,
                                 const Vector3d point,
