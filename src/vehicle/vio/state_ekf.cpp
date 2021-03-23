@@ -147,30 +147,6 @@ static State GenericKalmanUpdate(const State& x,
 }
 
 
-static State UpdateVelocity(const State& x,
-                            const Vector3d& v_world_body,
-                            const Matrix3d& R_velocity)
-{
-  // TODO(milo): Sparse matrix is wasteful, but easier to read for now.
-  Matrix3x15 H = Matrix3x15::Zero();
-  H.block<3, 3>(0, v_row) = Matrix3d::Identity();
-
-  const Matrix3d& S = H * x.S * H.transpose() + R_velocity;
-  const Matrix15x3& K = x.S * H.transpose() * S.inverse();
-
-  const Vector3d& y = v_world_body - x.v;
-  const Vector15d dx = K*y;
-
-  // Update state estimate and covariance estimate.
-  State xu = x;
-  xu.v += dx.block<3, 1>(v_row, 0);
-
-  xu.S = (Matrix15d::Identity() - K*H) * x.S;
-
-  return xu;
-}
-
-
 static State UpdatePose(const State& x,
                         const Quaterniond& q_world_body,
                         const Vector3d& t_world_body,
@@ -323,10 +299,17 @@ StateStamped StateEkf::PredictAndUpdate(seconds_t timestamp,
                                         const Matrix3d& R_velocity)
 {
   // PREDICT STEP: Simulate the system forward to the current timestep.
-  const State& xp = PredictIfTimeElapsed(timestamp);
+  const State& x = PredictIfTimeElapsed(timestamp);
 
   // UPDATE STEP: Compute redidual errors, Kalman gain, and apply update.
-  const State& xu = UpdateVelocity(xp, v_world_body, R_velocity);
+  Matrix3x15 H = Matrix3x15::Zero();
+  H.block<3, 3>(0, v_row) = Matrix3d::Identity();
+
+  const Vector3d y = v_world_body - x.v;
+
+  Vector15d mask = Vector15d::Zero();
+  mask.block<3, 1>(v_row, 0) = Vector3d::Ones();
+  const State xu = GenericKalmanUpdate(x, H, y, R_velocity, mask);
 
   return ThreadsafeSetState(timestamp, xu);
 }
