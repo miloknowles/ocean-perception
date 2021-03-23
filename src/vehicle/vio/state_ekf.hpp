@@ -41,6 +41,7 @@ typedef Eigen::Matrix<double, 15, 1> Matrix15x1;
 
 struct State final
 {
+  // Construct from individual components.
   explicit State(const Vector3d& t,
                  const Vector3d& v,
                  const Vector3d& a,
@@ -48,6 +49,15 @@ struct State final
                  const Vector3d& w,
                  const Matrix15d& S)
       : t(t), v(v), a(a), q(q), w(w), S(S) {}
+
+  // Construct from a tangent-space (logmap) state vector.
+  explicit State(const Vector15d& vector, const Matrix15d& S)
+      : t(vector.block<3, 1>(t_row, 0)),
+        v(vector.block<3, 1>(v_row, 0)),
+        a(vector.block<3, 1>(a_row, 0)),
+        q(AngleAxisd(vector.block<3, 1>(uq_row, 0).norm(), vector.block<3, 1>(uq_row, 0).normalized())),
+        w(vector.block<3, 1>(w_row, 0)),
+        S(S) {}
 
   State() = default;
 
@@ -57,6 +67,21 @@ struct State final
   Quaterniond q;  // Orientation of bodfy in world.
   Vector3d w;     // Angular velocity in body frame.
   Matrix15d S;    // Covariance of the state.
+
+  // Convert to a tangent-space (logmap) state vector.
+  Vector15d ToVector() const
+  {
+    Vector15d vector;
+    vector.block<3, 1>(t_row, 0) = t;
+    vector.block<3, 1>(v_row, 0) = v;
+    vector.block<3, 1>(a_row, 0) = a;
+    vector.block<3, 1>(w_row, 0) = w;
+
+    // Output logmap(q).
+    const AngleAxisd uq_aa(q.normalized());
+    vector.block<3, 1>(uq_row, 0) = uq_aa.angle() * uq_aa.axis();
+    return vector;
+  }
 
   void Print() const
   {
@@ -68,6 +93,12 @@ struct State final
     std::cout << "S:\n" << S << std::endl;
   }
 };
+
+
+inline bool operator==(const State& lhs, const State& rhs)
+{
+  return (lhs.ToVector() - rhs.ToVector()).norm() < 1e-5 && (lhs.S == rhs.S);
+}
 
 
 struct StateStamped final
