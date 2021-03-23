@@ -186,29 +186,6 @@ static State UpdatePose(const State& x,
 }
 
 
-static State UpdateSingleAxisTranslation(const State& x,
-                                         Axis3 axis,
-                                         double meas_t_world_body,
-                                         double R_axis_sigma)
-{
-  CHECK_GT(R_axis_sigma, 0) << "R_axis_sigma (stdev) must be > 0" << std::endl;
-
-  // Get the translation along desired axis.
-  const double pred_t_world_body = x.t(axis);
-  const double S_axis_sigma = x.S(t_row + axis, t_row + axis);
-
-  // 1D Kalman gain.
-  const double k = S_axis_sigma / (S_axis_sigma + R_axis_sigma);
-  CHECK(k >= 0 && k <= 1.0) << "Kalman gain not in [0, 1]" << std::endl;
-
-  State xu = x;
-  xu.t(axis) += k * (meas_t_world_body - pred_t_world_body);
-  xu.S(t_row + axis, t_row + axis) = (1.0 - k) * S_axis_sigma;
-
-  return xu;
-}
-
-
 static State UpdateRange(const State& x,
                          double range,
                          const Vector3d point,
@@ -336,10 +313,22 @@ StateStamped StateEkf::PredictAndUpdate(seconds_t timestamp,
                                         double R_axis_sigma)
 {
   // PREDICT STEP: Simulate the system forward to the current timestep.
-  const State& xp = PredictIfTimeElapsed(timestamp);
+  const State& x = PredictIfTimeElapsed(timestamp);
 
   // UPDATE STEP: Compute redidual errors, Kalman gain, and apply update.
-  const State& xu = UpdateSingleAxisTranslation(xp, axis, meas_t_world_body, R_axis_sigma);
+  CHECK_GT(R_axis_sigma, 0) << "R_axis_sigma (stdev) must be > 0" << std::endl;
+
+  // Get the translation along desired axis.
+  const double pred_t_world_body = x.t(axis);
+  const double S_axis_sigma = x.S(t_row + axis, t_row + axis);
+
+  // 1D Kalman gain.
+  const double k = S_axis_sigma / (S_axis_sigma + R_axis_sigma);
+  CHECK(k >= 0 && k <= 1.0) << "Kalman gain not in [0, 1]" << std::endl;
+
+  State xu = x;
+  xu.t(axis) += k * (meas_t_world_body - pred_t_world_body);
+  xu.S(t_row + axis, t_row + axis) = (1.0 - k) * S_axis_sigma;
 
   return ThreadsafeSetState(timestamp, xu);
 }
