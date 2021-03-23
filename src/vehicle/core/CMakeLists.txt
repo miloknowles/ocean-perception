@@ -1,6 +1,7 @@
 SET(LIBRARY_NAME ${PROJECT_NAME}_core)
 
 SET(LIBRARY_SRC
+  axis3.hpp
   eigen_types.hpp
   macros.hpp
   cv_types.hpp
@@ -18,6 +19,8 @@ SET(LIBRARY_SRC
   timer.hpp
   timestamp.hpp
   imu_measurement.hpp
+  depth_measurement.hpp
+  range_measurement.hpp
   stereo_image.hpp
   make_unique.hpp
   fixed_queue.hpp

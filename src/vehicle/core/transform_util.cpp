@@ -1,3 +1,4 @@
+#include <glog/logging.h>
 #include "core/transform_util.hpp"
 
 namespace bm {
@@ -111,6 +112,29 @@ Vector6d logmap_se3(Matrix4d T)
   x.tail(3) = w;
   return x;
 }
+
+
+Axis3 GetGravityAxis(const Vector3d& n_gravity, Vector3d& n_gravity_unit)
+{
+  const double max_value = n_gravity.cwiseAbs().maxCoeff();
+
+  CHECK_GT(max_value, 0) << "Zero-gravity in GetGravityAxis" << std::endl;
+
+  if (std::fabs(n_gravity.x()) == max_value) {
+    n_gravity_unit = Vector3d::UnitX() * Sign(n_gravity.x());
+    return Axis3::X;
+  } else if (std::fabs(n_gravity.y()) == max_value) {
+    n_gravity_unit = Vector3d::UnitY() * Sign(n_gravity.y());
+    return Axis3::Y;
+  } else if (std::fabs(n_gravity.z()) == max_value) {
+    n_gravity_unit = Vector3d::UnitZ() * Sign(n_gravity.z());
+    return Axis3::Z;
+  } else {
+    LOG(FATAL) << "Invalid n_gravity: " << n_gravity << std::endl;
+    return Axis3::Y;
+  }
+}
+
 
 }
 }

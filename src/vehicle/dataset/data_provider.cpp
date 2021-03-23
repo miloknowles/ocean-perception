@@ -10,10 +10,15 @@ namespace bm {
 namespace dataset {
 
 
-std::pair<timestamp_t, DataSource> DataProvider::NextTimestamp() const
+timestamp_t DataProvider::NextTimestamp(timestamp_t& next_imu_time,
+                                        timestamp_t& next_depth_time,
+                                        timestamp_t& next_range_time,
+                                        timestamp_t& next_stereo_time) const
 {
-  timestamp_t next_stereo_time = kMaxTimestamp;
-  timestamp_t next_imu_time = kMaxTimestamp;
+  next_stereo_time = kMaxTimestamp;
+  next_imu_time = kMaxTimestamp;
+  next_depth_time = kMaxTimestamp;
+  next_range_time = kMaxTimestamp;
 
   if (next_stereo_idx_ < stereo_data.size()) {
     next_stereo_time = stereo_data.at(next_stereo_idx_).timestamp;
@@ -21,49 +26,78 @@ std::pair<timestamp_t, DataSource> DataProvider::NextTimestamp() const
   if (next_imu_idx_ < imu_data.size()) {
     next_imu_time = imu_data.at(next_imu_idx_).timestamp;
   }
+  if (next_depth_idx_ < depth_data.size()) {
+    next_depth_time = depth_data.at(next_depth_idx_).timestamp;
+  }
+  if (next_range_idx_ < range_data.size()) {
+    next_range_time = range_data.at(next_range_idx_).timestamp;
+  }
 
-  const bool imu_is_next = next_imu_time <= next_stereo_time;
+  return std::min({next_stereo_time, next_imu_time, next_depth_time, next_range_time});
+}
 
-  return std::make_pair(
-    std::min(next_imu_time, next_stereo_time),
-    imu_is_next ? DataSource::IMU : DataSource::STEREO
-  );
+std::pair<timestamp_t, DataSource> DataProvider::NextTimestamp() const
+{
+  timestamp_t next_imu_time, next_depth_time, next_range_time, next_stereo_time;
+  const timestamp_t next_timestamp = NextTimestamp(
+      next_imu_time, next_depth_time, next_range_time, next_stereo_time);
+
+  DataSource next_source = DataSource::IMU;
+
+  // Data priority: IMU > DEPTH > RANGE > STEREO
+  if (next_imu_time == next_timestamp) {
+    next_source = DataSource::IMU;
+  } else if (next_depth_time == next_timestamp) {
+    next_source = DataSource::DEPTH;
+  } else if (next_range_time == next_timestamp) {
+    next_source = DataSource::RANGE;
+  } else if (next_stereo_time == next_timestamp) {
+    next_source = DataSource::STEREO;
+  } else {
+    LOG(FATAL) << "None of the data sources have a measurement at next_timestamp" << std::endl;
+  }
+
+  return std::make_pair(next_timestamp, next_source);
 }
 
 
 bool DataProvider::Step(bool verbose)
 {
-  timestamp_t next_stereo_time = kMaxTimestamp;
-  timestamp_t next_imu_time = kMaxTimestamp;
+  timestamp_t next_imu_time, next_depth_time, next_range_time, next_stereo_time;
+  const timestamp_t next_timestamp = NextTimestamp(
+      next_imu_time, next_depth_time, next_range_time, next_stereo_time);
 
-  if (next_stereo_idx_ < stereo_data.size()) {
-    next_stereo_time = stereo_data.at(next_stereo_idx_).timestamp;
-  }
-  if (next_imu_idx_ < imu_data.size()) {
-    next_imu_time = imu_data.at(next_imu_idx_).timestamp;
-  }
-
-  // If no data left, return "false".
-  if (next_stereo_time == kMaxTimestamp && next_imu_time == kMaxTimestamp) {
+  // If no data left, return false.
+  if (next_timestamp == kMaxTimestamp) {
     return false;
   }
-
-  const bool imu_is_next = next_imu_time <= next_stereo_time;
 
   const auto next_time_and_source = NextTimestamp();
   const timestamp_t next_time = next_time_and_source.first;
   const DataSource next_source = next_time_and_source.second;
 
   if (verbose) {
-    LOG(INFO) << "Step() t=" << next_time << " source=" << (next_source == DataSource::IMU ? "IMU" : "STEREO");
+    LOG(INFO) << "Step() t=" << next_time << " type=" << to_string(next_source) << std::endl;
   }
 
-  // Prioritize IMU measurements first (since we need them integrated before adding new keyframes).
-  if (imu_is_next) {
+  if (next_source == DataSource::IMU) {
     for (const ImuCallback& function : imu_callbacks_) {
       function(imu_data.at(next_imu_idx_));
     }
     ++next_imu_idx_;
+
+  } else if (next_source == DataSource::DEPTH) {
+    for (const DepthCallback& function : depth_callbacks_) {
+      function(depth_data.at(next_depth_idx_));
+    }
+    ++next_depth_idx_;
+
+  } else if (next_source == DataSource::RANGE) {
+    for (const RangeCallback& function : range_callbacks_) {
+      function(range_data.at(next_range_idx_));
+    }
+    ++next_range_idx_;
+
   } else {
     // Load the images and convert to grayscale if needed.
     timestamp_t timestamp = stereo_data.at(next_stereo_idx_).timestamp;
@@ -130,19 +164,36 @@ void DataProvider::Reset()
   last_data_timestamp_ = 0;
   next_stereo_idx_ = 0;
   next_imu_idx_ = 0;
+  next_depth_idx_ = 0;
+}
+
+
+Matrix4d DataProvider::InitialPose() const
+{
+  Matrix4d T_world_body = Matrix4d::Identity();
+
+  if (pose_data.size() > 0) {
+    T_world_body = pose_data.front().T_world_body;
+  }
+
+  return T_world_body;
 }
 
 
 timestamp_t DataProvider::FirstTimestamp() const
 {
-  CHECK(!(imu_data.empty() && stereo_data.empty()));
+  CHECK(!(imu_data.empty() && stereo_data.empty() && depth_data.empty()));
 
   const timestamp_t first_imu = imu_data.empty() ?
-      std::numeric_limits<timestamp_t>::max() : imu_data.front().timestamp;
+      kMaxTimestamp : imu_data.front().timestamp;
   const timestamp_t first_stereo = stereo_data.empty() ?
-      std::numeric_limits<timestamp_t>::max() : stereo_data.front().timestamp;
+      kMaxTimestamp : stereo_data.front().timestamp;
+  const timestamp_t first_depth = depth_data.empty() ?
+      kMaxTimestamp : depth_data.front().timestamp;
+  const timestamp_t first_range = range_data.empty() ?
+      kMaxTimestamp : range_data.front().timestamp;
 
-  return std::min(first_imu, first_stereo);
+  return std::min({first_imu, first_stereo, first_depth, first_range});
 }
 
 

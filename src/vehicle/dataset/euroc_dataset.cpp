@@ -12,13 +12,38 @@ namespace dataset {
 EurocDataset::EurocDataset(const std::string& toplevel_path) : DataProvider()
 {
   const std::string mav0_path = Join(toplevel_path, "mav0");
+
   const std::string cam0_path = Join(mav0_path, "cam0");
   const std::string cam1_path = Join(mav0_path, "cam1");
-  const std::string imu0_csv_path = Join(mav0_path, "imu0/data.csv");
-
-  ParseImu(imu0_csv_path);
   ParseStereo(cam0_path, cam1_path);
-  ParseGroundtruth(Join(mav0_path, "cam0_poses.txt"));
+
+  const std::string& imu_csv = Join(mav0_path, "imu0/data.csv");
+  if (Exists(imu_csv)) {
+    ParseImu(imu_csv);
+  } else {
+    LOG(WARNING) << "[MISSING DATA] No IMU measurements found!" << std::endl;
+  }
+
+  const std::string& pose_txt = Join(mav0_path, "cam0_poses.txt");
+  if (Exists(pose_txt)) {
+    ParseGroundtruth(pose_txt);
+  } else {
+    LOG(WARNING) << "[MISSING DATA] No groundtruth poses found!" << std::endl;
+  }
+
+  const std::string& depth_csv = Join(mav0_path, "depth0/data.csv");
+  if (Exists(depth_csv)) {
+    ParseDepth(depth_csv);
+  } else {
+    LOG(WARNING) << "[MISSING DATA] No depth measurements found!" << std::endl;
+  }
+
+  const std::string& range_csv = Join(mav0_path, "aps0/data.csv");
+  if (Exists(range_csv)) {
+    ParseRange(range_csv);
+  } else {
+    LOG(WARNING) << "[MISSING DATA] No range measurements found!" << std::endl;
+  }
 }
 
 
@@ -29,7 +54,7 @@ void EurocDataset::ParseImu(const std::string& data_csv_path)
   // timestamp [ns],w_RS_S_x [rad s^-1],w_RS_S_y [rad s^-1],w_RS_S_z [rad s^-1],
   // a_RS_S_x [m s^-2],a_RS_S_y [m s^-2],a_RS_S_z [m s^-2]
   std::ifstream fin(data_csv_path.c_str());
-  CHECK(fin.is_open()) << "Could not open file: " << data_csv_path;
+  CHECK(fin.is_open()) << "Could not open file: " << data_csv_path << std::endl;
 
   // Skip the first line, containing the header.
   std::string line;
@@ -38,7 +63,7 @@ void EurocDataset::ParseImu(const std::string& data_csv_path)
   size_t count = 0;
   double max_norm_acc = 0;
   double max_norm_rot_rate = 0;
-  timestamp_t previous_timestamp = 0;
+  timestamp_t prev_timestamp = 0;
 
   // Read/store imu measurements, line by line.
   while (std::getline(fin, line)) {
@@ -53,7 +78,7 @@ void EurocDataset::ParseImu(const std::string& data_csv_path)
       }
       line = line.substr(idx + 1);
     }
-    CHECK_GT(timestamp, previous_timestamp) << "Euroc IMU data is not in chronological order!";
+    CHECK_GT(timestamp, prev_timestamp) << "Euroc IMU data is not in chronological order!";
 
     const double norm_acc = gyr_acc_data.tail(3).norm();
     max_norm_acc = std::max(max_norm_acc, norm_acc);
@@ -63,7 +88,7 @@ void EurocDataset::ParseImu(const std::string& data_csv_path)
 
     imu_data.emplace_back(ImuMeasurement(timestamp, gyr_acc_data.head(3), gyr_acc_data.tail(3)));
 
-    previous_timestamp = timestamp;
+    prev_timestamp = timestamp;
     ++count;
   }
 
@@ -165,6 +190,93 @@ void EurocDataset::ParseGroundtruth(const std::string& gt_path)
   stream.close();
   LOG(INFO) << "Read in " << pose_data.size() << " groundtruth poses" << std::endl;
 }
+
+
+void EurocDataset::ParseDepth(const std::string& depth_csv_path)
+{
+  std::ifstream fin(depth_csv_path.c_str());
+  CHECK(fin.is_open()) << "Could not open file: " << depth_csv_path << std::endl;
+
+  // Skip the first line, containing the header.
+  std::string line;
+  std::getline(fin, line);
+
+  double min_depth = std::numeric_limits<double>::max();
+  double max_depth = std::numeric_limits<double>::min();
+  timestamp_t prev_timestamp = 0;
+
+  // Read/store imu measurements, line by line.
+  while (std::getline(fin, line)) {
+    int comma_idx = line.find_first_of(',');
+    const timestamp_t timestamp = std::stoll(line.substr(0, comma_idx));
+
+    line = line.substr(comma_idx + 1);
+    comma_idx = line.find_first_of(',');
+    const double depth = std::stod(line.substr(0, comma_idx));
+
+    CHECK_GT(timestamp, prev_timestamp) << "EuRoC depth data is not in chronological order!";
+
+    min_depth = std::min(min_depth, depth);
+    max_depth = std::max(max_depth, depth);
+
+    depth_data.emplace_back(DepthMeasurement(timestamp, depth));
+    prev_timestamp = timestamp;
+  }
+
+  fin.close();
+
+  LOG(INFO) << "Read in " << depth_data.size() << " DEPTH measurements.\n"
+            << "  earliest=" << depth_data.front().timestamp
+            << "  latest=" << depth_data.back().timestamp << "\n"
+            << "  min=" << min_depth << " max=" << max_depth << std::endl;
+}
+
+
+void EurocDataset::ParseRange(const std::string& range_csv_path)
+{
+  std::ifstream fin(range_csv_path.c_str());
+  CHECK(fin.is_open()) << "Could not open file: " << range_csv_path << std::endl;
+
+  // Skip the first line, containing the header.
+  std::string line;
+  std::getline(fin, line);
+
+  double min_range = std::numeric_limits<double>::max();
+  double max_range = std::numeric_limits<double>::min();
+  timestamp_t prev_timestamp = 0;
+
+  // Read/store imu measurements, line by line.
+  while (std::getline(fin, line)) {
+    std::stringstream iss(line);
+
+    std::string ns, r, tx, ty, tz;
+    std::getline(iss, ns, ',');
+    std::getline(iss, r, ',');
+    std::getline(iss, tx, ',');
+    std::getline(iss, ty, ',');
+    std::getline(iss, tz, ',');
+
+    const timestamp_t timestamp = std::stoll(ns);
+    const double range = std::stod(r);
+    const Vector3d t(std::stod(tx), std::stod(ty), std::stod(tz));
+
+    CHECK_GT(timestamp, prev_timestamp) << "EuRoC range data is not in chronological order!";
+
+    min_range = std::min(min_range, range);
+    max_range = std::max(max_range, range);
+
+    range_data.emplace_back(RangeMeasurement(timestamp, range, t));
+    prev_timestamp = timestamp;
+  }
+
+  fin.close();
+
+  LOG(INFO) << "Read in " << range_data.size() << " RANGE measurements.\n"
+            << "  earliest=" << range_data.front().timestamp
+            << "  latest=" << range_data.back().timestamp << "\n"
+            << "  min=" << min_range << " max=" << max_range << std::endl;
+}
+
 
 }
 }

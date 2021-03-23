@@ -2,16 +2,24 @@
 
 #include "core/params_base.hpp"
 #include "core/macros.hpp"
-#include "core/eigen_types.hpp"
 #include "core/imu_measurement.hpp"
 #include "core/uid.hpp"
-#include "core/thread_safe_queue.hpp"
-#include "vio/gtsam_types.hpp"
+#include "vio/data_manager.hpp"
+#include "vio/noise_model.hpp"
+
+#include <gtsam/navigation/ImuFactor.h>
+#include <gtsam/navigation/CombinedImuFactor.h>
 
 namespace bm {
 namespace vio {
 
 using namespace core;
+
+// Preintegrated IMU types.
+typedef gtsam::PreintegratedCombinedMeasurements PimC;
+typedef gtsam::imuBias::ConstantBias ImuBias;
+static const ImuBias kZeroImuBias = ImuBias(gtsam::Vector3::Zero(), gtsam::Vector3::Zero());
+static const gtsam::Vector3 kZeroVelocity = gtsam::Vector3::Zero();
 
 
 struct PimResult final
@@ -24,20 +32,28 @@ struct PimResult final
   explicit PimResult(bool timestamps_aligned,
                      seconds_t from_time,
                      seconds_t to_time,
-                     const PimC& pim)
+                     const PimC& pim = PimC(),
+                     const ImuMeasurement& from_imu = ImuMeasurement(),
+                     const ImuMeasurement& to_imu = ImuMeasurement())
       : timestamps_aligned(timestamps_aligned),
         from_time(from_time),
         to_time(to_time),
-        pim(pim) {}
+        pim(pim),
+        from_imu(from_imu),
+        to_imu(to_imu) {}
 
   bool timestamps_aligned;
   seconds_t from_time;
   seconds_t to_time;
   PimC pim;
+
+  // Stores the first and last measurements used during preintegration.
+  ImuMeasurement from_imu;
+  ImuMeasurement to_imu;
 };
 
 
-class ImuManager final {
+class ImuManager final : public DataManager<ImuMeasurement> {
  public:
   struct Params final : public ParamsBase
   {
@@ -53,6 +69,7 @@ class ImuManager final {
     double gyro_noise_sigma =     0.000205689024915;
     double accel_bias_rw_sigma =  0.004905;
     double gyro_bias_rw_sigma =   0.000001454441043;
+    double integration_error_sigma = 1e-4;
 
     IsotropicModel::shared_ptr bias_prior_noise_model = IsotropicModel::Sigma(6, 1e-2);
     IsotropicModel::shared_ptr bias_drift_noise_model = IsotropicModel::Sigma(6, 1e-3);
@@ -73,6 +90,7 @@ class ImuManager final {
       parser.GetYamlParam("gyro_noise_sigma", &gyro_noise_sigma);
       parser.GetYamlParam("accel_bias_rw_sigma", &accel_bias_rw_sigma);
       parser.GetYamlParam("gyro_bias_rw_sigma", &gyro_bias_rw_sigma);
+      parser.GetYamlParam("integration_error_sigma", &integration_error_sigma);
 
       double bias_prior_noise_model_sigma, bias_drift_noise_model_sigma;
       parser.GetYamlParam("bias_prior_noise_model_sigma", &bias_prior_noise_model_sigma);
@@ -84,27 +102,15 @@ class ImuManager final {
       Matrix4d T_body_imu;
       YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/imu0/T_body_imu"), T_body_imu);
       P_body_imu = gtsam::Pose3(T_body_imu);
+      CHECK(T_body_imu(3, 3) == 1.0) << "T_body_imu is invalid" << std::endl;
     }
   };
 
   MACRO_DELETE_COPY_CONSTRUCTORS(ImuManager)
   MACRO_DELETE_DEFAULT_CONSTRUCTOR(ImuManager)
-  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
   // Construct with options that control the noise model.
   explicit ImuManager(const Params& params);
-
-  // Add new IMU data to the queue.
-  void Push(const ImuMeasurement& imu);
-
-  // Is the IMU queue empty?
-  bool Empty() { return queue_.Empty(); }
-
-  // Returns the size of the IMU queue.
-  size_t Size() { return queue_.Size(); }
-
-  // Get the oldest IMU measurement (first in) from the queue.
-  ImuMeasurement Pop() { return queue_.Pop(); }
 
   // Preintegrate queued IMU measurements, optionally within a time range [from_time, to_time].
   // If not time range is given, all available result are integrated. Integration is reset inside
@@ -118,19 +124,9 @@ class ImuManager final {
   // Call this after getting a new bias estimate from the smoother update.
   void ResetAndUpdateBias(const ImuBias& bias);
 
-  // Throw away IMU measurements before (but NOT equal to) time.
-  void DiscardBefore(seconds_t time);
-
-  // Timestamp of the newest IMU measurement in the queue. If empty, returns kMaxSeconds.
-  seconds_t Newest();
-
-  // Timestamp of the oldest IMU measurement in the queue. If empty, returns kMinSeconds.
-  seconds_t Oldest();
-
  private:
   Params params_;
   PimC::Params pim_params_;
-  ThreadsafeQueue<ImuMeasurement> queue_;
   PimC pim_;
 };
 

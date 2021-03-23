@@ -2,7 +2,9 @@
 
 # Acceleration of gravity in the world frame.
 # For example, in a RDF world, n_gravity = [0, 9.81, 0].
+# NOTE: This is also used to determine the DEPTH axis (same as gravity).
 n_gravity: [0, 9.81, 0]
+
 
 imu0:
   frame_id: imu0
@@ -25,13 +27,13 @@ imu0:
 
 # NOTE(milo): Placeholder for acoustic positioning system.
 aps0:
-  frame_id: aps0
-  T_body_imu:
+  frame_id: receiver0
+  T_body_receiver:
     cols: 4
     rows: 4
     data: [1.0, 0.0, 0.0, 0.0,
            0.0, 1.0, 0.0, 0.0,
-           0.0, 0.0, 1.0, 0.0,
+           0.0, 0.0, 1.0, -0.5,
            0.0, 0.0, 0.0, 1.0]
 
 cam0:

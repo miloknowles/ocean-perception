@@ -11,14 +11,17 @@ SET(DATASET_TEST_SOURCES
   dataset/himb_dataset_test.cpp)
 
 set(VIO_TEST_SOURCES
-  vio/imu_manager_test.cpp
+  vio/single_axis_factor_test.cpp
+  vio/data_manager_test.cpp
   vio/feature_detector_test.cpp
   vio/feature_tracker_test.cpp
   vio/stereo_matcher_test.cpp
   vio/stereo_frontend_test.cpp
   vio/viz_test.cpp
   vio/state_estimator_test.cpp
-  vio/state_ekf_test.cpp)
+  vio/state_ekf_test.cpp
+  vio/imu_manager_test.cpp
+  vio/attitude_factor_test.cpp)
 
 set(SANDBOX_TEST_SOURCES
   test_move.cpp)

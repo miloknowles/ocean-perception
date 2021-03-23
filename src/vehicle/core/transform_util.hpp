@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/axis3.hpp"
 #include "core/eigen_types.hpp"
 #include "core/pinhole_camera.hpp"
 
@@ -39,6 +40,15 @@ inline Vector3d MakeHomogeneous(const Vector2d& vec)
   out.head(2) = vec;
   return out;
 }
+
+
+inline double Sign(double v)
+{
+  return (v >= 0) ? 1.0 : -1.0;
+}
+
+
+Axis3 GetGravityAxis(const Vector3d& n_gravity, Vector3d& n_gravity_unit);
 
 
 }

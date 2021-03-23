@@ -1,10 +1,12 @@
 SET(LIBRARY_NAME ${PROJECT_NAME}_vio)
 
 SET(LIBRARY_SRC
-  gtsam_types.hpp
   state_estimator_util.hpp
+  attitude_measurement.hpp
   landmark_observation.hpp
+  noise_model.hpp
   vo_result.hpp
+  data_manager.hpp
   feature_detector.cpp
   feature_detector.hpp
   feature_tracker.cpp
@@ -15,6 +17,7 @@ SET(LIBRARY_SRC
   visualization_2d.hpp
   optimize_odometry.cpp
   optimize_odometry.hpp
+  single_axis_factor.hpp
   stereo_frontend.cpp
   stereo_frontend.hpp
   visualizer_3d.cpp

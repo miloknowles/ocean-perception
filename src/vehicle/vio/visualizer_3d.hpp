@@ -107,6 +107,7 @@ class Visualizer3D final {
   // Starts thread that continuously redraws the 3D visualizer window.
   // The thread is joined when this instance's destructor is called.
   void Start();
+  void SetViewerPose(const Matrix4d& T_world_body);
 
  private:
   // Internal functions that take items off of queues and add to the visualizer.

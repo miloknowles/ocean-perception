@@ -170,6 +170,13 @@ void Visualizer3D::Start()
 }
 
 
+void Visualizer3D::SetViewerPose(const Matrix4d& T_world_body)
+{
+  const cv::Affine3d& T_world_body_cv = EigenMatrix4dToCvAffine3d(T_world_body);
+  viz_.setViewerPose(T_world_body_cv);
+}
+
+
 void Visualizer3D::RemoveOldLandmarks()
 {
   // If too many landmarks, remove the oldest ones.

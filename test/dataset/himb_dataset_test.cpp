@@ -13,8 +13,8 @@ TEST(DatasetTest, TestHimbDataset)
   const std::string toplevel_folder = "/home/milo/datasets/himb/HIMB1_docksite";
   HimbDataset dataset(toplevel_folder, "train");
 
-  StereoCallback stereo_cb = [](const StereoImage& stereo_data) {};
-  ImuCallback imu_cb = [](const ImuMeasurement& imu_data) {};
+  StereoCallback stereo_cb = [](const StereoImage&) {};
+  ImuCallback imu_cb = [](const ImuMeasurement&) {};
 
   dataset.RegisterStereoCallback(stereo_cb);
   dataset.RegisterImuCallback(imu_cb);

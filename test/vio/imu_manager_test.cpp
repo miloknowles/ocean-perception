@@ -1,78 +1,71 @@
 #include <gtest/gtest.h>
 
+#include "core/timestamp.hpp"
 #include "vio/imu_manager.hpp"
 
 using namespace bm;
-using namespace core;
 using namespace vio;
 
 
-TEST(VioTest, TestImuManager_01)
+TEST(ImuManagerTest, TestPim1)
 {
-  const std::string filepath_params = "./resources/config/auv_base/ImuManager_params.yaml";
-  const std::string filepath_shared = "./resources/config/auv_base/shared_params.yaml";
-  ImuManager::Params params(filepath_params, filepath_shared);
-
+  ImuManager::Params params;
+  params.max_queue_size = 1000;
+  params.n_gravity = Vector3d(0, 9.81, 0);
+  params.P_body_imu = gtsam::Pose3::identity();
   ImuManager m(params);
 
-  EXPECT_EQ(0ul, m.Size());
+  const seconds_t dt = 0.02; // 50 Hz
+  const timestamp_t dt_ns = ConvertToNanoseconds(dt);
+  timestamp_t timestamp_ns = 0;
+
+  // 1.0 m/s^2 accel to the right
+  // Feels gravity upwards because RDF frame
+  const Vector3d constant_a(1.0, -9.81, 0.0);
+
+  for (int i = 0; i < 51; ++i) {
+    ImuMeasurement imu_data(timestamp_ns, Vector3d::Zero(), constant_a);
+    m.Push(imu_data);
+    timestamp_ns += dt_ns;
+  }
+
+  const PimResult r1 = m.Preintegrate();   // Preintegrate everything.
+  EXPECT_EQ(0.0, r1.from_time);
+  EXPECT_EQ(1.0, r1.to_time);
   EXPECT_TRUE(m.Empty());
 
-  m.Push(ImuMeasurement(123, Vector3d(0, 0, 0), Vector3d(0, -9.81, 0)));
+  // dx = 1/2 * a * t^2
+  EXPECT_NEAR(r1.pim.deltaPij().y(), 0.5*constant_a.y(), 1e-5);
+  EXPECT_NEAR(r1.pim.deltaPij().x(), 0.5*constant_a.x(), 1e-5);
+  EXPECT_NEAR(r1.pim.deltaPij().z(), 0, 1e-5);
+  EXPECT_NEAR(r1.pim.deltaVij().y(), constant_a.y(), 1e-5);
+  EXPECT_NEAR(r1.pim.deltaVij().x(), constant_a.x(), 1e-5);
+  EXPECT_NEAR(r1.pim.deltaVij().z(), 0, 1e-5);
 
+  for (int i = 0; i < 51; ++i) {
+    ImuMeasurement imu_data(timestamp_ns, Vector3d::Zero(), constant_a);
+    m.Push(imu_data);
+    timestamp_ns += dt_ns;
+  }
+
+  const PimResult r2 = m.Preintegrate(m.Oldest(), m.Newest());
   EXPECT_EQ(1ul, m.Size());
-  EXPECT_FALSE(m.Empty());
 
-  EXPECT_EQ(ConvertToSeconds(123), m.Newest());
-  EXPECT_EQ(ConvertToSeconds(123), m.Oldest());
+  // dx = 1/2 * a * t^2
+  EXPECT_NEAR(r2.pim.deltaPij().y(), 0.5*constant_a.y(), 1e-5);
+  EXPECT_NEAR(r2.pim.deltaPij().x(), 0.5*constant_a.x(), 1e-5);
+  EXPECT_NEAR(r2.pim.deltaPij().z(), 0, 1e-5);
+  EXPECT_NEAR(r2.pim.deltaVij().y(), constant_a.y(), 1e-5);
+  EXPECT_NEAR(r2.pim.deltaVij().x(), constant_a.x(), 1e-5);
+  EXPECT_NEAR(r2.pim.deltaVij().z(), 0, 1e-5);
 
-  // This shouldn't cause the data at 123 to be dropped.
-  m.DiscardBefore(ConvertToSeconds(122));
+  const gtsam::NavState prev_nav_state(gtsam::Pose3::identity(), gtsam::Velocity3::Zero());
+  const gtsam::NavState next_nav_state = r2.pim.predict(prev_nav_state, kZeroImuBias);
 
-  EXPECT_EQ(1ul, m.Size());
-  EXPECT_FALSE(m.Empty());
-  EXPECT_EQ(ConvertToSeconds(123), m.Newest());
-  EXPECT_EQ(ConvertToSeconds(123), m.Oldest());
-
-  // This also shouldn't cause a drop.
-  m.DiscardBefore(ConvertToSeconds(123));
-
-  EXPECT_EQ(1ul, m.Size());
-  EXPECT_FALSE(m.Empty());
-  EXPECT_EQ(ConvertToSeconds(123), m.Newest());
-  EXPECT_EQ(ConvertToSeconds(123), m.Oldest());
-
-  // This one should.
-  m.DiscardBefore(ConvertToSeconds(124));
-  EXPECT_EQ(0ul, m.Size());
-  EXPECT_TRUE(m.Empty());
-  EXPECT_EQ(kMaxSeconds, m.Newest());
-  EXPECT_EQ(kMinSeconds, m.Oldest());
-
-  m.Push(ImuMeasurement(ConvertToNanoseconds(10), Vector3d(0, 0, 0), Vector3d(0, -9.81, 0)));
-  m.Push(ImuMeasurement(ConvertToNanoseconds(11), Vector3d(0, 0, 0), Vector3d(0, -9.81, 0)));
-
-  EXPECT_EQ(11, m.Newest());
-  EXPECT_EQ(10, m.Oldest());
-
-  // The to_time is way off, so should fail.
-  const PimResult& pim1 = m.Preintegrate(1, 3);
-  EXPECT_FALSE(pim1.timestamps_aligned);
-  EXPECT_EQ(2ul, m.Size());
-
-  // The newest IMU measurement is way before the to_time, so should fail.
-  // NOTE: measurements will be dropped by this operation.
-  const PimResult& pim2 = m.Preintegrate(10, 12);
-  EXPECT_FALSE(pim2.timestamps_aligned);
-  EXPECT_EQ(2ul, m.Size());
-
-  // The from_time is after the newest measurement, so preintegration should be invalid.
-  const PimResult& pim3 = m.Preintegrate(15, 20);
-  EXPECT_FALSE(pim3.timestamps_aligned);
-  EXPECT_EQ(2ul, m.Size());
-
-  // Integration bounds within allowed imu_misalignment_sec.
-  const PimResult& pim4 = m.Preintegrate(9.99, 11.01);
-  EXPECT_TRUE(pim4.timestamps_aligned);
-  EXPECT_TRUE(m.Empty());
+  EXPECT_NEAR(0.5*constant_a.x(), next_nav_state.position().x(), 1e-5);
+  EXPECT_NEAR(0, next_nav_state.position().y(), 1e-5);
+  EXPECT_NEAR(0, next_nav_state.position().z(), 1e-5);
+  EXPECT_NEAR(constant_a.x(), next_nav_state.velocity().x(), 1e-5);
+  EXPECT_NEAR(0, next_nav_state.velocity().y(), 1e-5);
+  EXPECT_NEAR(0, next_nav_state.velocity().z(), 1e-5);
 }
