@@ -73,19 +73,19 @@ TEST(VioTest, TestEuroc)
   SmootherResult::Callback smoother_callback = [&](const SmootherResult& result)
   {
     const core::uid_t cam_id = static_cast<core::uid_t>(result.keypose_id);
-    viz.AddCameraPose(cam_id, Image1b(), result.P_world_body.matrix(), true);
+    viz.AddCameraPose(cam_id, Image1b(), result.world_P_body.matrix(), true);
   };
 
   StateStamped::Callback filter_callback = [&](const StateStamped& ss)
   {
-    Matrix4d T_world_body = Matrix4d::Identity();
-    T_world_body.block<3, 3>(0, 0) = ss.state.q.toRotationMatrix();
-    T_world_body.block<3, 1>(0, 3) = ss.state.t;
-    viz.UpdateBodyPose("imu0", T_world_body);
+    Matrix4d world_T_body = Matrix4d::Identity();
+    world_T_body.block<3, 3>(0, 0) = ss.state.q.toRotationMatrix();
+    world_T_body.block<3, 1>(0, 3) = ss.state.t;
+    viz.UpdateBodyPose("imu0", world_T_body);
   };
 
   for (size_t i = 0; i < groundtruth_poses.size(); ++i) {
-    viz.AddGroundtruthPose(i, groundtruth_poses.at(i).T_world_body);
+    viz.AddGroundtruthPose(i, groundtruth_poses.at(i).world_T_body);
   }
 
   state_estimator.RegisterSmootherResultCallback(smoother_callback);

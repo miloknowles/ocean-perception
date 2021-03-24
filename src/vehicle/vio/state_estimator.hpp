@@ -79,8 +79,8 @@ class StateEstimator final {
 
     double body_nG_tol = 0.01;  // Treat accelerometer measurements as attitude measurements if they are this close to 1G.
 
-    gtsam::Pose3 P_body_imu = gtsam::Pose3::identity();
-    gtsam::Pose3 P_body_cam = gtsam::Pose3::identity();
+    gtsam::Pose3 body_P_imu = gtsam::Pose3::identity();
+    gtsam::Pose3 body_P_cam = gtsam::Pose3::identity();
     Vector3d n_gravity = Vector3d(0, 9.81, 0);
 
    private:
@@ -108,13 +108,13 @@ class StateEstimator final {
       parser.GetYamlParam("body_nG_tol", &body_nG_tol);
 
       YamlToVector<Vector3d>(parser.GetYamlNode("/shared/n_gravity"), n_gravity);
-      Matrix4d T_body_imu, T_body_cam;
-      YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/imu0/T_body_imu"), T_body_imu);
-      YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/cam0/T_body_cam"), T_body_cam);
-      P_body_imu = gtsam::Pose3(T_body_imu);
-      P_body_cam = gtsam::Pose3(T_body_cam);
-      CHECK(T_body_imu(3, 3) == 1.0) << "T_body_imu is invalid" << std::endl;
-      CHECK(T_body_cam(3, 3) == 1.0) << "T_body_cam is invalid" << std::endl;
+      Matrix4d body_T_imu, body_T_cam;
+      YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/imu0/body_T_imu"), body_T_imu);
+      YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/cam0/body_T_cam"), body_T_cam);
+      body_P_imu = gtsam::Pose3(body_T_imu);
+      body_P_cam = gtsam::Pose3(body_T_cam);
+      CHECK(body_T_imu(3, 3) == 1.0) << "body_T_imu is invalid" << std::endl;
+      CHECK(body_T_cam(3, 3) == 1.0) << "body_T_cam is invalid" << std::endl;
     }
   };
 
@@ -161,6 +161,11 @@ class StateEstimator final {
   // Updates the smoother_result_ (threadsafe), and calls any stored smoother callbacks.
   void OnSmootherResult(const SmootherResult& result);
 
+  // Central function to change the state of the smoother. If VISION_AVAILABLE, it will try create
+  // new keyposes from vision. If VISION_UNAVAILABLE, it will use IMU preintegration to create new
+  // keyposes.
+  void UpdateSmootherMode(SmootherMode mode);
+
  private:
   Params params_;
   StereoCamera stereo_rig_;
@@ -190,7 +195,6 @@ class StateEstimator final {
   ImuManager filter_imu_manager_;
   DepthManager filter_depth_manager_;
   RangeManager filter_range_manager_;
-  ThreadsafeQueue<VoResult> filter_vo_queue_;
   std::vector<StateStamped::Callback> filter_result_callbacks_;
   //================================================================================================
 };

@@ -65,12 +65,12 @@ struct GroundtruthItem
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
   explicit GroundtruthItem(timestamp_t timestamp,
-                           Matrix4d T_world_body)
+                           Matrix4d world_T_body)
       : timestamp(timestamp),
-        T_world_body(T_world_body) {}
+        world_T_body(world_T_body) {}
 
   timestamp_t timestamp;
-  Matrix4d T_world_body;
+  Matrix4d world_T_body;
 };
 
 

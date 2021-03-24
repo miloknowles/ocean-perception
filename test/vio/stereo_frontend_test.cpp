@@ -36,17 +36,17 @@ TEST(VioTest, TestFrontendFarmSim)
   Visualizer3D viz_3d(viz_3d_opt, stereo_rig);
   viz_3d.Start();
 
-  Matrix4d T_world_lkf = Matrix4d::Identity();
+  Matrix4d world_T_lkf = Matrix4d::Identity();
 
   dataset::StereoCallback callback = [&](const StereoImage& stereo_data)
   {
-    Matrix4d T_prev_cur_prior = Matrix4d::Identity();
-    const VoResult& result = stereo_frontend.Track(stereo_data, T_prev_cur_prior);
+    Matrix4d prev_T_cur_prior = Matrix4d::Identity();
+    const VoResult& result = stereo_frontend.Track(stereo_data, prev_T_cur_prior);
     const Image3b viz = stereo_frontend.VisualizeFeatureTracks();
     cv::imshow("StereoTracking", viz);
     cv::waitKey(1);
 
-    viz_3d.AddCameraPose(result.camera_id, stereo_data.left_image, T_world_lkf * result.T_lkf_cam, result.is_keyframe);
+    viz_3d.AddCameraPose(result.camera_id, stereo_data.left_image, world_T_lkf * result.lkf_T_cam, result.is_keyframe);
 
     std::vector<core::uid_t> lmk_ids(result.lmk_obs.size());
     std::vector<Vector3d> t_world_lmks(result.lmk_obs.size());
@@ -57,7 +57,7 @@ TEST(VioTest, TestFrontendFarmSim)
       const double disp = lmk_obs.disparity;
       const double depth = stereo_rig.DispToDepth(disp);
       const Vector3d t_cam_lmk = camera_model.Backproject(Vector2d(lmk_obs.pixel_location.x, lmk_obs.pixel_location.y), depth);
-      const Vector3d t_world_lmk = (T_world_lkf * result.T_lkf_cam * MakeHomogeneous(t_cam_lmk)).head(3);
+      const Vector3d t_world_lmk = (world_T_lkf * result.lkf_T_cam * MakeHomogeneous(t_cam_lmk)).head(3);
 
       lmk_ids.at(i) = lmk_id;
       t_world_lmks.at(i) = t_world_lmk;
@@ -66,7 +66,7 @@ TEST(VioTest, TestFrontendFarmSim)
     viz_3d.AddOrUpdateLandmark(lmk_ids, t_world_lmks);
 
     if (result.is_keyframe) {
-      T_world_lkf = T_world_lkf * result.T_lkf_cam;
+      world_T_lkf = world_T_lkf * result.lkf_T_cam;
     }
   };
 
@@ -97,18 +97,18 @@ TEST(VioTest, TestFrontendHimb)
   Visualizer3D viz_3d(viz_3d_opt, stereo_rig);
   viz_3d.Start();
 
-  Matrix4d T_world_lkf = Matrix4d::Identity();
+  Matrix4d world_T_lkf = Matrix4d::Identity();
 
   dataset::StereoCallback callback = [&](const StereoImage& stereo_data)
   {
-    Matrix4d T_prev_cur_prior = Matrix4d::Identity();
-    const VoResult& result = stereo_frontend.Track(stereo_data, T_prev_cur_prior);
+    Matrix4d prev_T_cur_prior = Matrix4d::Identity();
+    const VoResult& result = stereo_frontend.Track(stereo_data, prev_T_cur_prior);
     const Image3b viz = stereo_frontend.VisualizeFeatureTracks();
     cv::imshow("StereoTracking", viz);
     cv::waitKey(1);
 
     // NOTE(milo): Remember that T_prev_cur is the pose of the current camera in the last keyframe!
-    viz_3d.AddCameraPose(result.camera_id, stereo_data.left_image, T_world_lkf * result.T_lkf_cam, result.is_keyframe);
+    viz_3d.AddCameraPose(result.camera_id, stereo_data.left_image, world_T_lkf * result.lkf_T_cam, result.is_keyframe);
 
     std::vector<core::uid_t> lmk_ids(result.lmk_obs.size());
     std::vector<Vector3d> t_world_lmks(result.lmk_obs.size());
@@ -119,7 +119,7 @@ TEST(VioTest, TestFrontendHimb)
       const double disp = lmk_obs.disparity;
       const double depth = stereo_rig.DispToDepth(disp);
       const Vector3d t_cam_lmk = camera_model.Backproject(Vector2d(lmk_obs.pixel_location.x, lmk_obs.pixel_location.y), depth);
-      const Vector3d t_world_lmk = (T_world_lkf * result.T_lkf_cam * MakeHomogeneous(t_cam_lmk)).head(3);
+      const Vector3d t_world_lmk = (world_T_lkf * result.lkf_T_cam * MakeHomogeneous(t_cam_lmk)).head(3);
 
       lmk_ids.at(i) = lmk_id;
       t_world_lmks.at(i) = t_world_lmk;
@@ -128,7 +128,7 @@ TEST(VioTest, TestFrontendHimb)
     viz_3d.AddOrUpdateLandmark(lmk_ids, t_world_lmks);
 
     if (result.is_keyframe) {
-      T_world_lkf = T_world_lkf * result.T_lkf_cam;
+      world_T_lkf = world_T_lkf * result.lkf_T_cam;
     }
   };
 

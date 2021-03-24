@@ -31,16 +31,16 @@ struct CameraPoseData
 
   explicit CameraPoseData(uid_t cam_id,
                           const Image1b& left_image,
-                          const Matrix4d& T_world_cam,
+                          const Matrix4d& world_T_cam,
                           bool is_keyframe)
       : cam_id(cam_id),
         left_image(left_image),
-        T_world_cam(T_world_cam),
+        world_T_cam(world_T_cam),
         is_keyframe(is_keyframe) {}
 
   uid_t cam_id;
   Image1b left_image;
-  Matrix4d T_world_cam;
+  Matrix4d world_T_cam;
   bool is_keyframe;
 };
 
@@ -52,12 +52,12 @@ struct BodyPoseData
   MACRO_DELETE_DEFAULT_CONSTRUCTOR(BodyPoseData)
 
   explicit BodyPoseData(const std::string& name,
-                        const Matrix4d& T_world_body)
+                        const Matrix4d& world_T_body)
       : name(name),
-        T_world_body(T_world_body) {}
+        world_T_body(world_T_body) {}
 
   std::string name;
-  Matrix4d T_world_body;
+  Matrix4d world_T_body;
 };
 
 
@@ -89,12 +89,12 @@ class Visualizer3D final {
 
   // Adds a new camera frustrum at the given pose. If left_image is not empty, it is shown inside
   // of the camera frustum. Only keyframe cameras are stored (and can be updated later).
-  void AddCameraPose(uid_t cam_id, const Image1b& left_image, const Matrix4d& T_world_cam, bool is_keyframe);
+  void AddCameraPose(uid_t cam_id, const Image1b& left_image, const Matrix4d& world_T_cam, bool is_keyframe);
 
   // Update the pose associated with a cam_id (must correspond to a keyframe).
-  void UpdateCameraPose(uid_t cam_id, const Matrix4d& T_world_cam);
+  void UpdateCameraPose(uid_t cam_id, const Matrix4d& world_T_cam);
 
-  void UpdateBodyPose(const std::string& name, const Matrix4d& T_world_body);
+  void UpdateBodyPose(const std::string& name, const Matrix4d& world_T_body);
 
   // Adds a 3D landmark at a point in the world. If the lmk_id already exists, updates its location.
   void AddOrUpdateLandmark(const std::vector<uid_t>& lmk_ids, const std::vector<Vector3d>& t_world_lmks);
@@ -102,12 +102,12 @@ class Visualizer3D final {
   // Adds an observation of a point landmark from a camera image.
   void AddLandmarkObservation(uid_t cam_id, uid_t lmk_id, const LandmarkObservation& lmk_obs);
 
-  void AddGroundtruthPose(uid_t pose_id, const Matrix4d& T_world_body);
+  void AddGroundtruthPose(uid_t pose_id, const Matrix4d& world_T_body);
 
   // Starts thread that continuously redraws the 3D visualizer window.
   // The thread is joined when this instance's destructor is called.
   void Start();
-  void SetViewerPose(const Matrix4d& T_world_body);
+  void SetViewerPose(const Matrix4d& world_T_body);
 
  private:
   // Internal functions that take items off of queues and add to the visualizer.

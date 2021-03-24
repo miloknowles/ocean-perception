@@ -90,9 +90,9 @@ class StereoFrontend final {
   explicit StereoFrontend(const Params& params, const StereoCamera& stereo_rig);
 
   // Track known visual landmarks into the current stereo pair, possibly initializing new ones.
-  // T_prev_cur_prior could be an initial guess on the odometry from IMU.
+  // prev_T_cur_prior could be an initial guess on the odometry from IMU.
   VoResult Track(const StereoImage& stereo_pair,
-                 const Matrix4d& T_prev_cur_prior,
+                 const Matrix4d& prev_T_cur_prior,
                  bool force_keyframe = false);
 
   // Draws current feature tracks:
@@ -129,7 +129,7 @@ class StereoFrontend final {
   Image1b prev_left_image_;
   FeatureTracks live_tracks_;
 
-  Matrix4d T_cur_lkf_ = Matrix4d::Identity();
+  Matrix4d cur_T_lkf_ = Matrix4d::Identity();
 };
 
 

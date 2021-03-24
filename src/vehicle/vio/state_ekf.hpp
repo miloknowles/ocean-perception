@@ -148,9 +148,9 @@ class StateEkf final {
 
     // Shared params.
     Vector3d n_gravity = Vector3d(0, 9.81, 0);
-    Matrix4d T_body_imu = Matrix4d::Identity();
-    Matrix4d T_body_cam = Matrix4d::Identity();
-    Matrix4d T_body_receiver = Matrix4d::Identity();
+    Matrix4d body_T_imu = Matrix4d::Identity();
+    Matrix4d body_T_cam = Matrix4d::Identity();
+    Matrix4d body_T_receiver = Matrix4d::Identity();
 
 
    private:
@@ -168,17 +168,17 @@ class StateEkf final {
       parser.GetYamlParam("sigma_R_depth", &sigma_R_depth);
 
       YamlToVector<Vector3d>(parser.GetYamlNode("/shared/n_gravity"), n_gravity);
-      YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/imu0/T_body_imu"), T_body_imu);
-      YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/cam0/T_body_cam"), T_body_cam);
-      YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/aps0/T_body_receiver"), T_body_receiver);
+      YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/imu0/body_T_imu"), body_T_imu);
+      YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/cam0/body_T_cam"), body_T_cam);
+      YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/aps0/body_T_receiver"), body_T_receiver);
     }
   };
 
   // Construct with parameters.
   StateEkf(const Params& params);
 
-  // Rewind the filter to it's state at a previous timestamp. Will throw an exception if the old
-  // state was not available.
+  // Rewind the filter to timestamp, and set its state that of the closest timestamp.
+  // If no previous state exists within allowed_dt, it will complain but no exception is thrown.
   void Rewind(seconds_t timestamp, seconds_t allowed_dt = 0.1);
 
   // Re-apply all stored imu measurements on top of the current state.
@@ -195,7 +195,7 @@ class StateEkf final {
   // Update with an external pose estimate (e.g from smoother).
   StateStamped PredictAndUpdate(seconds_t timestamp,
                                 const Quaterniond& q_world_body,
-                                const Vector3d& t_world_body,
+                                const Vector3d& world_T_body,
                                 const Matrix6d& R_pose);
 
   // Update with an external velocity estimate (e.g from smoother).
@@ -206,7 +206,7 @@ class StateEkf final {
   // Update with an external estimate of ONE translation axis (e.g from barometer).
   StateStamped PredictAndUpdate(seconds_t timestamp,
                                 Axis3 axis,
-                                double meas_t_world_body,
+                                double meas_world_T_body,
                                 double R_axis_sigma);
 
   // Update with an external range from a known point (e.g APS).
@@ -235,7 +235,11 @@ class StateEkf final {
   void Initialize(const StateStamped& state, const ImuBias& imu_bias);
 
  private:
+  // Handles the Kalman filter "predict" step. If timestamp is equal to that of the current state,
+  // no forward simulation happens.
   State PredictIfTimeElapsed(seconds_t timestamp);
+
+  // Call this to update the filter's state.
   StateStamped ThreadsafeSetState(seconds_t timestamp, const State& state);
 
  private:

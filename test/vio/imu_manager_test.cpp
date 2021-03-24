@@ -12,7 +12,7 @@ TEST(ImuManagerTest, TestPim1)
   ImuManager::Params params;
   params.max_queue_size = 1000;
   params.n_gravity = Vector3d(0, 9.81, 0);
-  params.P_body_imu = gtsam::Pose3::identity();
+  params.body_P_imu = gtsam::Pose3::identity();
   ImuManager m(params);
 
   const seconds_t dt = 0.02; // 50 Hz

@@ -39,10 +39,10 @@ class OdometryManager final {
 
     CHECK(history_.Exists(from_timestamp)) << "from_timestamp not found: " << from_timestamp << std::endl;
 
-    const gtsam::Pose3& P_world_from = history_.at(from_timestamp);
-    const gtsam::Pose3 P_world_to = P_world_from * P_from_to;
+    const gtsam::Pose3& world_P_from = history_.at(from_timestamp);
+    const gtsam::Pose3 world_P_to = world_P_from * P_from_to;
 
-    history_.Update(to_timestamp, P_world_to);
+    history_.Update(to_timestamp, world_P_to);
   }
 
   // Get the relative pose between from_timestamp and to_timestamp.
@@ -51,10 +51,10 @@ class OdometryManager final {
     CHECK(history_.Exists(from_timestamp)) << "from_timestamp not found: " << from_timestamp << std::endl;
     CHECK(history_.Exists(to_timestamp)) << "to_timestamp not found: " << to_timestamp << std::endl;
 
-    const gtsam::Pose3& P_world_from = history_.at(from_timestamp);
-    const gtsam::Pose3& P_world_to = history_.at(to_timestamp);
+    const gtsam::Pose3& world_P_from = history_.at(from_timestamp);
+    const gtsam::Pose3& world_P_to = history_.at(to_timestamp);
 
-    return P_world_from.inverse() * P_world_to;
+    return world_P_from.inverse() * world_P_to;
   }
 
   seconds_t Newest() const { return history_.NewestKey(); }

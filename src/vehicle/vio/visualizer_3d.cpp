@@ -32,21 +32,21 @@ static std::string GetGroundtruthPoseWidgetName(uid_t pose_id)
 }
 
 
-static cv::Affine3d EigenMatrix4dToCvAffine3d(const Matrix4d& T_world_cam)
+static cv::Affine3d EigenMatrix4dToCvAffine3d(const Matrix4d& world_T_cam)
 {
   cv::Affine3d::Mat3 R_world_cam;
-  cv::Affine3d::Vec3 t_world_cam;
-  Eigen::Matrix3d _R_world_cam = T_world_cam.block<3, 3>(0, 0);
-  Eigen::Vector3d _t_world_cam = T_world_cam.block<3, 1>(0, 3);
+  cv::Affine3d::Vec3 world_t_cam;
+  Eigen::Matrix3d _R_world_cam = world_T_cam.block<3, 3>(0, 0);
+  Eigen::Vector3d _world_t_cam = world_T_cam.block<3, 1>(0, 3);
   cv::eigen2cv(_R_world_cam, R_world_cam);
-  cv::eigen2cv(_t_world_cam, t_world_cam);
-  return cv::Affine3d(R_world_cam, t_world_cam);
+  cv::eigen2cv(_world_t_cam, world_t_cam);
+  return cv::Affine3d(R_world_cam, world_t_cam);
 }
 
 
-void Visualizer3D::AddCameraPose(uid_t cam_id, const Image1b& left_image, const Matrix4d& T_world_cam, bool is_keyframe)
+void Visualizer3D::AddCameraPose(uid_t cam_id, const Image1b& left_image, const Matrix4d& world_T_cam, bool is_keyframe)
 {
-  add_camera_pose_queue_.Push(std::move(CameraPoseData(cam_id, left_image, T_world_cam, is_keyframe)));
+  add_camera_pose_queue_.Push(std::move(CameraPoseData(cam_id, left_image, world_T_cam, is_keyframe)));
 }
 
 
@@ -55,23 +55,23 @@ void Visualizer3D::AddCameraPose(const CameraPoseData& data)
   const cv::Matx33d K = { stereo_rig_.fx(), 0.0,              stereo_rig_.cx(),
                           0.0,              stereo_rig_.fy(), stereo_rig_.cy(),
                           0.0,              0.0,              1.0  };
-  const cv::Affine3d T_world_cam_cv = EigenMatrix4dToCvAffine3d(data.T_world_cam);
+  const cv::Affine3d world_T_cam_cv = EigenMatrix4dToCvAffine3d(data.world_T_cam);
 
   viz_lock_.lock();
 
   const std::string widget_name = GetCameraPoseWidgetName(data.cam_id);
   CHECK(widget_names_.count(widget_name) == 0) << "Trying to add existing cam_id: " << widget_name << std::endl;
   cv::viz::WCameraPosition widget_keyframe(K, 1.0, data.is_keyframe ? cv::viz::Color::blue() : cv::viz::Color::red());
-  viz_.showWidget(widget_name, widget_keyframe, T_world_cam_cv);
+  viz_.showWidget(widget_name, widget_keyframe, world_T_cam_cv);
   widget_names_.insert(widget_name);
 
   viz_lock_.unlock();
 }
 
 
-void Visualizer3D::UpdateCameraPose(uid_t cam_id, const Matrix4d& T_world_cam)
+void Visualizer3D::UpdateCameraPose(uid_t cam_id, const Matrix4d& world_T_cam)
 {
-  update_camera_pose_queue_.Push(CameraPoseData(cam_id, Image1b(), T_world_cam, false));
+  update_camera_pose_queue_.Push(CameraPoseData(cam_id, Image1b(), world_T_cam, false));
 }
 
 
@@ -80,32 +80,32 @@ void Visualizer3D::UpdateCameraPose(const CameraPoseData& data)
   const std::string widget_name = GetCameraPoseWidgetName(data.cam_id);
   CHECK(widget_names_.count(widget_name) != 0) << "Tried to update camera pose that doesn't exist yet: " << data.cam_id << std::endl;
 
-  const cv::Affine3d T_world_cam_cv = EigenMatrix4dToCvAffine3d(data.T_world_cam);
+  const cv::Affine3d world_T_cam_cv = EigenMatrix4dToCvAffine3d(data.world_T_cam);
 
   viz_lock_.lock();
-  viz_.setWidgetPose(widget_name, T_world_cam_cv);
+  viz_.setWidgetPose(widget_name, world_T_cam_cv);
   viz_lock_.unlock();
 }
 
 
-void Visualizer3D::UpdateBodyPose(const std::string& name, const Matrix4d& T_world_body)
+void Visualizer3D::UpdateBodyPose(const std::string& name, const Matrix4d& world_T_body)
 {
-  update_body_pose_queue_.Push(BodyPoseData(name, T_world_body));
+  update_body_pose_queue_.Push(BodyPoseData(name, world_T_body));
 }
 
 
 void Visualizer3D::UpdateBodyPose(const BodyPoseData& data)
 {
-  const cv::Affine3d& T_world_body_cv = EigenMatrix4dToCvAffine3d(data.T_world_body);
+  const cv::Affine3d& world_T_body_cv = EigenMatrix4dToCvAffine3d(data.world_T_body);
 
   if (widget_names_.count(data.name) == 0) {
     viz_lock_.lock();
-    viz_.showWidget(data.name, cv::viz::WCameraPosition(), T_world_body_cv);
+    viz_.showWidget(data.name, cv::viz::WCameraPosition(), world_T_body_cv);
     viz_lock_.unlock();
   }
 
   viz_lock_.lock();
-  viz_.setWidgetPose(data.name, T_world_body_cv);
+  viz_.setWidgetPose(data.name, world_T_body_cv);
   viz_lock_.unlock();
 }
 
@@ -119,17 +119,17 @@ void Visualizer3D::AddOrUpdateLandmark(const std::vector<uid_t>& lmk_ids, const 
     const Vector3d& t_world_lmk = t_world_lmks.at(i);
     const std::string widget_name = GetLandmarkWidgetName(lmk_id);
 
-    Matrix4d T_world_lmk = Matrix4d::Identity();
-    T_world_lmk.block<3, 1>(0, 3) = t_world_lmk;
-    const cv::Affine3d T_world_lmk_cv = EigenMatrix4dToCvAffine3d(T_world_lmk);
+    Matrix4d world_T_lmk = Matrix4d::Identity();
+    world_T_lmk.block<3, 1>(0, 3) = t_world_lmk;
+    const cv::Affine3d world_T_lmk_cv = EigenMatrix4dToCvAffine3d(world_T_lmk);
 
     if (set_live_lmk_ids_.count(lmk_id) == 0) {
       const cv::viz::WSphere widget_lmk(cv::Point3d(0, 0, 0), kLandmarkSphereRadius, 5, cv::viz::Color::white());
-      viz_.showWidget(widget_name, widget_lmk, T_world_lmk_cv);
+      viz_.showWidget(widget_name, widget_lmk, world_T_lmk_cv);
       set_live_lmk_ids_.insert(lmk_id);
       queue_live_lmk_ids_.push(lmk_id);
     } else {
-      viz_.setWidgetPose(widget_name, T_world_lmk_cv);
+      viz_.setWidgetPose(widget_name, world_T_lmk_cv);
     }
   }
 
@@ -144,13 +144,13 @@ void Visualizer3D::AddLandmarkObservation(uid_t cam_id, uid_t lmk_id, const Land
 }
 
 
-void Visualizer3D::AddGroundtruthPose(uid_t pose_id, const Matrix4d& T_world_body)
+void Visualizer3D::AddGroundtruthPose(uid_t pose_id, const Matrix4d& world_T_body)
 {
-  const cv::Affine3d& T_world_body_cv = EigenMatrix4dToCvAffine3d(T_world_body);
+  const cv::Affine3d& world_T_body_cv = EigenMatrix4dToCvAffine3d(world_T_body);
   const std::string& name = GetGroundtruthPoseWidgetName(pose_id);
 
   viz_lock_.lock();
-  viz_.showWidget(name, cv::viz::WCameraPosition(0.5), T_world_body_cv);
+  viz_.showWidget(name, cv::viz::WCameraPosition(0.5), world_T_body_cv);
   viz_lock_.unlock();
 }
 
@@ -170,10 +170,10 @@ void Visualizer3D::Start()
 }
 
 
-void Visualizer3D::SetViewerPose(const Matrix4d& T_world_body)
+void Visualizer3D::SetViewerPose(const Matrix4d& world_T_body)
 {
-  const cv::Affine3d& T_world_body_cv = EigenMatrix4dToCvAffine3d(T_world_body);
-  viz_.setViewerPose(T_world_body_cv);
+  const cv::Affine3d& world_T_body_cv = EigenMatrix4dToCvAffine3d(world_T_body);
+  viz_.setViewerPose(world_T_body_cv);
 }
 
 

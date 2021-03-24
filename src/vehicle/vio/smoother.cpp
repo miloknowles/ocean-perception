@@ -16,6 +16,9 @@ namespace vio {
 static const double kSetSkewToZero = 0.0;
 
 typedef gtsam::RangeFactorWithTransform<gtsam::Pose3, gtsam::Point3> RangeFactor;
+typedef gtsam::noiseModel::Robust RobustModel;
+typedef gtsam::noiseModel::mEstimator::Tukey mTukey;
+typedef gtsam::noiseModel::mEstimator::Cauchy mCauchy;
 
 
 Smoother::Smoother(const Params& params,
@@ -67,7 +70,7 @@ void Smoother::ResetISAM2()
 
 
 void Smoother::Initialize(seconds_t timestamp,
-                          const gtsam::Pose3& P_world_body,
+                          const gtsam::Pose3& world_P_body,
                           const gtsam::Vector3& v_world_body,
                           const ImuBias& imu_bias,
                           bool imu_available)
@@ -87,14 +90,14 @@ void Smoother::Initialize(seconds_t timestamp,
   gtsam::NonlinearFactorGraph new_factors;
   gtsam::Values new_values;
 
-  result_ = SmootherResult(id0, timestamp, P_world_body, imu_available, v_world_body, imu_bias,
+  result_ = SmootherResult(id0, timestamp, world_P_body, imu_available, v_world_body, imu_bias,
       params_.pose_prior_noise_model->covariance(),
       params_.velocity_noise_model->covariance(),
       params_.bias_prior_noise_model->covariance());
 
   // Prior and initial value for the first pose.
-  new_factors.addPrior<gtsam::Pose3>(P0_sym, P_world_body, params_.pose_prior_noise_model);
-  new_values.insert(P0_sym, P_world_body);
+  new_factors.addPrior<gtsam::Pose3>(P0_sym, world_P_body, params_.pose_prior_noise_model);
+  new_values.insert(P0_sym, world_P_body);
 
   // If IMU available, add inertial variables to the graph.
   if (imu_available) {
@@ -133,7 +136,7 @@ static void AddImuFactors(uid_t keypose_id,
   const gtsam::Symbol last_bias_sym('B', last_keypose_id);
 
   // NOTE(milo): Gravity is corrected for in predict(), not during preintegration (NavState.cpp).
-  const gtsam::NavState prev_state(last_smoother_result.P_world_body,
+  const gtsam::NavState prev_state(last_smoother_result.world_P_body,
                                    last_smoother_result.v_world_body);
   const gtsam::NavState pred_state = pim_result.pim.predict(prev_state, last_smoother_result.imu_bias);
 
@@ -240,7 +243,7 @@ SmootherResult Smoother::UpdateGraphNoVision(const PimResult& pim_result,
         beacon_sym,
         maybe_range_ptr->range,
         params_.range_noise_model,
-        params_.P_body_receiver));
+        params_.body_P_receiver));
   }
 
   //==================================== UPDATE FACTOR GRAPH =======================================
@@ -307,25 +310,27 @@ SmootherResult Smoother::UpdateGraphWithVision(
   const gtsam::Symbol last_vel_sym('V', last_keypose_id);
   const gtsam::Symbol last_bias_sym('B', last_keypose_id);
 
-  // Check if the timestamp from the LAST VO keyframe matches the last smoother result. If so, the
-  // odometry measurement can be used in the graph.
-  // NOTE(milo): Allowing a small epsilon here.
-  const bool vo_is_aligned = std::fabs(last_keypose_time - ConvertToSeconds(odom_result.timestamp_lkf)) < 0.01;
+  // Check if the timestamp from the LAST VO keyframe is close to the last smoother result.
+  // If so, the odometry measurement can be used in the graph. Allowing 100 ms offset for now.
+  const bool odom_aligned = std::fabs(last_keypose_time - ConvertToSeconds(odom_result.timestamp_lkf)) < 0.01;
 
   bool graph_has_vo_btw_factor = false;
   bool graph_has_imu_btw_factor = false;
 
   // If VO is valid, we can use it to create a between factor and guess the latest pose.
-  if (vo_is_aligned) {
+  if (odom_aligned) {
     // NOTE(milo): Must convert VO into BODY frame odometry!
-    const gtsam::Pose3& body_P_odom = params_.P_body_cam * gtsam::Pose3(odom_result.T_lkf_cam) * params_.P_body_cam.inverse();
-    const gtsam::Pose3 P_world_body = result_.P_world_body * body_P_odom;
-    new_values.insert(keypose_sym, P_world_body);
+    const gtsam::Pose3& body_P_odom = params_.body_P_cam * gtsam::Pose3(odom_result.lkf_T_cam) * params_.body_P_cam.inverse();
+    const gtsam::Pose3 world_P_body = result_.world_P_body * body_P_odom;
+    new_values.insert(keypose_sym, world_P_body);
+
+    // Use a robust noise model to reduce the effect of bad VO estimates.
+    // https://ieeexplore.ieee.org/document/6696406?reload=true&arnumber=6696406
+    const RobustModel::shared_ptr model = RobustModel::Create(mCauchy::Create(1.0), params_.frontend_vo_noise_model);
 
     // Add an odometry factor between the previous KF and current KF.
     new_factors.push_back(gtsam::BetweenFactor<gtsam::Pose3>(
-        last_keypose_sym, keypose_sym, body_P_odom,
-        params_.frontend_vo_noise_model));
+        last_keypose_sym, keypose_sym, body_P_odom, model));
 
     graph_has_vo_btw_factor = true;
   }
@@ -333,35 +338,39 @@ SmootherResult Smoother::UpdateGraphWithVision(
   //===================================== STEREO SMART FACTORS ======================================
   // Even if visual odometry didn't line up with the previous keypose, we still want to add stereo
   // landmarks, since they could be observed in future keyframes.
-  for (const LandmarkObservation& lmk_obs : odom_result.lmk_obs) {
-    if (lmk_obs.disparity < 0) {
-      LOG(WARNING) << "Skipped zero-disparity observation!" << std::endl;
-      continue;
+  if (params_.use_smart_stereo_factors) {
+    for (const LandmarkObservation& lmk_obs : odom_result.lmk_obs) {
+      if (lmk_obs.disparity < 0) {
+        LOG(WARNING) << "Skipped zero-disparity observation!" << std::endl;
+        continue;
+      }
+
+      const uid_t lmk_id = lmk_obs.landmark_id;
+
+      // NEW SMART FACTOR: Creating smart stereo factor for the first time.
+      // NOTE(milo): Unfortunately, smart factors do not support robust error functions yet.
+      // https://groups.google.com/g/gtsam-users/c/qHXl9RLRxRs/m/6zWoA0wJBAAJ
+      if (stereo_factors_.count(lmk_id) == 0) {
+        stereo_factors_.emplace(lmk_id, new SmartStereoFactor(
+            params_.lmk_stereo_factor_noise_model, lmk_stereo_factor_params_, params_.body_P_cam));
+
+        // Indicate that the newest factor refers to lmk_id.
+        // NOTE(milo): Add the new factor to the graph. Order matters here!
+        map_new_factor_to_lmk_id[new_factors.size()] = lmk_id;
+        new_factors.push_back(stereo_factors_.at(lmk_id));
+
+      // UPDATE SMART FACTOR: An existing ISAM2 factor now affects the camera pose with the current key.
+      } else {
+        factorNewAffectedKeys[lmk_to_factor_map_.at(lmk_id)].insert(keypose_sym);
+      }
+
+      SmartStereoFactor::shared_ptr sfptr = stereo_factors_.at(lmk_id);
+      const gtsam::StereoPoint2 stereo_point2(
+          lmk_obs.pixel_location.x,                      // X-coord in left image
+          lmk_obs.pixel_location.x - lmk_obs.disparity,  // x-coord in right image
+          lmk_obs.pixel_location.y);                     // y-coord in both images (rectified)
+      sfptr->add(stereo_point2, keypose_sym, cal3_stereo_);
     }
-
-    const uid_t lmk_id = lmk_obs.landmark_id;
-
-    // NEW SMART FACTOR: Creating smart stereo factor for the first time.
-    if (stereo_factors_.count(lmk_id) == 0) {
-      stereo_factors_.emplace(lmk_id, new SmartStereoFactor(
-          params_.lmk_stereo_factor_noise_model, lmk_stereo_factor_params_, params_.P_body_cam));
-
-      // Indicate that the newest factor refers to lmk_id.
-      // NOTE(milo): Add the new factor to the graph. Order matters here!
-      map_new_factor_to_lmk_id[new_factors.size()] = lmk_id;
-      new_factors.push_back(stereo_factors_.at(lmk_id));
-
-    // UPDATE SMART FACTOR: An existing ISAM2 factor now affects the camera pose with the current key.
-    } else {
-      factorNewAffectedKeys[lmk_to_factor_map_.at(lmk_id)].insert(keypose_sym);
-    }
-
-    SmartStereoFactor::shared_ptr sfptr = stereo_factors_.at(lmk_id);
-    const gtsam::StereoPoint2 stereo_point2(
-        lmk_obs.pixel_location.x,                      // X-coord in left image
-        lmk_obs.pixel_location.x - lmk_obs.disparity,  // x-coord in right image
-        lmk_obs.pixel_location.y);                     // y-coord in both images (rectified)
-    sfptr->add(stereo_point2, keypose_sym, cal3_stereo_);
   }
 
   //================================= IMU PREINTEGRATION FACTOR ====================================
@@ -404,17 +413,34 @@ SmootherResult Smoother::UpdateGraphWithVision(
     new_values.insert(beacon_sym, maybe_range_ptr->point);
     new_factors.addPrior(beacon_sym, maybe_range_ptr->point, params_.beacon_noise_model);
 
+    // Use a robust noise model to reduce the effect of bad VO estimates.
+    // https://ieeexplore.ieee.org/document/6696406?reload=true&arnumber=6696406
+    const RobustModel::shared_ptr model = RobustModel::Create(mCauchy::Create(1.0), params_.range_noise_model);
+
     new_factors.push_back(RangeFactor(
         keypose_sym,
         beacon_sym,
         maybe_range_ptr->range,
-        params_.range_noise_model,
-        params_.P_body_receiver));
+        model,
+        params_.body_P_receiver));
   }
 
   //================================= FACTOR GRAPH SAFETY CHECK ====================================
   if (!graph_has_vo_btw_factor && !graph_has_imu_btw_factor) {
-    LOG(FATAL) << "Graph doesn't have a between factor from VO or IMU, so it might be under-constrained" << std::endl;
+    LOG(WARNING) << "Graph doesn't have a between factor from VO or IMU, so it is under-constrained!" << std::endl;
+    LOG(WARNING) << "Assuming NO MOTION from previous keypose!" << std::endl;
+    const gtsam::Pose3 body_P_odom = gtsam::Pose3::identity();
+    const gtsam::Pose3 world_P_body = result_.world_P_body * body_P_odom;
+    new_values.insert(keypose_sym, world_P_body);
+
+    // Use a robust noise model to reduce the effect of bad VO estimates.
+    // https://ieeexplore.ieee.org/document/6696406?reload=true&arnumber=6696406
+    const RobustModel::shared_ptr model = RobustModel::Create(
+      mCauchy::Create(1.0),
+      DiagonalModel::Sigmas((gtsam::Vector6() << 0.5, 0.5, 0.5, 5.0, 5.0, 5.0).finished()));
+
+    new_factors.push_back(gtsam::BetweenFactor<gtsam::Pose3>(
+        last_keypose_sym, keypose_sym, body_P_odom, model));
   }
 
   //==================================== UPDATE FACTOR GRAPH =======================================

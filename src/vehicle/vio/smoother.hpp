@@ -45,7 +45,7 @@ struct SmootherResult final
 
   explicit SmootherResult(uid_t keypose_id,
                           seconds_t timestamp,
-                          const gtsam::Pose3& P_world_body,
+                          const gtsam::Pose3& world_P_body,
                           bool has_imu_state,
                           const gtsam::Vector3& v_world_body,
                           const ImuBias& imu_bias,
@@ -54,7 +54,7 @@ struct SmootherResult final
                           const Matrix6d& cov_bias)
       : keypose_id(keypose_id),
         timestamp(timestamp),
-        P_world_body(P_world_body),
+        world_P_body(world_P_body),
         has_imu_state(has_imu_state),
         v_world_body(v_world_body),
         imu_bias(imu_bias),
@@ -66,7 +66,7 @@ struct SmootherResult final
 
   uid_t keypose_id = 0;                                   // uid_t of the latest keypose (from vision or other).
   seconds_t timestamp = 0;                                // timestamp (sec) of this keypose
-  gtsam::Pose3 P_world_body = gtsam::Pose3::identity();   // Pose of the body in the world frame.
+  gtsam::Pose3 world_P_body = gtsam::Pose3::identity();   // Pose of the body in the world frame.
 
   bool has_imu_state = false; // Does the graph contain variables for velocity and IMU bias?
   gtsam::Vector3 v_world_body = kZeroVelocity;
@@ -86,6 +86,7 @@ class Smoother final {
     MACRO_PARAMS_STRUCT_CONSTRUCTORS(Params);
 
     int extra_smoothing_iters = 2;            // More smoothing iters --> better accuracy.
+    bool use_smart_stereo_factors = true;
 
     DiagonalModel::shared_ptr pose_prior_noise_model = DiagonalModel::Sigmas(
         (gtsam::Vector(6) << 0.1, 0.1, 0.1, 0.3, 0.3, 0.3).finished());
@@ -106,15 +107,16 @@ class Smoother final {
     IsotropicModel::shared_ptr range_noise_model = IsotropicModel::Sigma(1, 0.5);
     IsotropicModel::shared_ptr beacon_noise_model = IsotropicModel::Sigma(3, 0.1);
 
-    gtsam::Pose3 P_body_imu = gtsam::Pose3::identity();
-    gtsam::Pose3 P_body_cam = gtsam::Pose3::identity();
-    gtsam::Pose3 P_body_receiver = gtsam::Pose3::identity();
+    gtsam::Pose3 body_P_imu = gtsam::Pose3::identity();
+    gtsam::Pose3 body_P_cam = gtsam::Pose3::identity();
+    gtsam::Pose3 body_P_receiver = gtsam::Pose3::identity();
     Vector3d n_gravity = Vector3d(0, 9.81, 0);
 
   private:
     void LoadParams(const YamlParser& parser) override
     {
       parser.GetYamlParam("extra_smoothing_iters", &extra_smoothing_iters);
+      parser.GetYamlParam("use_smart_stereo_factors", &use_smart_stereo_factors);
 
       cv::FileNode node;
       gtsam::Vector6 tmp6;
@@ -155,19 +157,19 @@ class Smoother final {
       parser.GetYamlParam("range_noise_model_sigma", &range_noise_model_sigma);
       range_noise_model = IsotropicModel::Sigma(1, range_noise_model_sigma);
 
-      Matrix4d T_body_imu, T_body_cam, T_body_receiver;
-      YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/imu0/T_body_imu"), T_body_imu);
-      YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/cam0/T_body_cam"), T_body_cam);
-      YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/aps0/T_body_receiver"), T_body_receiver);
-      P_body_imu = gtsam::Pose3(T_body_imu);
-      P_body_cam = gtsam::Pose3(T_body_cam);
-      P_body_receiver = gtsam::Pose3(T_body_receiver);
+      Matrix4d body_T_imu, body_T_cam, body_T_receiver;
+      YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/imu0/body_T_imu"), body_T_imu);
+      YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/cam0/body_T_cam"), body_T_cam);
+      YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/aps0/body_T_receiver"), body_T_receiver);
+      body_P_imu = gtsam::Pose3(body_T_imu);
+      body_P_cam = gtsam::Pose3(body_T_cam);
+      body_P_receiver = gtsam::Pose3(body_T_receiver);
 
       YamlToVector<Vector3d>(parser.GetYamlNode("/shared/n_gravity"), n_gravity);
 
-      CHECK(T_body_imu(3, 3) == 1.0);
-      CHECK(T_body_cam(3, 3) == 1.0);
-      CHECK(T_body_receiver(3, 3) == 1.0);
+      CHECK(body_T_imu(3, 3) == 1.0);
+      CHECK(body_T_cam(3, 3) == 1.0);
+      CHECK(body_T_receiver(3, 3) == 1.0);
     }
   };
 
@@ -181,7 +183,7 @@ class Smoother final {
   // This can be used to initialize the smoother for the first time, or to "reset" it through some
   // external source of localization.
   void Initialize(seconds_t timestamp,
-                  const gtsam::Pose3& P_world_body,
+                  const gtsam::Pose3& world_P_body,
                   const gtsam::Vector3& v_world_body,
                   const ImuBias& imu_bias,
                   bool imu_available);
