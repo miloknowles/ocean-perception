@@ -24,7 +24,7 @@ EurocDataset::EurocDataset(const std::string& toplevel_path) : DataProvider()
     LOG(WARNING) << "[MISSING DATA] No IMU measurements found!" << std::endl;
   }
 
-  const std::string& pose_txt = Join(mav0_path, "cam0_poses.txt");
+  const std::string& pose_txt = Join(mav0_path, "imu0_poses.txt");
   if (Exists(pose_txt)) {
     ParseGroundtruth(pose_txt);
   } else {

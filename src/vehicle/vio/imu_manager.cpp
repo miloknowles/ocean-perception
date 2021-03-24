@@ -25,6 +25,8 @@ ImuManager::ImuManager(const Params& params)
   pim_params_.setBiasAccCovariance(bias_acc_cov);
   pim_params_.setBiasOmegaCovariance(bias_omega_cov);
   pim_params_.setBodyPSensor(params_.P_body_imu);
+  pim_params_.setUse2ndOrderCoriolis(params_.use_2nd_order_coriolis);
+  // pim_params_->setOmegaCoriolis(gtsam::Vector3::Zero());
   // pim_params_.print();
   // params_.P_body_imu.print();
 

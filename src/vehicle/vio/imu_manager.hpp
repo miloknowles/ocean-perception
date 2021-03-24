@@ -70,6 +70,7 @@ class ImuManager final : public DataManager<ImuMeasurement> {
     double accel_bias_rw_sigma =  0.004905;
     double gyro_bias_rw_sigma =   0.000001454441043;
     double integration_error_sigma = 1e-4;
+    bool use_2nd_order_coriolis = false;
 
     IsotropicModel::shared_ptr bias_prior_noise_model = IsotropicModel::Sigma(6, 1e-2);
     IsotropicModel::shared_ptr bias_drift_noise_model = IsotropicModel::Sigma(6, 1e-3);
@@ -91,6 +92,7 @@ class ImuManager final : public DataManager<ImuMeasurement> {
       parser.GetYamlParam("accel_bias_rw_sigma", &accel_bias_rw_sigma);
       parser.GetYamlParam("gyro_bias_rw_sigma", &gyro_bias_rw_sigma);
       parser.GetYamlParam("integration_error_sigma", &integration_error_sigma);
+      parser.GetYamlParam("use_2nd_order_coriolis", &use_2nd_order_coriolis);
 
       double bias_prior_noise_model_sigma, bias_drift_noise_model_sigma;
       parser.GetYamlParam("bias_prior_noise_model_sigma", &bias_prior_noise_model_sigma);
