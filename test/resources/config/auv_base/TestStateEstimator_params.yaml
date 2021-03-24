@@ -1,6 +1,7 @@
 %YAML:1.0
 
-folder: "/home/milo/datasets/Unity3D/farmsim/hard_01"
+# folder: "/home/milo/datasets/Unity3D/farmsim/hard_01"
+folder: "/home/milo/datasets/Unity3D/farmsim/hard_noisy_loop_01"
 # folder: "/home/milo/datasets/Unity3D/farmsim/easy_planar_01"
 # folder: "/home/milo/datasets/Unity3D/farmsim/easy_updown_01"
 use_stereo: 0

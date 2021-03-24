@@ -27,13 +27,13 @@ SmootherParams:
   lmk_mono_reproj_err_sigma: 3.0        # px in u and v
   lmk_stereo_reproj_err_sigma: 2.0      # px in u and v
   depth_sensor_noise_model_sigma: 2.0   # m
-  range_noise_model_sigma: 1.0          # m
-  attitude_noise_model_sigma: 0.4       # rad
+  range_noise_model_sigma: 2.0          # m
+  attitude_noise_model_sigma: 0.5       # rad
   velocity_sigma: 0.3                   # m/s
   extra_smoothing_iters: 3
 
   # Noise model for the zero-prior on IMU bias.
-  bias_prior_noise_model_sigma: 0.001
+  bias_prior_noise_model_sigma: 0.0001
 
   # Noise model for the IMU bias between factors.
   bias_drift_noise_model_sigma: 0.0001
@@ -41,18 +41,19 @@ SmootherParams:
 #===============================================================================
 StateEkfParams:
   # Process noise standard deviations.
-  sigma_Q_t: 0.01     # translation (m/sec)
-  sigma_Q_v: 0.01     # velocity (m/sec/sec)
-  sigma_Q_a: 0.01     # acceleration (m/sec^2/sec)
-  sigma_Q_uq: 0.001    # orientation (3D tangent space) (rad/sec)
-  sigma_Q_w:  0.001    # angular velocity (rad/sec/sec)
+  # NOTE(milo): Set these values really high to make the filter follow the smoother more closely!
+  sigma_Q_t: 0.7     # translation (m/sec)
+  sigma_Q_v: 0.5     # velocity (m/sec/sec)
+  sigma_Q_a: 0.05     # acceleration (m/sec^2/sec)
+  sigma_Q_uq: 0.2    # orientation (3D tangent space) (rad/sec)
+  sigma_Q_w:  0.05    # angular velocity (rad/sec/sec)
 
   # Sensor noise standard deviations.
   sigma_R_imu_a: 0.0003924
   sigma_R_imu_w: 0.000205689024915
 
-  sigma_R_depth: 1.5 # m
-  sigma_R_range: 0.5  # m
+  sigma_R_depth: 2.0 # m
+  sigma_R_range: 2.0  # m
 
 #===============================================================================
 StereoFrontend:
@@ -113,7 +114,7 @@ ImuManager:
   integration_error_sigma: 0.0001
 
   # Noise model for the zero-prior on IMU bias.
-  bias_prior_noise_model_sigma: 0.001
+  bias_prior_noise_model_sigma: 0.0001
 
   # Noise model for the IMU bias between factors.
   bias_drift_noise_model_sigma: 0.0001
