@@ -12,7 +12,7 @@ max_size_filter_depth_queue: 1000
 max_size_filter_range_queue: 100
 
 reliable_vision_min_lmks: 12        # State estimator uses vision if this many features are detected.
-max_sec_btw_keyposes: 1.0           # Make a keypose at least this often.
+max_sec_btw_keyposes: 0.5          # Make a keypose at least this often. NOTE: Need to change this is dataset playback sped up.
 min_sec_btw_keyposes: 0.6           # Make a keypose at most this often.
 smoother_init_wait_vision_sec: 1.0  # Wait this long on init for stereo frontend results to arrive.
 
@@ -26,8 +26,8 @@ SmootherParams:
   frontend_vo_noise_model: [0.2, 0.2, 0.2, 0.4, 0.4, 0.4]      # rad, rad, rad, m, m, m
   lmk_mono_reproj_err_sigma: 3.0        # px in u and v
   lmk_stereo_reproj_err_sigma: 5.0      # px in u and v
-  depth_sensor_noise_model_sigma: 2.0   # m
-  range_noise_model_sigma: 2.0          # m
+  depth_sensor_noise_model_sigma: 1.0   # m
+  range_noise_model_sigma: 1.0          # m
   attitude_noise_model_sigma: 0.5       # rad
   velocity_sigma: 0.3                   # m/s
 

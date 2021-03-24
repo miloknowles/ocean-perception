@@ -162,7 +162,7 @@ void StateEstimator::StereoFrontendLoop()
 
     // CASE 3: Vision unreliable. Throw away the odometry since it's probably not useful.
     } else {
-      LOG(WARNING) << "VISION UNRELIABLE! Discarding VO measurements." << std::endl;
+      // LOG(WARNING) << "VISION UNRELIABLE! Discarding VO measurements." << std::endl;
     }
   }
 }
@@ -318,9 +318,6 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
     } else {
       const VoResult frontend_result = smoother_vo_queue_.Pop();
       const seconds_t to_time = ConvertToSeconds(frontend_result.timestamp);
-
-      LOG(INFO) << "Odom:\n" << frontend_result.T_lkf_cam.block<3, 1>(0, 3).transpose() << std::endl;
-      LOG(INFO) << frontend_result.avg_reprojection_err << std::endl;
 
       PimResult::Ptr maybe_pim_ptr;
       DepthMeasurement::Ptr maybe_depth_ptr;
