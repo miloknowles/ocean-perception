@@ -22,8 +22,7 @@ StateEstimator::StateEstimator(const Params& params, const StereoCamera& stereo_
       smoother_range_manager_(params_.max_size_smoother_range_queue, true),
       filter_imu_manager_(params.imu_manager_params),
       filter_depth_manager_(params_.max_size_filter_depth_queue, true),
-      filter_range_manager_(params_.max_size_filter_range_queue, true),
-      filter_vo_queue_(params_.max_size_filter_vo_queue, true)
+      filter_range_manager_(params_.max_size_filter_range_queue, true)
 {
   LOG(INFO) << "Constructed StateEstimator!" << std::endl;
 
@@ -90,7 +89,7 @@ void StateEstimator::BlockUntilFinished()
 {
   LOG(INFO) << "BlockUntilFinished() called! StateEstimator will wait for last image to be processed" << std::endl;
   while (!is_shutdown_) {
-    while ((!smoother_vo_queue_.Empty()) || (!filter_vo_queue_.Empty())) {
+    while (!smoother_vo_queue_.Empty()) {
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
     Shutdown();
@@ -146,6 +145,10 @@ void StateEstimator::StereoFrontendLoop()
     const bool tracking_failed = (result.status & StereoFrontend::Status::ODOM_ESTIMATION_FAILED) ||
                                  (result.status & StereoFrontend::Status::FEW_TRACKED_FEATURES);
 
+    if (tracking_failed) {
+      UpdateSmootherMode(SmootherMode::VISION_UNAVAILABLE);
+    }
+
     // If there are observed landmarks in this image, there must be visual texture.
     const bool vision_reliable_now = (int)result.lmk_obs.size() >= params_.reliable_vision_min_lmks;
 
@@ -153,16 +156,6 @@ void StateEstimator::StereoFrontendLoop()
     // NOTE: This means that we will NOT send the first result to the smoother!
     if (result.is_keyframe && vision_reliable_now && !tracking_failed) {
       smoother_vo_queue_.Push(std::move(result));
-      // filter_vo_queue_.Push(std::move(result));
-
-    // CASE 2: If tracking was successful, send to the filter (even non-keyframes).
-    } else if (!tracking_failed) {
-      // result.lmk_obs.clear(); // Don't need landmark observations in the filter.
-      // filter_vo_queue_.Push(std::move(result));
-
-    // CASE 3: Vision unreliable. Throw away the odometry since it's probably not useful.
-    } else {
-      // LOG(WARNING) << "VISION UNRELIABLE! Discarding VO measurements." << std::endl;
     }
   }
 }
@@ -222,6 +215,15 @@ void StateEstimator::GetKeyposeAlignedMeasurements(
 }
 
 
+void StateEstimator::UpdateSmootherMode(SmootherMode mode)
+{
+  if (smoother_mode_ != mode) {
+    LOG(INFO) << "Switching smoother mode from " << to_string(smoother_mode_) << " to " << to_string(mode) << std::endl;
+    smoother_mode_ = mode;
+  }
+}
+
+
 void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_body)
 {
   Smoother smoother(params_.smoother_params, stereo_rig_);
@@ -267,11 +269,10 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
     const double wait_sec = (smoother_mode_ == SmootherMode::VISION_AVAILABLE) ? \
         params_.max_sec_btw_keyposes + 0.1:       // Add a small epsilon to account for latency.
         0.005;                                    // This should be a tiny delay to process IMU ASAP.
-
     const bool did_timeout = WaitForResultOrTimeout<ThreadsafeQueue<VoResult>>(smoother_vo_queue_, wait_sec);
 
     // Update the smoother mode.
-    smoother_mode_ = did_timeout ? SmootherMode::VISION_UNAVAILABLE : SmootherMode::VISION_AVAILABLE;
+    UpdateSmootherMode(did_timeout ? SmootherMode::VISION_UNAVAILABLE : SmootherMode::VISION_AVAILABLE);
 
     if (is_shutdown_) { break; }  // Timeout could have happened due to shutdown; check that here.
 
@@ -362,10 +363,6 @@ void StateEstimator::FilterLoop(seconds_t t0, const gtsam::Pose3& P0_world_body)
       ImuBias());
 
   while (!is_shutdown_) {
-    if (!filter_vo_queue_.Empty()) {
-      filter_vo_queue_.Pop(); // Keep clearing this queue for now.
-    }
-
     // Clear out any sensor data before the current state.
     filter_imu_manager_.DiscardBefore(filter.GetTimestamp());
     filter_depth_manager_.DiscardBefore(filter.GetTimestamp());

@@ -285,7 +285,7 @@ VoResult StereoFrontend::Track(const StereoImage& stereo_pair,
 
   // Returning -1 indicates an error in LM optimization.
   if (iters < 0 || result.avg_reprojection_err > params_.max_avg_reprojection_error) {
-    LOG(WARNING) << "LM optimization failed. iters=" << iters << " avg_reprojection_err=" << result.avg_reprojection_err << std::endl;
+    // LOG(WARNING) << "LM optimization failed. iters=" << iters << " avg_reprojection_err=" << result.avg_reprojection_err << std::endl;
     result.status |= StereoFrontend::Status::ODOM_ESTIMATION_FAILED;
   }
   result.T_lkf_cam = T_cur_lkf_.inverse();

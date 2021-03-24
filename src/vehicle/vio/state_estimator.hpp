@@ -161,6 +161,11 @@ class StateEstimator final {
   // Updates the smoother_result_ (threadsafe), and calls any stored smoother callbacks.
   void OnSmootherResult(const SmootherResult& result);
 
+  // Central function to change the state of the smoother. If VISION_AVAILABLE, it will try create
+  // new keyposes from vision. If VISION_UNAVAILABLE, it will use IMU preintegration to create new
+  // keyposes.
+  void UpdateSmootherMode(SmootherMode mode);
+
  private:
   Params params_;
   StereoCamera stereo_rig_;
@@ -190,7 +195,6 @@ class StateEstimator final {
   ImuManager filter_imu_manager_;
   DepthManager filter_depth_manager_;
   RangeManager filter_range_manager_;
-  ThreadsafeQueue<VoResult> filter_vo_queue_;
   std::vector<StateStamped::Callback> filter_result_callbacks_;
   //================================================================================================
 };

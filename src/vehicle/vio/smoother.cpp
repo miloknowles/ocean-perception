@@ -343,6 +343,8 @@ SmootherResult Smoother::UpdateGraphWithVision(
       const uid_t lmk_id = lmk_obs.landmark_id;
 
       // NEW SMART FACTOR: Creating smart stereo factor for the first time.
+      // NOTE(milo): Unfortunately, smart factors do not support robust error functions yet.
+      // https://groups.google.com/g/gtsam-users/c/qHXl9RLRxRs/m/6zWoA0wJBAAJ
       if (stereo_factors_.count(lmk_id) == 0) {
         stereo_factors_.emplace(lmk_id, new SmartStereoFactor(
             params_.lmk_stereo_factor_noise_model, lmk_stereo_factor_params_, params_.P_body_cam));
@@ -416,7 +418,6 @@ SmootherResult Smoother::UpdateGraphWithVision(
 
   //================================= FACTOR GRAPH SAFETY CHECK ====================================
   if (!graph_has_vo_btw_factor && !graph_has_imu_btw_factor) {
-
     LOG(WARNING) << "Graph doesn't have a between factor from VO or IMU, so it is under-constrained!" << std::endl;
     LOG(WARNING) << "Assuming NO MOTION from previous keypose!" << std::endl;
     const gtsam::Pose3 body_P_odom = gtsam::Pose3::identity();

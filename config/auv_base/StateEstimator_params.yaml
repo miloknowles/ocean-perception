@@ -23,7 +23,7 @@ body_nG_tol: 0.001                  # If a measured acceleration vector is this 
 #===============================================================================
 SmootherParams:
   pose_prior_noise_model: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01]    # rad, rad, rad, m, m, m
-  frontend_vo_noise_model: [0.2, 0.2, 0.2, 0.4, 0.4, 0.4]      # rad, rad, rad, m, m, m
+  frontend_vo_noise_model: [0.1, 0.1, 0.1, 0.4, 0.4, 1.0]      # rad, rad, rad, m, m, m
   lmk_mono_reproj_err_sigma: 3.0        # px in u and v
   lmk_stereo_reproj_err_sigma: 5.0      # px in u and v
   depth_sensor_noise_model_sigma: 1.0   # m
@@ -46,9 +46,9 @@ StateEkfParams:
   # NOTE(milo): Set these values really high to make the filter follow the smoother more closely!
   sigma_Q_t: 0.7     # translation (m/sec)
   sigma_Q_v: 0.5     # velocity (m/sec/sec)
-  sigma_Q_a: 0.05     # acceleration (m/sec^2/sec)
+  sigma_Q_a: 0.01     # acceleration (m/sec^2/sec)
   sigma_Q_uq: 0.2    # orientation (3D tangent space) (rad/sec)
-  sigma_Q_w:  0.05    # angular velocity (rad/sec/sec)
+  sigma_Q_w:  0.01    # angular velocity (rad/sec/sec)
 
   # Sensor noise standard deviations.
   sigma_R_imu_a: 0.0003924
