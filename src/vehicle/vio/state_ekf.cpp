@@ -63,7 +63,10 @@ void StateEkf::Rewind(seconds_t timestamp, seconds_t allowed_dt)
     const seconds_t nearest_timestamp = state_history_.OldestKey();
 
     state_lock_.lock();
-    state_ = StateStamped(nearest_timestamp, state_history_.at(nearest_timestamp));
+
+    // NOTE(milo): Need to reset to timestamp to handle the case where nearest_timestamp > timestamp.
+    // In that case, we might end up with a dt < 0 when reapplying measurements.
+    state_ = StateStamped(timestamp, state_history_.at(nearest_timestamp));
     state_lock_.unlock();
   }
 }

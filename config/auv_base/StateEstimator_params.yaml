@@ -11,7 +11,7 @@ max_size_filter_imu_queue: 1000
 max_size_filter_depth_queue: 1000
 max_size_filter_range_queue: 100
 
-reliable_vision_min_lmks: 12        # State estimator uses vision if this many features are detected.
+reliable_vision_min_lmks: 30       # State estimator uses vision if this many features are detected.
 max_sec_btw_keyposes: 0.5          # Make a keypose at least this often. NOTE: Need to change this is dataset playback sped up.
 min_sec_btw_keyposes: 0.6           # Make a keypose at most this often.
 smoother_init_wait_vision_sec: 1.0  # Wait this long on init for stereo frontend results to arrive.
@@ -26,12 +26,12 @@ SmootherParams:
   frontend_vo_noise_model: [0.1, 0.1, 0.1, 0.4, 0.4, 1.0]      # rad, rad, rad, m, m, m
   lmk_mono_reproj_err_sigma: 3.0        # px in u and v
   lmk_stereo_reproj_err_sigma: 5.0      # px in u and v
-  depth_sensor_noise_model_sigma: 1.0   # m
+  depth_sensor_noise_model_sigma: 0.5   # m
   range_noise_model_sigma: 1.0          # m
   attitude_noise_model_sigma: 0.5       # rad
   velocity_sigma: 0.3                   # m/s
 
-  extra_smoothing_iters: 3
+  extra_smoothing_iters: 5
   use_smart_stereo_factors: 0           # 1=ON, 0=OFF
 
   # Noise model for the zero-prior on IMU bias.
@@ -59,10 +59,10 @@ StateEkfParams:
 
 #===============================================================================
 StereoFrontend:
-  stereo_max_depth: 20.0 # m
-  stereo_min_depth: 0.5   # m
+  stereo_max_depth: 15.0 # m
+  stereo_min_depth: 1.0   # m
 
-  max_avg_reprojection_error: 0.6 # px
+  max_avg_reprojection_error: 0.5 # px
 
   # Kill off a tracked landmark if it hasn't been observed in this many frames.
   # If set to zero, this means that a track dies as soon as it isn't observed in the current frame.

@@ -177,8 +177,8 @@ class StateEkf final {
   // Construct with parameters.
   StateEkf(const Params& params);
 
-  // Rewind the filter to it's state at a previous timestamp. Will throw an exception if the old
-  // state was not available.
+  // Rewind the filter to timestamp, and set its state that of the closest timestamp.
+  // If no previous state exists within allowed_dt, it will complain but no exception is thrown.
   void Rewind(seconds_t timestamp, seconds_t allowed_dt = 0.1);
 
   // Re-apply all stored imu measurements on top of the current state.
@@ -235,7 +235,11 @@ class StateEkf final {
   void Initialize(const StateStamped& state, const ImuBias& imu_bias);
 
  private:
+  // Handles the Kalman filter "predict" step. If timestamp is equal to that of the current state,
+  // no forward simulation happens.
   State PredictIfTimeElapsed(seconds_t timestamp);
+
+  // Call this to update the filter's state.
   StateStamped ThreadsafeSetState(seconds_t timestamp, const State& state);
 
  private:

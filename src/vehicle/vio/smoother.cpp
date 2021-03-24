@@ -16,6 +16,9 @@ namespace vio {
 static const double kSetSkewToZero = 0.0;
 
 typedef gtsam::RangeFactorWithTransform<gtsam::Pose3, gtsam::Point3> RangeFactor;
+typedef gtsam::noiseModel::Robust RobustModel;
+typedef gtsam::noiseModel::mEstimator::Tukey mTukey;
+typedef gtsam::noiseModel::mEstimator::Cauchy mCauchy;
 
 
 Smoother::Smoother(const Params& params,
@@ -307,25 +310,27 @@ SmootherResult Smoother::UpdateGraphWithVision(
   const gtsam::Symbol last_vel_sym('V', last_keypose_id);
   const gtsam::Symbol last_bias_sym('B', last_keypose_id);
 
-  // Check if the timestamp from the LAST VO keyframe matches the last smoother result. If so, the
-  // odometry measurement can be used in the graph.
-  // NOTE(milo): Allowing a small epsilon here.
-  const bool vo_is_aligned = std::fabs(last_keypose_time - ConvertToSeconds(odom_result.timestamp_lkf)) < 0.01;
+  // Check if the timestamp from the LAST VO keyframe is close to the last smoother result.
+  // If so, the odometry measurement can be used in the graph. Allowing 100 ms offset for now.
+  const bool odom_aligned = std::fabs(last_keypose_time - ConvertToSeconds(odom_result.timestamp_lkf)) < 0.01;
 
   bool graph_has_vo_btw_factor = false;
   bool graph_has_imu_btw_factor = false;
 
   // If VO is valid, we can use it to create a between factor and guess the latest pose.
-  if (vo_is_aligned) {
+  if (odom_aligned) {
     // NOTE(milo): Must convert VO into BODY frame odometry!
     const gtsam::Pose3& body_P_odom = params_.P_body_cam * gtsam::Pose3(odom_result.T_lkf_cam) * params_.P_body_cam.inverse();
     const gtsam::Pose3 P_world_body = result_.P_world_body * body_P_odom;
     new_values.insert(keypose_sym, P_world_body);
 
+    // Use a robust noise model to reduce the effect of bad VO estimates.
+    // https://ieeexplore.ieee.org/document/6696406?reload=true&arnumber=6696406
+    const RobustModel::shared_ptr model = RobustModel::Create(mCauchy::Create(1.0), params_.frontend_vo_noise_model);
+
     // Add an odometry factor between the previous KF and current KF.
     new_factors.push_back(gtsam::BetweenFactor<gtsam::Pose3>(
-        last_keypose_sym, keypose_sym, body_P_odom,
-        params_.frontend_vo_noise_model));
+        last_keypose_sym, keypose_sym, body_P_odom, model));
 
     graph_has_vo_btw_factor = true;
   }
@@ -408,11 +413,15 @@ SmootherResult Smoother::UpdateGraphWithVision(
     new_values.insert(beacon_sym, maybe_range_ptr->point);
     new_factors.addPrior(beacon_sym, maybe_range_ptr->point, params_.beacon_noise_model);
 
+    // Use a robust noise model to reduce the effect of bad VO estimates.
+    // https://ieeexplore.ieee.org/document/6696406?reload=true&arnumber=6696406
+    const RobustModel::shared_ptr model = RobustModel::Create(mCauchy::Create(1.0), params_.range_noise_model);
+
     new_factors.push_back(RangeFactor(
         keypose_sym,
         beacon_sym,
         maybe_range_ptr->range,
-        params_.range_noise_model,
+        model,
         params_.P_body_receiver));
   }
 
@@ -423,9 +432,15 @@ SmootherResult Smoother::UpdateGraphWithVision(
     const gtsam::Pose3 body_P_odom = gtsam::Pose3::identity();
     const gtsam::Pose3 world_P_body = result_.P_world_body * body_P_odom;
     new_values.insert(keypose_sym, world_P_body);
+
+    // Use a robust noise model to reduce the effect of bad VO estimates.
+    // https://ieeexplore.ieee.org/document/6696406?reload=true&arnumber=6696406
+    const RobustModel::shared_ptr model = RobustModel::Create(
+      mCauchy::Create(1.0),
+      DiagonalModel::Sigmas((gtsam::Vector6() << 0.5, 0.5, 0.5, 5.0, 5.0, 5.0).finished()));
+
     new_factors.push_back(gtsam::BetweenFactor<gtsam::Pose3>(
-        last_keypose_sym, keypose_sym, body_P_odom,
-        DiagonalModel::Sigmas((gtsam::Vector6() << 0.5, 0.5, 0.5, 5.0, 5.0, 5.0).finished())));
+        last_keypose_sym, keypose_sym, body_P_odom, model));
   }
 
   //==================================== UPDATE FACTOR GRAPH =======================================
