@@ -143,7 +143,7 @@ class StateEkf final {
     double sigma_R_imu_a = 0.0003924;
     double sigma_R_imu_w = 0.000205689024915;
 
-    double sigma_R_depth = 0.05; // m
+    double sigma_R_depth = 0.5; // m
     double sigma_R_range = 0.1;  // m
 
     // Shared params.

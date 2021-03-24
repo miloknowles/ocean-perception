@@ -51,7 +51,7 @@ StateEkfParams:
   sigma_R_imu_a: 0.0003924
   sigma_R_imu_w: 0.000205689024915
 
-  sigma_R_depth: 0.5 # m
+  sigma_R_depth: 1.5 # m
   sigma_R_range: 0.5  # m
 
 #===============================================================================
