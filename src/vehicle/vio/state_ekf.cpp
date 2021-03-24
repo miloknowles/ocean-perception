@@ -51,18 +51,21 @@ StateEkf::StateEkf(const Params& params)
 void StateEkf::Rewind(seconds_t timestamp, seconds_t allowed_dt)
 {
   state_history_.DiscardBefore(timestamp);
-  CHECK(!state_history_.Empty()) << "State history is empty after timestamp. Filter is behind smoother!" << std::endl;
 
-  const seconds_t dt = std::fabs(state_history_.OldestKey() - timestamp);
-  CHECK(dt <= allowed_dt) << "Tried to rewind state, but couldn't find a close timestamp.\n"
-                          << "timestamp=" << timestamp << " oldest=" << state_history_.OldestKey() << std::endl;
+  if (state_history_.Empty()) {
+    LOG(WARNING) << "State history is empty after timestamp. Filter is behind smoother! Probably not receiving any IMU measurements." << std::endl;
+  } else {
+    const seconds_t dt = std::fabs(state_history_.OldestKey() - timestamp);
+    CHECK(dt <= allowed_dt) << "Tried to rewind state, but couldn't find a close timestamp.\n"
+                            << "timestamp=" << timestamp << " oldest=" << state_history_.OldestKey() << std::endl;
 
-  // Use the estimate of velocity, acceleration, and angular velocity from the filter.
-  const seconds_t nearest_timestamp = state_history_.OldestKey();
+    // Use the estimate of velocity, acceleration, and angular velocity from the filter.
+    const seconds_t nearest_timestamp = state_history_.OldestKey();
 
-  state_lock_.lock();
-  state_ = StateStamped(nearest_timestamp, state_history_.at(nearest_timestamp));
-  state_lock_.unlock();
+    state_lock_.lock();
+    state_ = StateStamped(nearest_timestamp, state_history_.at(nearest_timestamp));
+    state_lock_.unlock();
+  }
 }
 
 

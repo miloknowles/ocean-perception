@@ -153,12 +153,12 @@ void StateEstimator::StereoFrontendLoop()
     // NOTE: This means that we will NOT send the first result to the smoother!
     if (result.is_keyframe && vision_reliable_now && !tracking_failed) {
       smoother_vo_queue_.Push(std::move(result));
-      filter_vo_queue_.Push(std::move(result));
+      // filter_vo_queue_.Push(std::move(result));
 
     // CASE 2: If tracking was successful, send to the filter (even non-keyframes).
     } else if (!tracking_failed) {
-      result.lmk_obs.clear(); // Don't need landmark observations in the filter.
-      filter_vo_queue_.Push(std::move(result));
+      // result.lmk_obs.clear(); // Don't need landmark observations in the filter.
+      // filter_vo_queue_.Push(std::move(result));
 
     // CASE 3: Vision unreliable. Throw away the odometry since it's probably not useful.
     } else {
@@ -318,6 +318,9 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
     } else {
       const VoResult frontend_result = smoother_vo_queue_.Pop();
       const seconds_t to_time = ConvertToSeconds(frontend_result.timestamp);
+
+      LOG(INFO) << "Odom:\n" << frontend_result.T_lkf_cam.block<3, 1>(0, 3).transpose() << std::endl;
+      LOG(INFO) << frontend_result.avg_reprojection_err << std::endl;
 
       PimResult::Ptr maybe_pim_ptr;
       DepthMeasurement::Ptr maybe_depth_ptr;

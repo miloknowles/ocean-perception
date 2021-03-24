@@ -333,35 +333,37 @@ SmootherResult Smoother::UpdateGraphWithVision(
   //===================================== STEREO SMART FACTORS ======================================
   // Even if visual odometry didn't line up with the previous keypose, we still want to add stereo
   // landmarks, since they could be observed in future keyframes.
-  for (const LandmarkObservation& lmk_obs : odom_result.lmk_obs) {
-    if (lmk_obs.disparity < 0) {
-      LOG(WARNING) << "Skipped zero-disparity observation!" << std::endl;
-      continue;
+  if (params_.use_smart_stereo_factors) {
+    for (const LandmarkObservation& lmk_obs : odom_result.lmk_obs) {
+      if (lmk_obs.disparity < 0) {
+        LOG(WARNING) << "Skipped zero-disparity observation!" << std::endl;
+        continue;
+      }
+
+      const uid_t lmk_id = lmk_obs.landmark_id;
+
+      // NEW SMART FACTOR: Creating smart stereo factor for the first time.
+      if (stereo_factors_.count(lmk_id) == 0) {
+        stereo_factors_.emplace(lmk_id, new SmartStereoFactor(
+            params_.lmk_stereo_factor_noise_model, lmk_stereo_factor_params_, params_.P_body_cam));
+
+        // Indicate that the newest factor refers to lmk_id.
+        // NOTE(milo): Add the new factor to the graph. Order matters here!
+        map_new_factor_to_lmk_id[new_factors.size()] = lmk_id;
+        new_factors.push_back(stereo_factors_.at(lmk_id));
+
+      // UPDATE SMART FACTOR: An existing ISAM2 factor now affects the camera pose with the current key.
+      } else {
+        factorNewAffectedKeys[lmk_to_factor_map_.at(lmk_id)].insert(keypose_sym);
+      }
+
+      SmartStereoFactor::shared_ptr sfptr = stereo_factors_.at(lmk_id);
+      const gtsam::StereoPoint2 stereo_point2(
+          lmk_obs.pixel_location.x,                      // X-coord in left image
+          lmk_obs.pixel_location.x - lmk_obs.disparity,  // x-coord in right image
+          lmk_obs.pixel_location.y);                     // y-coord in both images (rectified)
+      sfptr->add(stereo_point2, keypose_sym, cal3_stereo_);
     }
-
-    const uid_t lmk_id = lmk_obs.landmark_id;
-
-    // NEW SMART FACTOR: Creating smart stereo factor for the first time.
-    if (stereo_factors_.count(lmk_id) == 0) {
-      stereo_factors_.emplace(lmk_id, new SmartStereoFactor(
-          params_.lmk_stereo_factor_noise_model, lmk_stereo_factor_params_, params_.P_body_cam));
-
-      // Indicate that the newest factor refers to lmk_id.
-      // NOTE(milo): Add the new factor to the graph. Order matters here!
-      map_new_factor_to_lmk_id[new_factors.size()] = lmk_id;
-      new_factors.push_back(stereo_factors_.at(lmk_id));
-
-    // UPDATE SMART FACTOR: An existing ISAM2 factor now affects the camera pose with the current key.
-    } else {
-      factorNewAffectedKeys[lmk_to_factor_map_.at(lmk_id)].insert(keypose_sym);
-    }
-
-    SmartStereoFactor::shared_ptr sfptr = stereo_factors_.at(lmk_id);
-    const gtsam::StereoPoint2 stereo_point2(
-        lmk_obs.pixel_location.x,                      // X-coord in left image
-        lmk_obs.pixel_location.x - lmk_obs.disparity,  // x-coord in right image
-        lmk_obs.pixel_location.y);                     // y-coord in both images (rectified)
-    sfptr->add(stereo_point2, keypose_sym, cal3_stereo_);
   }
 
   //================================= IMU PREINTEGRATION FACTOR ====================================
@@ -414,7 +416,15 @@ SmootherResult Smoother::UpdateGraphWithVision(
 
   //================================= FACTOR GRAPH SAFETY CHECK ====================================
   if (!graph_has_vo_btw_factor && !graph_has_imu_btw_factor) {
-    LOG(FATAL) << "Graph doesn't have a between factor from VO or IMU, so it might be under-constrained" << std::endl;
+
+    LOG(WARNING) << "Graph doesn't have a between factor from VO or IMU, so it is under-constrained!" << std::endl;
+    LOG(WARNING) << "Assuming NO MOTION from previous keypose!" << std::endl;
+    const gtsam::Pose3 body_P_odom = gtsam::Pose3::identity();
+    const gtsam::Pose3 world_P_body = result_.P_world_body * body_P_odom;
+    new_values.insert(keypose_sym, world_P_body);
+    new_factors.push_back(gtsam::BetweenFactor<gtsam::Pose3>(
+        last_keypose_sym, keypose_sym, body_P_odom,
+        DiagonalModel::Sigmas((gtsam::Vector6() << 0.5, 0.5, 0.5, 5.0, 5.0, 5.0).finished())));
   }
 
   //==================================== UPDATE FACTOR GRAPH =======================================

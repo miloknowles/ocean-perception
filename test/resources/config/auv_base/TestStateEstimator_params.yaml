@@ -4,8 +4,8 @@
 folder: "/home/milo/datasets/Unity3D/farmsim/hard_noisy_loop_01"
 # folder: "/home/milo/datasets/Unity3D/farmsim/easy_planar_01"
 # folder: "/home/milo/datasets/Unity3D/farmsim/easy_updown_01"
-use_stereo: 0
+use_stereo: 1
 use_imu: 1
 use_depth: 1
 use_range: 1
-playback_speed: 4.0
+playback_speed: 1.0

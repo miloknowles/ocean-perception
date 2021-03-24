@@ -12,7 +12,7 @@ max_size_filter_depth_queue: 1000
 max_size_filter_range_queue: 100
 
 reliable_vision_min_lmks: 12        # State estimator uses vision if this many features are detected.
-max_sec_btw_keyposes: 2.0           # Make a keypose at least this often.
+max_sec_btw_keyposes: 1.0           # Make a keypose at least this often.
 min_sec_btw_keyposes: 0.6           # Make a keypose at most this often.
 smoother_init_wait_vision_sec: 1.0  # Wait this long on init for stereo frontend results to arrive.
 
@@ -23,14 +23,16 @@ body_nG_tol: 0.001                  # If a measured acceleration vector is this 
 #===============================================================================
 SmootherParams:
   pose_prior_noise_model: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01]    # rad, rad, rad, m, m, m
-  frontend_vo_noise_model: [0.05, 0.05, 0.05, 0.3, 0.3, 0.3]      # rad, rad, rad, m, m, m
+  frontend_vo_noise_model: [0.2, 0.2, 0.2, 0.4, 0.4, 0.4]      # rad, rad, rad, m, m, m
   lmk_mono_reproj_err_sigma: 3.0        # px in u and v
-  lmk_stereo_reproj_err_sigma: 2.0      # px in u and v
+  lmk_stereo_reproj_err_sigma: 5.0      # px in u and v
   depth_sensor_noise_model_sigma: 2.0   # m
   range_noise_model_sigma: 2.0          # m
   attitude_noise_model_sigma: 0.5       # rad
   velocity_sigma: 0.3                   # m/s
+
   extra_smoothing_iters: 3
+  use_smart_stereo_factors: 0           # 1=ON, 0=OFF
 
   # Noise model for the zero-prior on IMU bias.
   bias_prior_noise_model_sigma: 0.0001
@@ -57,10 +59,10 @@ StateEkfParams:
 
 #===============================================================================
 StereoFrontend:
-  stereo_max_depth: 100.0 # m
+  stereo_max_depth: 20.0 # m
   stereo_min_depth: 0.5   # m
 
-  max_avg_reprojection_error: 5.0 # px
+  max_avg_reprojection_error: 0.6 # px
 
   # Kill off a tracked landmark if it hasn't been observed in this many frames.
   # If set to zero, this means that a track dies as soon as it isn't observed in the current frame.
@@ -111,7 +113,7 @@ ImuManager:
   gyro_noise_sigma:     0.000205689024915
   accel_bias_rw_sigma:  0.004905
   gyro_bias_rw_sigma:   0.000001454441043
-  integration_error_sigma: 0.0001
+  integration_error_sigma: 0.00001
 
   # Noise model for the zero-prior on IMU bias.
   bias_prior_noise_model_sigma: 0.0001

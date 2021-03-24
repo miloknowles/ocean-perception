@@ -86,6 +86,7 @@ class Smoother final {
     MACRO_PARAMS_STRUCT_CONSTRUCTORS(Params);
 
     int extra_smoothing_iters = 2;            // More smoothing iters --> better accuracy.
+    bool use_smart_stereo_factors = true;
 
     DiagonalModel::shared_ptr pose_prior_noise_model = DiagonalModel::Sigmas(
         (gtsam::Vector(6) << 0.1, 0.1, 0.1, 0.3, 0.3, 0.3).finished());
@@ -115,6 +116,7 @@ class Smoother final {
     void LoadParams(const YamlParser& parser) override
     {
       parser.GetYamlParam("extra_smoothing_iters", &extra_smoothing_iters);
+      parser.GetYamlParam("use_smart_stereo_factors", &use_smart_stereo_factors);
 
       cv::FileNode node;
       gtsam::Vector6 tmp6;
