@@ -40,7 +40,7 @@ struct VoResult final
   uid_t camera_id;
   uid_t camera_id_lkf;
   std::vector<LandmarkObservation> lmk_obs;         // List of landmarks observed in this image.
-  Matrix4d T_lkf_cam = Matrix4d::Identity();        // Pose of the camera in the last kf frame.
+  Matrix4d lkf_T_cam = Matrix4d::Identity();        // Pose of the camera in the last kf frame.
   double avg_reprojection_err = -1.0;               // Avg. error after LM pose optimization.
 };
 

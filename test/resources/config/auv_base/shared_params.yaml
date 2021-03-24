@@ -8,7 +8,7 @@ imu0:
   frame_id: imu0
 
   # IMU and body frame are one and the same.
-  T_body_imu:
+  body_T_imu:
     cols: 4
     rows: 4
     data: [1.0, 0.0, 0.0, 0.0,
@@ -26,7 +26,7 @@ imu0:
 # NOTE(milo): Placeholder for acoustic positioning system.
 aps0:
   frame_id: aps0
-  T_body_imu:
+  body_T_imu:
     cols: 4
     rows: 4
     data: [1.0, 0.0, 0.0, 0.0,
@@ -36,7 +36,7 @@ aps0:
 
 cam0:
   frame_id: cam0
-  T_body_cam:
+  body_T_cam:
     cols: 4
     rows: 4
     data: [1.0, 0.0, 0.0, -0.1,
@@ -54,7 +54,7 @@ cam0:
 
 cam1:
   frame_id: cam1
-  T_body_cam:
+  body_T_cam:
     cols: 4
     rows: 4
     data: [1.0, 0.0, 0.0, 0.1,

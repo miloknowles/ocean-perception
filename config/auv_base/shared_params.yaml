@@ -10,7 +10,7 @@ imu0:
   frame_id: imu0
 
   # IMU and body frame are one and the same.
-  T_body_imu:
+  body_T_imu:
     cols: 4
     rows: 4
     data: [1.0, 0.0, 0.0, 0.0,
@@ -22,13 +22,11 @@ imu0:
     gyro_noise_sigma:     0.000205689024915
     accel_bias_rw_sigma:  0.004905
     gyro_bias_rw_sigma:   0.000001454441043
-    bias_prior_noise_model_sigma: 0.01  # Noise model for the zero-prior on IMU bias.
-    bias_drift_noise_model_sigma: 0.001 # Noise model for the IMU bias between factors.
 
 # NOTE(milo): Placeholder for acoustic positioning system.
 aps0:
   frame_id: receiver0
-  T_body_receiver:
+  body_T_receiver:
     cols: 4
     rows: 4
     data: [1.0, 0.0, 0.0, 0.0,
@@ -38,7 +36,7 @@ aps0:
 
 cam0:
   frame_id: cam0
-  T_body_cam:
+  body_T_cam:
     cols: 4
     rows: 4
     data: [1.0, 0.0, 0.0, -0.1,
@@ -56,7 +54,7 @@ cam0:
 
 cam1:
   frame_id: cam1
-  T_body_cam:
+  body_T_cam:
     cols: 4
     rows: 4
     data: [1.0, 0.0, 0.0, 0.1,

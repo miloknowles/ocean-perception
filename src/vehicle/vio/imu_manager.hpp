@@ -69,16 +69,14 @@ class ImuManager final : public DataManager<ImuMeasurement> {
     double gyro_noise_sigma =     0.000205689024915;
     double accel_bias_rw_sigma =  0.004905;
     double gyro_bias_rw_sigma =   0.000001454441043;
+
     double integration_error_sigma = 1e-4;
     bool use_2nd_order_coriolis = false;
-
-    IsotropicModel::shared_ptr bias_prior_noise_model = IsotropicModel::Sigma(6, 1e-2);
-    IsotropicModel::shared_ptr bias_drift_noise_model = IsotropicModel::Sigma(6, 1e-3);
 
     // Direction of the gravity vector in the world frame.
     // NOTE(milo): Right now, we use a RDF frame for the IMU, so gravity is +y.
     gtsam::Vector3 n_gravity = gtsam::Vector3(0, 9.81, 0); // m/s^2
-    gtsam::Pose3 P_body_imu = gtsam::Pose3::identity();
+    gtsam::Pose3 body_P_imu = gtsam::Pose3::identity();
 
    private:
     // Loads in params using a YAML parser.
@@ -86,25 +84,20 @@ class ImuManager final : public DataManager<ImuMeasurement> {
     {
       parser.GetYamlParam("allowed_misalignment_sec", &allowed_misalignment_sec);
       parser.GetYamlParam("max_queue_size", &max_queue_size);
-
-      parser.GetYamlParam("accel_noise_sigma", &accel_noise_sigma);
-      parser.GetYamlParam("gyro_noise_sigma", &gyro_noise_sigma);
-      parser.GetYamlParam("accel_bias_rw_sigma", &accel_bias_rw_sigma);
-      parser.GetYamlParam("gyro_bias_rw_sigma", &gyro_bias_rw_sigma);
       parser.GetYamlParam("integration_error_sigma", &integration_error_sigma);
       parser.GetYamlParam("use_2nd_order_coriolis", &use_2nd_order_coriolis);
 
-      double bias_prior_noise_model_sigma, bias_drift_noise_model_sigma;
-      parser.GetYamlParam("bias_prior_noise_model_sigma", &bias_prior_noise_model_sigma);
-      parser.GetYamlParam("bias_drift_noise_model_sigma", &bias_drift_noise_model_sigma);
-      bias_prior_noise_model = IsotropicModel::Sigma(6, bias_prior_noise_model_sigma);
-      bias_drift_noise_model = IsotropicModel::Sigma(6, bias_drift_noise_model_sigma);
+      parser.GetYamlParam("/shared/imu0/noise_model/accel_noise_sigma", &accel_noise_sigma);
+      parser.GetYamlParam("/shared/imu0/noise_model/gyro_noise_sigma", &gyro_noise_sigma);
+      parser.GetYamlParam("/shared/imu0/noise_model/accel_bias_rw_sigma", &accel_bias_rw_sigma);
+      parser.GetYamlParam("/shared/imu0/noise_model/gyro_bias_rw_sigma", &gyro_bias_rw_sigma);
+
       YamlToVector<gtsam::Vector3>(parser.GetYamlNode("/shared/n_gravity"), n_gravity);
 
-      Matrix4d T_body_imu;
-      YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/imu0/T_body_imu"), T_body_imu);
-      P_body_imu = gtsam::Pose3(T_body_imu);
-      CHECK(T_body_imu(3, 3) == 1.0) << "T_body_imu is invalid" << std::endl;
+      Matrix4d body_T_imu;
+      YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/imu0/body_T_imu"), body_T_imu);
+      body_P_imu = gtsam::Pose3(body_T_imu);
+      CHECK(body_T_imu(3, 3) == 1.0) << "body_T_imu is invalid" << std::endl;
     }
   };
 

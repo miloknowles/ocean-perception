@@ -43,7 +43,7 @@ void StateEstimator::ReceiveImu(const ImuMeasurement& imu_data)
 {
   // NOTE(milo): This raw imu_data is expressed in the IMU frame. Internally, the GTSAM IMU
   // preintegration will account for body_P_sensor and convert measurements to the body frame.
-  // Also, the StateEKf will account for T_body_imu. So no need to "pre-rotate" these measurements.
+  // Also, the StateEKf will account for body_T_imu. So no need to "pre-rotate" these measurements.
   smoother_imu_manager_.Push(imu_data);
   filter_imu_manager_.Push(imu_data);
 }
@@ -211,7 +211,7 @@ void StateEstimator::GetKeyposeAlignedMeasurements(
   Vector3d imu_nG;
   const bool only_gravity = EstimateAttitude(pim.to_imu.a, imu_nG, params_.n_gravity.norm(), params_.body_nG_tol);
   maybe_attitude_ptr = (pim.timestamps_aligned && only_gravity) ?
-      std::make_shared<AttitudeMeasurement>(to_time, params_.P_body_imu * imu_nG) : nullptr;
+      std::make_shared<AttitudeMeasurement>(to_time, params_.body_P_imu * imu_nG) : nullptr;
 }
 
 
@@ -416,8 +416,8 @@ void StateEstimator::FilterLoop(seconds_t t0, const gtsam::Pose3& P0_world_body)
       filter.Rewind(result.timestamp);
       filter.UpdateImuBias(result.imu_bias);
       filter.PredictAndUpdate(result.timestamp,
-                              result.P_world_body.rotation().toQuaternion().normalized(),
-                              result.P_world_body.translation(),
+                              result.world_P_body.rotation().toQuaternion().normalized(),
+                              result.world_P_body.translation(),
                               result.cov_pose);
       filter.PredictAndUpdate(result.timestamp,
                               result.v_world_body,

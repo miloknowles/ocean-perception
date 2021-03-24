@@ -44,7 +44,7 @@ StateEkf::StateEkf(const Params& params)
   Q_.block<3, 3>(w_row, w_row) =    Matrix3d::Identity() * std::pow(params_.sigma_Q_w, 2.0);
 
   // Make sure that the quaternion is a unit quaternion!
-  q_body_imu_ = Quaterniond(params_.T_body_imu.block<3, 3>(0, 0)).normalized();
+  q_body_imu_ = Quaterniond(params_.body_T_imu.block<3, 3>(0, 0)).normalized();
 }
 
 
@@ -183,7 +183,7 @@ static State GenericKalmanUpdate(const State& x,
 
 static State UpdatePose(const State& x,
                         const Quaterniond& q_world_body,
-                        const Vector3d& t_world_body,
+                        const Vector3d& world_T_body,
                         const Matrix6d& R_pose)
 {
   // To be consistent with the way GTSAM orders pose variables:
@@ -206,7 +206,7 @@ static State UpdatePose(const State& x,
 
   Vector6d y;
   y.block<3, 1>(0, 0) = uq_err.angle() * uq_err.axis();
-  y.block<3, 1>(3, 0) = (t_world_body - x.t);
+  y.block<3, 1>(3, 0) = (world_T_body - x.t);
 
   const Vector15d dx = K*y;
   const AngleAxisd dr(dx.block<3, 1>(uq_row, 0).norm(), dx.block<3, 1>(uq_row, 0).normalized());
@@ -298,14 +298,14 @@ StateStamped StateEkf::PredictAndUpdate(seconds_t timestamp,
 
 StateStamped StateEkf::PredictAndUpdate(seconds_t timestamp,
                                         const Quaterniond& q_world_body,
-                                        const Vector3d& t_world_body,
+                                        const Vector3d& world_T_body,
                                         const Matrix6d& R_pose)
 {
   // PREDICT STEP: Simulate the system forward to the current timestep.
   const State& xp = PredictIfTimeElapsed(timestamp);
 
   // UPDATE STEP: Compute redidual errors, Kalman gain, and apply update.
-  const State& xu = UpdatePose(xp, q_world_body, t_world_body, R_pose);
+  const State& xu = UpdatePose(xp, q_world_body, world_T_body, R_pose);
 
   return ThreadsafeSetState(timestamp, xu);
 }
@@ -313,7 +313,7 @@ StateStamped StateEkf::PredictAndUpdate(seconds_t timestamp,
 
 StateStamped StateEkf::PredictAndUpdate(seconds_t timestamp,
                                         Axis3 axis,
-                                        double meas_t_world_body,
+                                        double meas_world_T_body,
                                         double R_axis_sigma)
 {
   // PREDICT STEP: Simulate the system forward to the current timestep.
@@ -326,8 +326,8 @@ StateStamped StateEkf::PredictAndUpdate(seconds_t timestamp,
   H(0, t_row + axis) = 1.0;
 
   // Get the translation along desired axis.
-  const double pred_t_world_body = x.t(axis);
-  const Vector1d y = (Vector1d() << meas_t_world_body - pred_t_world_body).finished();
+  const double pred_world_T_body = x.t(axis);
+  const Vector1d y = (Vector1d() << meas_world_T_body - pred_world_T_body).finished();
 
   Vector15d mask = Vector15d::Zero();
   mask(t_row + axis, 0) = 1.0;
@@ -357,7 +357,7 @@ StateStamped StateEkf::PredictAndUpdate(seconds_t timestamp,
   world_T_body.block<3, 3>(0, 0) = x.q.normalized().toRotationMatrix();
   world_T_body.block<3, 1>(0, 3) = x.t;
 
-  const Matrix4d world_T_receiver = world_T_body * params_.T_body_receiver;
+  const Matrix4d world_T_receiver = world_T_body * params_.body_T_receiver;
   const Vector3d world_t_receiver = world_T_receiver.block<3, 1>(0, 3);
 
   // Gradient is the unit vector from the point to the robot (direction of increasing range).

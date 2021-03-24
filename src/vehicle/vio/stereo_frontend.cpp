@@ -88,7 +88,7 @@ static bool FindObservationFromCameraId(const VecLandmarkObservation& lmk_obs, u
 
 
 VoResult StereoFrontend::Track(const StereoImage& stereo_pair,
-                               const Matrix4d& T_prev_cur_prior,
+                               const Matrix4d& prev_T_cur_prior,
                                bool force_keyframe)
 {
   VoResult result(stereo_pair.timestamp, timestamp_lkf_, stereo_pair.camera_id, prev_keyframe_id_);
@@ -273,7 +273,7 @@ VoResult StereoFrontend::Track(const StereoImage& stereo_pair,
       p_cur_2d_list,
       p_cur_sigma_list,
       stereo_rig_,
-      T_cur_lkf_,
+      cur_T_lkf_,
       C_cur_lkf,
       result.avg_reprojection_err,
       lm_inlier_indices,
@@ -288,10 +288,10 @@ VoResult StereoFrontend::Track(const StereoImage& stereo_pair,
     // LOG(WARNING) << "LM optimization failed. iters=" << iters << " avg_reprojection_err=" << result.avg_reprojection_err << std::endl;
     result.status |= StereoFrontend::Status::ODOM_ESTIMATION_FAILED;
   }
-  result.T_lkf_cam = T_cur_lkf_.inverse();
+  result.lkf_T_cam = cur_T_lkf_.inverse();
 
   if (is_keyframe) {
-    T_cur_lkf_ = Matrix4d::Identity();
+    cur_T_lkf_ = Matrix4d::Identity();
   }
 
   //======================== REMOVE OUTLIER POINTS =============================

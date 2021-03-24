@@ -70,7 +70,7 @@ void Smoother::ResetISAM2()
 
 
 void Smoother::Initialize(seconds_t timestamp,
-                          const gtsam::Pose3& P_world_body,
+                          const gtsam::Pose3& world_P_body,
                           const gtsam::Vector3& v_world_body,
                           const ImuBias& imu_bias,
                           bool imu_available)
@@ -90,14 +90,14 @@ void Smoother::Initialize(seconds_t timestamp,
   gtsam::NonlinearFactorGraph new_factors;
   gtsam::Values new_values;
 
-  result_ = SmootherResult(id0, timestamp, P_world_body, imu_available, v_world_body, imu_bias,
+  result_ = SmootherResult(id0, timestamp, world_P_body, imu_available, v_world_body, imu_bias,
       params_.pose_prior_noise_model->covariance(),
       params_.velocity_noise_model->covariance(),
       params_.bias_prior_noise_model->covariance());
 
   // Prior and initial value for the first pose.
-  new_factors.addPrior<gtsam::Pose3>(P0_sym, P_world_body, params_.pose_prior_noise_model);
-  new_values.insert(P0_sym, P_world_body);
+  new_factors.addPrior<gtsam::Pose3>(P0_sym, world_P_body, params_.pose_prior_noise_model);
+  new_values.insert(P0_sym, world_P_body);
 
   // If IMU available, add inertial variables to the graph.
   if (imu_available) {
@@ -136,7 +136,7 @@ static void AddImuFactors(uid_t keypose_id,
   const gtsam::Symbol last_bias_sym('B', last_keypose_id);
 
   // NOTE(milo): Gravity is corrected for in predict(), not during preintegration (NavState.cpp).
-  const gtsam::NavState prev_state(last_smoother_result.P_world_body,
+  const gtsam::NavState prev_state(last_smoother_result.world_P_body,
                                    last_smoother_result.v_world_body);
   const gtsam::NavState pred_state = pim_result.pim.predict(prev_state, last_smoother_result.imu_bias);
 
@@ -243,7 +243,7 @@ SmootherResult Smoother::UpdateGraphNoVision(const PimResult& pim_result,
         beacon_sym,
         maybe_range_ptr->range,
         params_.range_noise_model,
-        params_.P_body_receiver));
+        params_.body_P_receiver));
   }
 
   //==================================== UPDATE FACTOR GRAPH =======================================
@@ -320,9 +320,9 @@ SmootherResult Smoother::UpdateGraphWithVision(
   // If VO is valid, we can use it to create a between factor and guess the latest pose.
   if (odom_aligned) {
     // NOTE(milo): Must convert VO into BODY frame odometry!
-    const gtsam::Pose3& body_P_odom = params_.P_body_cam * gtsam::Pose3(odom_result.T_lkf_cam) * params_.P_body_cam.inverse();
-    const gtsam::Pose3 P_world_body = result_.P_world_body * body_P_odom;
-    new_values.insert(keypose_sym, P_world_body);
+    const gtsam::Pose3& body_P_odom = params_.body_P_cam * gtsam::Pose3(odom_result.lkf_T_cam) * params_.body_P_cam.inverse();
+    const gtsam::Pose3 world_P_body = result_.world_P_body * body_P_odom;
+    new_values.insert(keypose_sym, world_P_body);
 
     // Use a robust noise model to reduce the effect of bad VO estimates.
     // https://ieeexplore.ieee.org/document/6696406?reload=true&arnumber=6696406
@@ -352,7 +352,7 @@ SmootherResult Smoother::UpdateGraphWithVision(
       // https://groups.google.com/g/gtsam-users/c/qHXl9RLRxRs/m/6zWoA0wJBAAJ
       if (stereo_factors_.count(lmk_id) == 0) {
         stereo_factors_.emplace(lmk_id, new SmartStereoFactor(
-            params_.lmk_stereo_factor_noise_model, lmk_stereo_factor_params_, params_.P_body_cam));
+            params_.lmk_stereo_factor_noise_model, lmk_stereo_factor_params_, params_.body_P_cam));
 
         // Indicate that the newest factor refers to lmk_id.
         // NOTE(milo): Add the new factor to the graph. Order matters here!
@@ -422,7 +422,7 @@ SmootherResult Smoother::UpdateGraphWithVision(
         beacon_sym,
         maybe_range_ptr->range,
         model,
-        params_.P_body_receiver));
+        params_.body_P_receiver));
   }
 
   //================================= FACTOR GRAPH SAFETY CHECK ====================================
@@ -430,7 +430,7 @@ SmootherResult Smoother::UpdateGraphWithVision(
     LOG(WARNING) << "Graph doesn't have a between factor from VO or IMU, so it is under-constrained!" << std::endl;
     LOG(WARNING) << "Assuming NO MOTION from previous keypose!" << std::endl;
     const gtsam::Pose3 body_P_odom = gtsam::Pose3::identity();
-    const gtsam::Pose3 world_P_body = result_.P_world_body * body_P_odom;
+    const gtsam::Pose3 world_P_body = result_.world_P_body * body_P_odom;
     new_values.insert(keypose_sym, world_P_body);
 
     // Use a robust noise model to reduce the effect of bad VO estimates.

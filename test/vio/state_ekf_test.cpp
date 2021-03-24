@@ -93,10 +93,10 @@ TEST(VioTest, TestEkf_02)
     ekf.PredictAndUpdate(imu_data);
     const StateStamped& ss = ekf.GetState();
 
-    Matrix4d T_world_body;
-    T_world_body.block<3, 3>(0, 0) = ss.state.q.toRotationMatrix();
-    T_world_body.block<3, 1>(0, 3) = ss.state.t;
-    viz.AddCameraPose(pose_id++, Image1f(), T_world_body, pose_id % 10 == 0);
+    Matrix4d world_T_body;
+    world_T_body.block<3, 3>(0, 0) = ss.state.q.toRotationMatrix();
+    world_T_body.block<3, 1>(0, 3) = ss.state.t;
+    viz.AddCameraPose(pose_id++, Image1f(), world_T_body, pose_id % 10 == 0);
     // ss.Print();
   };
 

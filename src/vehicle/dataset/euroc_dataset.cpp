@@ -179,12 +179,12 @@ void EurocDataset::ParseGroundtruth(const std::string& gt_path)
     const Quaterniond q(std::stod(qw), std::stod(qx), std::stod(qy), std::stod(qz));
     const Vector3d t(std::stod(tx), std::stod(ty), std::stod(tz));
 
-    Matrix4d T_world_body = Matrix4d::Identity();
-    T_world_body.block<3, 3>(0, 0) = q.normalized().toRotationMatrix();
-    T_world_body.block<3, 1>(0, 3) = t;
+    Matrix4d world_T_body = Matrix4d::Identity();
+    world_T_body.block<3, 3>(0, 0) = q.normalized().toRotationMatrix();
+    world_T_body.block<3, 1>(0, 3) = t;
 
     const timestamp_t timestamp = std::stoull(ns);
-    pose_data.emplace_back(GroundtruthItem(timestamp, T_world_body));
+    pose_data.emplace_back(GroundtruthItem(timestamp, world_T_body));
   }
 
   stream.close();
