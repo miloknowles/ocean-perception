@@ -41,18 +41,18 @@ SmootherParams:
 #===============================================================================
 StateEkfParams:
   # Process noise standard deviations.
-  sigma_Q_t: 0.05     # translation (m/sec)
-  sigma_Q_v: 0.05     # velocity (m/sec/sec)
-  sigma_Q_a: 0.05     # acceleration (m/sec^2/sec)
-  sigma_Q_uq: 0.01    # orientation (3D tangent space) (rad/sec)
-  sigma_Q_w:  0.01    # angular velocity (rad/sec/sec)
+  sigma_Q_t: 0.01     # translation (m/sec)
+  sigma_Q_v: 0.01     # velocity (m/sec/sec)
+  sigma_Q_a: 0.01     # acceleration (m/sec^2/sec)
+  sigma_Q_uq: 0.001    # orientation (3D tangent space) (rad/sec)
+  sigma_Q_w:  0.001    # angular velocity (rad/sec/sec)
 
   # Sensor noise standard deviations.
   sigma_R_imu_a: 0.0003924
   sigma_R_imu_w: 0.000205689024915
 
-  sigma_R_depth: 0.5 # m
-  sigma_R_range: 1.5  # m
+  sigma_R_depth: 1.5 # m
+  sigma_R_range: 0.5  # m
 
 #===============================================================================
 StereoFrontend:

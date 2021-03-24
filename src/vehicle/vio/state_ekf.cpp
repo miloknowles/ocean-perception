@@ -3,6 +3,26 @@
 namespace bm {
 namespace vio {
 
+typedef Eigen::Matrix<double, 1, 1> Vector1d;
+
+
+static bool DiagonalNonnegative(const Eigen::MatrixXd& m)
+{
+  for (int i = 0; i < m.rows(); ++i) {
+    if (m(i, i) < 0) { return false; }
+  }
+
+  return true;
+}
+
+
+// Ensures that a matrix is symmetric by copy upper triangle into lower triangle.
+// https://apps.dtic.mil/sti/pdfs/AD1078469.pdf
+static void Symmetrize(Matrix15d& m)
+{
+  m.triangularView<Eigen::StrictlyLower>() = m.transpose();
+}
+
 
 StateEkf::StateEkf(const Params& params)
     : params_(params),
@@ -107,7 +127,8 @@ static State Predict(const State& x0,
   }
 
   // Multiply dt*Q to account for different step sizes (uncertainty grows with time).
-  const Matrix15d S1 = F * x0.S * F.transpose() + dt*Q;
+  Matrix15d S1 = F*x0.S*F.transpose() + dt*Q;
+  Symmetrize(S1);
 
   return State(t1, v1, a1, q1, w1, S1);
 }
@@ -126,65 +147,31 @@ static ImuMeasurement RotateAndRemoveGravity(const Quaterniond& q_world_imu,
 }
 
 
-// https://en.wikipedia.org/wiki/Extended_Kalman_filter
-static State UpdateImu(const State& x,
-                       const ImuMeasurement& imu,
-                       const Quaterniond& q_body_imu,
-                       const Vector3d& n_gravity,
-                       const Matrix6d& R)
+static State GenericKalmanUpdate(const State& x,
+                                 const Eigen::MatrixXd& H,
+                                 const Eigen::VectorXd& y,
+                                 const Eigen::MatrixXd& R,
+                                 const Vector15d& mask)
 {
-  // TODO(milo): Sparse matrix is wasteful, but easier to read for now.
-  Matrix6x15 H = Matrix6x15::Zero();
-  H.block<3, 3>(0, w_row) = Matrix3d::Identity();
-  H.block<3, 3>(3, a_row) = Matrix3d::Identity();
+  const size_t d = H.rows();
+  CHECK_EQ(15, H.cols()) << "H must have 15 cols" << std::endl;
+  CHECK_EQ(d, y.rows()) << "H and y must be of the same dimension" << std::endl;
+  CHECK_EQ(d, R.rows()) << "R must have d rows" << std::endl;
+  CHECK_EQ(d, R.cols()) << "R must have d cols" << std::endl;
+  CHECK(DiagonalNonnegative(R)) << "Bad measurement noise R:\n" << R << std::endl;
 
-  const Matrix6d& S = H * x.S * H.transpose() + R;
-  const Matrix15x6& K = x.S * H.transpose() * S.inverse();
+  // Follows conventions from: https://en.wikipedia.org/wiki/Extended_Kalman_filter
+  const Matrix15d P = x.S;
+  const Eigen::MatrixXd S = H*P*H.transpose() + R;
+  const Eigen::MatrixXd K = P*H.transpose() * S.inverse();
 
-  const Quaterniond& q_world_imu = x.q * q_body_imu;
-  const ImuMeasurement& imu_uc = RotateAndRemoveGravity(q_world_imu, n_gravity, imu);
+  // https://stats.stackexchange.com/questions/50487/possible-causes-for-the-state-noise-variance-to-become-negative-in-a-kalman-filt
+  const Matrix15d A = (Matrix15d::Identity() - K*H);
+  const Matrix15d P_update = A*P*A.transpose() + K*R*K.transpose();
 
-  Vector6d x_imu, z_imu;
-  x_imu.head(3) = x.w;
-  x_imu.tail(3) = x.a;
-  z_imu.head(3) = imu_uc.w;
-  z_imu.tail(3) = imu_uc.a;
+  CHECK(DiagonalNonnegative(P_update)) << "New covariance matrix is not PSD!\n" << P_update << std::endl;
 
-  const Vector6d& y = z_imu - x_imu;
-  const Vector15d dx = K*y;
-
-  // Update state estimate and covariance estimate.
-  State xu = x;
-  xu.w += dx.block<3, 1>(w_row, 0);
-  xu.a += dx.block<3, 1>(a_row, 0);
-
-  xu.S = (Matrix15d::Identity() - K*H) * x.S;
-
-  return xu;
-}
-
-
-static State UpdateVelocity(const State& x,
-                            const Vector3d& v_world_body,
-                            const Matrix3d& R_velocity)
-{
-  // TODO(milo): Sparse matrix is wasteful, but easier to read for now.
-  Matrix3x15 H = Matrix3x15::Zero();
-  H.block<3, 3>(0, v_row) = Matrix3d::Identity();
-
-  const Matrix3d& S = H * x.S * H.transpose() + R_velocity;
-  const Matrix15x3& K = x.S * H.transpose() * S.inverse();
-
-  const Vector3d& y = v_world_body - x.v;
-  const Vector15d dx = K*y;
-
-  // Update state estimate and covariance estimate.
-  State xu = x;
-  xu.v += dx.block<3, 1>(v_row, 0);
-
-  xu.S = (Matrix15d::Identity() - K*H) * x.S;
-
-  return xu;
+  return State(x.ToVector() + (K*y).cwiseProduct(mask), P_update);
 }
 
 
@@ -199,89 +186,35 @@ static State UpdatePose(const State& x,
   H.block<3, 3>(0, uq_row) = Matrix3d::Identity();
   H.block<3, 3>(3, t_row) = Matrix3d::Identity();
 
-  const Matrix6d& S = H * x.S * H.transpose() + R_pose;
-  const Matrix15x6& K = x.S * H.transpose() * S.inverse();
+  const Matrix15d P = x.S;
+  const Matrix6d S = H*P*H.transpose() + R_pose;
+  const Matrix15x6 K = P*H.transpose()*S.inverse();
 
   // NOTE(milo): We compute the relative rotation between the measured q_world_body and predicted
   // state.q. Then, we express that error in the TANGENT space (angle-axis), where it is valid to
   // apply a linear Kalman gain. Finally, we take the gain-weighted tangent space differential
-  // rotation (d_uq), convert it back to a quaternion, and apply it.
+  // rotation (dr), convert it back to a quaternion, and apply it.
   // q_pred_true = q_pred_world * q_world_true = q_world_pred.inverse() * q_world_true
-  const Quaterniond& q_err = x.q.inverse() * q_world_body;
+  const Quaterniond q_err = x.q.inverse() * q_world_body;
   const AngleAxisd uq_err(q_err);
 
   Vector6d y;
   y.block<3, 1>(0, 0) = uq_err.angle() * uq_err.axis();
   y.block<3, 1>(3, 0) = (t_world_body - x.t);
 
-  const Vector15d& dx = K*y;
-  const AngleAxisd d_uq(dx.block<3, 1>(uq_row, 0).norm(), dx.block<3, 1>(uq_row, 0).normalized());
+  const Vector15d dx = K*y;
+  const AngleAxisd dr(dx.block<3, 1>(uq_row, 0).norm(), dx.block<3, 1>(uq_row, 0).normalized());
 
   State xu = x;
   xu.t += dx.block<3, 1>(3, 0);
-  xu.q = xu.q * Quaterniond(d_uq);
-  xu.q = xu.q.normalized();
-  xu.S = (Matrix15d::Identity() - K*H) * x.S;
+  xu.q = xu.q * Quaterniond(dr);
 
-  return xu;
-}
+  // https://stats.stackexchange.com/questions/50487/possible-causes-for-the-state-noise-variance-to-become-negative-in-a-kalman-filt
+  const Matrix15d A = (Matrix15d::Identity() - K*H);
+  const Matrix15d P_update = A*P*A.transpose() + K*R_pose*K.transpose();
+  xu.S = P_update;
 
-
-static State UpdateSingleAxisTranslation(const State& x,
-                                         Axis3 axis,
-                                         double meas_t_world_body,
-                                         double R_axis_sigma)
-{
-  CHECK_GT(R_axis_sigma, 0) << "R_axis_sigma (stdev) must be > 0" << std::endl;
-
-  // Get the translation along desired axis.
-  const double pred_t_world_body = x.t(axis);
-  const double S_axis_sigma = x.S(t_row + axis, t_row + axis);
-
-  // 1D Kalman gain.
-  const double k = S_axis_sigma / (S_axis_sigma + R_axis_sigma);
-  CHECK(k >= 0 && k <= 1.0) << "Kalman gain not in [0, 1]" << std::endl;
-
-  State xu = x;
-  xu.t(axis) += k * (meas_t_world_body - pred_t_world_body);
-  xu.S(t_row + axis, t_row + axis) = (1.0 - k) * S_axis_sigma;
-
-  return xu;
-}
-
-
-static State UpdateRange(const State& x,
-                         double range,
-                         const Vector3d point,
-                         double sigma_R_range)
-{
-  CHECK_GT(sigma_R_range, 0) << "sigma_R_range (stdev) must be > 0" << std::endl;
-
-  Matrix1x15 H = Matrix1x15::Zero();
-
-  // Example: dr/tx = 1/2 * (dx^2 + dy^2 + dz^2)^-1/2 * 2 * (tx - px)
-  // Gradient is the unit vector from the point to the robot (direction of increasing range).
-  H.block<1, 3>(0, t_row) = (x.t - point).normalized().transpose();
-  std::cout << "H:\n" << H << std::endl;
-
-
-  const Matrix1d S = H * x.S * H.transpose() + (Matrix1d() << sigma_R_range).finished();
-  const Matrix15x1 K = x.S * H.transpose() * S.inverse();
-  assert(K(0) <= 1.0);
-  std::cout << K << std::endl;
-
-  // If predicted range is LESS than observed range, move the robot farther from point.
-  // If predicted range is MORE than observed range, move the robot closer to point.
-  const double h_range = (x.t - point).norm();
-  const double y = (range - h_range);
-  const Vector15d dx = K*y;
-
-  std::cout << "Range: " << range << " h_range: " << h_range << std::endl;;
-  std::cout << dx << std::endl;
-
-  State xu = x;
-  xu.t += dx.block<3, 1>(t_row, 0);
-  xu.S = (Matrix15d::Identity() - K*H) * x.S;
+  CHECK(DiagonalNonnegative(xu.S)) << "New covariance matrix is not PSD!\n" << x.S << std::endl;
 
   return xu;
 }
@@ -299,15 +232,32 @@ StateStamped StateEkf::PredictAndUpdate(const ImuMeasurement& imu, bool store)
 {
   // PREDICT STEP: Simulate the system forward to the current timestep.
   const seconds_t t_new = ConvertToSeconds(imu.timestamp);
-  const State& xp = PredictIfTimeElapsed(t_new);
+  const State& x = PredictIfTimeElapsed(t_new);
 
   // UPDATE STEP: Compute redidual errors, Kalman gain, and apply update.
   ImuMeasurement imu_unbiased = imu;
   imu_unbiased.a = imu_bias_.correctAccelerometer(imu.a);
   imu_unbiased.w = imu_bias_.correctGyroscope(imu.w);
 
-  State xu = UpdateImu(xp, imu_unbiased, q_body_imu_, params_.n_gravity, R_imu_);
-  xu.q = xu.q.normalized(); // Just to be safe.
+  Matrix6x15 H = Matrix6x15::Zero();
+  H.block<3, 3>(0, w_row) = Matrix3d::Identity();
+  H.block<3, 3>(3, a_row) = Matrix3d::Identity();
+
+  const Quaterniond& q_world_imu = x.q * q_body_imu_;
+  const ImuMeasurement imu_uc = RotateAndRemoveGravity(q_world_imu, params_.n_gravity, imu_unbiased);
+
+  Vector6d x_imu, z_imu;
+  x_imu.head(3) = x.w;
+  x_imu.tail(3) = x.a;
+  z_imu.head(3) = imu_uc.w;
+  z_imu.tail(3) = imu_uc.a;
+
+  // y = z - h(x)
+  const Vector6d y = z_imu - x_imu;
+  Vector15d mask = Vector15d::Zero();
+  mask.block<3, 1>(a_row, 0) = Vector3d::Ones();
+  mask.block<3, 1>(w_row, 0) = Vector3d::Ones();
+  const State xu = GenericKalmanUpdate(x, H, y, R_imu_, mask);
 
   // Store IMU measurements so that we can rewind the filter and re-apply them during re-init.
   if (store && params_.reapply_measurements_after_init) {
@@ -323,10 +273,18 @@ StateStamped StateEkf::PredictAndUpdate(seconds_t timestamp,
                                         const Matrix3d& R_velocity)
 {
   // PREDICT STEP: Simulate the system forward to the current timestep.
-  const State& xp = PredictIfTimeElapsed(timestamp);
+  const State& x = PredictIfTimeElapsed(timestamp);
 
   // UPDATE STEP: Compute redidual errors, Kalman gain, and apply update.
-  const State& xu = UpdateVelocity(xp, v_world_body, R_velocity);
+  Matrix3x15 H = Matrix3x15::Zero();
+  H.block<3, 3>(0, v_row) = Matrix3d::Identity();
+
+  // y = z - h(x)
+  const Vector3d y = v_world_body - x.v;
+
+  Vector15d mask = Vector15d::Zero();
+  mask.block<3, 1>(v_row, 0) = Vector3d::Ones();
+  const State xu = GenericKalmanUpdate(x, H, y, R_velocity, mask);
 
   return ThreadsafeSetState(timestamp, xu);
 }
@@ -353,10 +311,23 @@ StateStamped StateEkf::PredictAndUpdate(seconds_t timestamp,
                                         double R_axis_sigma)
 {
   // PREDICT STEP: Simulate the system forward to the current timestep.
-  const State& xp = PredictIfTimeElapsed(timestamp);
+  const State& x = PredictIfTimeElapsed(timestamp);
 
   // UPDATE STEP: Compute redidual errors, Kalman gain, and apply update.
-  const State& xu = UpdateSingleAxisTranslation(xp, axis, meas_t_world_body, R_axis_sigma);
+  CHECK_GT(R_axis_sigma, 0) << "R_axis_sigma (stdev) must be > 0" << std::endl;
+
+  Matrix1x15 H = Matrix1x15::Zero();
+  H(0, t_row + axis) = 1.0;
+
+  // Get the translation along desired axis.
+  const double pred_t_world_body = x.t(axis);
+  const Vector1d y = (Vector1d() << meas_t_world_body - pred_t_world_body).finished();
+
+  Vector15d mask = Vector15d::Zero();
+  mask(t_row + axis, 0) = 1.0;
+
+  const Matrix1d R = Matrix1d::Identity() * R_axis_sigma * R_axis_sigma;
+  const State xu = GenericKalmanUpdate(x, H, y, R, mask);
 
   return ThreadsafeSetState(timestamp, xu);
 }
@@ -367,13 +338,37 @@ StateStamped StateEkf::PredictAndUpdate(seconds_t timestamp,
                                         const Vector3d point,
                                         double sigma_R_range)
 {
-  // // PREDICT STEP: Simulate the system forward to the current timestep.
-  // const State& xp = PredictIfTimeElapsed(timestamp);
+  // PREDICT STEP: Simulate the system forward to the current timestep.
+  const State& x = PredictIfTimeElapsed(timestamp);
 
-  //   // UPDATE STEP: Compute redidual errors, Kalman gain, and apply update.
-  // const State& xu = UpdateRange(xp, range, point, sigma_R_range);
+  // UPDATE STEP: Compute redidual errors, Kalman gain, and apply update.
+  CHECK_GT(sigma_R_range, 0) << "sigma_R_range (stdev) must be > 0" << std::endl;
 
-  // return ThreadsafeSetState(timestamp, xu);
+  Matrix1x15 H = Matrix1x15::Zero();
+
+  // Need to account for the location of the range receiver on the robot.
+  Matrix4d world_T_body = Matrix4d::Identity();
+  world_T_body.block<3, 3>(0, 0) = x.q.normalized().toRotationMatrix();
+  world_T_body.block<3, 1>(0, 3) = x.t;
+
+  const Matrix4d world_T_receiver = world_T_body * params_.T_body_receiver;
+  const Vector3d world_t_receiver = world_T_receiver.block<3, 1>(0, 3);
+
+  // Gradient is the unit vector from the point to the robot (direction of increasing range).
+  H.block<1, 3>(0, t_row) = (world_t_receiver - point).normalized().transpose();
+
+  // If predicted range is LESS than observed range, move the robot farther from point.
+  // If predicted range is MORE than observed range, move the robot closer to point.
+  const double h_range = (x.t - point).norm();
+
+  // y = z - h(x)
+  const Vector1d y = (Vector1d() << range - h_range).finished();
+  const Matrix1d R = Matrix1d::Identity() * sigma_R_range*sigma_R_range;
+  Vector15d mask = Vector15d::Zero();
+  mask.block<3, 1>(t_row, 0) = Vector3d::Ones();
+  const State xu = GenericKalmanUpdate(x, H, y, R, mask);
+
+  return ThreadsafeSetState(timestamp, xu);
 }
 
 
@@ -395,6 +390,7 @@ StateStamped StateEkf::ThreadsafeSetState(seconds_t timestamp, const State& stat
   state_lock_.lock();
   state_.timestamp = timestamp;
   state_.state = state;
+  Symmetrize(state_.state.S);
   state_lock_.unlock();
 
   state_history_.Update(timestamp, state);

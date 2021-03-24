@@ -9,6 +9,25 @@ using namespace core;
 using namespace vio;
 
 
+TEST(VioTest, TestState)
+{
+  const Matrix15d S0 = Matrix15d::Identity() * 0.1;
+
+  State s0(Vector3d(1, 2, 3),         // t
+           Vector3d::Zero(),          // v
+           Vector3d::Zero(),          // a
+           Quaterniond(0.5200544, 0.2415334, -0.6404592, -0.5108982),   // q
+           Vector3d::Zero(),          // w
+           S0);                       // cov
+
+  // Make sure that we can go from expmap -> logmap -> expmap.
+  State s1 = State(s0.ToVector(), s0.S);
+  s0.Print();
+  s1.Print();
+  ASSERT_TRUE(s0 == s1);
+}
+
+
 TEST(VioTest, TestEkf_01)
 {
   StateEkf::Params params;
