@@ -87,7 +87,7 @@ void ZedRecorder::CaptureLoop()
         std::cout << " - IMU:\n";
         std::cout << " \t Orientation: {" << sensors_data.imu.pose.getOrientation() << "}\n";
         std::cout << " \t Acceleration: {" << sensors_data.imu.linear_acceleration << "} [m/sec^2]\n";
-        std::cout << " \t Angular Velocitiy: {" << sensors_data.imu.angular_velocity << "} [deg/sec]\n";
+        std::cout << " \t Angular Velocity: {" << sensors_data.imu.angular_velocity << "} [deg/sec]\n";
 
         // Check if Magnetometer data has been updated.
         if (ts.isNew(sensors_data.magnetometer))
