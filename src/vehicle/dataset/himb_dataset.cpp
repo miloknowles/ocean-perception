@@ -23,6 +23,8 @@ HimbDataset::HimbDataset(const std::string& toplevel_path, const std::string& sp
     const timestamp_t timestamp = 1e9 * i;
     stereo_data.emplace_back(timestamp, left_imgs.at(i), right_imgs.at(i));
   }
+
+  SanityCheck();
 }
 
 }

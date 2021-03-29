@@ -44,6 +44,8 @@ EurocDataset::EurocDataset(const std::string& toplevel_path) : DataProvider()
   } else {
     LOG(WARNING) << "[MISSING DATA] No range measurements found!" << std::endl;
   }
+
+  SanityCheck();
 }
 
 

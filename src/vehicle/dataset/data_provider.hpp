@@ -99,6 +99,9 @@ class DataProvider {
 
   const std::vector<GroundtruthItem>& GroundtruthPoses() const { return pose_data; }
 
+  // Make sure numerical data is reasonable.
+  void SanityCheck();
+
  private:
   timestamp_t NextTimestamp(timestamp_t& imu_time,
                             timestamp_t& depth_time,
