@@ -7,6 +7,8 @@ SET(LIBRARY_SRC
   noise_model.hpp
   vo_result.hpp
   data_manager.hpp
+  ellipsoid.cpp
+  ellipsoid.hpp
   feature_detector.cpp
   feature_detector.hpp
   feature_tracker.cpp
