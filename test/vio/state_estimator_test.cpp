@@ -75,7 +75,10 @@ TEST(VioTest, TestEuroc)
   SmootherResult::Callback smoother_callback = [&](const SmootherResult& result)
   {
     const core::uid_t cam_id = static_cast<core::uid_t>(result.keypose_id);
-    viz.AddCameraPose(cam_id, Image1b(), result.world_P_body.matrix(), true, std::make_shared<Matrix3d>(result.cov_pose.block<3, 3>(3, 3)));
+    const Matrix3d body_cov_pose = result.cov_pose.block<3, 3>(3, 3);
+    const Matrix3d world_R_body = result.world_P_body.rotation().matrix();
+    const Matrix3d world_cov_pose = world_R_body * body_cov_pose * world_R_body.transpose();
+    viz.AddCameraPose(cam_id, Image1b(), result.world_P_body.matrix(), true, std::make_shared<Matrix3d>(world_cov_pose));
   };
 
   StateStamped::Callback filter_callback = [&](const StateStamped& ss)

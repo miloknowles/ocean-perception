@@ -188,19 +188,20 @@ void StateEstimator::GetKeyposeAlignedMeasurements(
     DepthMeasurement::Ptr& maybe_depth_ptr,
     AttitudeMeasurement::Ptr& maybe_attitude_ptr,
     RangeMeasurement::Ptr& maybe_range_ptr,
-    seconds_t allowed_misalignment_sec)
+    seconds_t allowed_misalignment_depth,
+    seconds_t allowed_misalignment_range)
 {
   smoother_range_manager_.DiscardBefore(to_time, true);
   const seconds_t range_time_offset = std::fabs(smoother_range_manager_.Oldest() - to_time);
 
-  maybe_range_ptr = (range_time_offset < allowed_misalignment_sec) ?
+  maybe_range_ptr = (range_time_offset < allowed_misalignment_range) ?
       std::make_shared<RangeMeasurement>(smoother_range_manager_.PopNewest()) : nullptr;
 
   // Check if we have a nearby depth measurement (in time).
   smoother_depth_manager_.DiscardBefore(to_time, true);
   const seconds_t depth_time_offset = std::fabs(to_time - smoother_depth_manager_.Oldest());
 
-  maybe_depth_ptr = (depth_time_offset < allowed_misalignment_sec) ?
+  maybe_depth_ptr = (depth_time_offset < allowed_misalignment_depth) ?
       std::make_shared<DepthMeasurement>(smoother_depth_manager_.Pop()) : nullptr;
 
   // Preintegrate IMU between from_time and to_time.
@@ -287,8 +288,9 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
       smoother_range_manager_.DiscardBefore(from_time);
       const bool range_is_available = !smoother_range_manager_.Empty();
 
-      const seconds_t time_offset_range = std::fabs(smoother_imu_manager_.Newest() - smoother_range_manager_.Newest());
-      const bool add_range_keypose = (range_is_available && (time_offset_range < params_.imu_timestamp_epsilon_sec));
+      // const seconds_t time_offset_range = std::fabs(smoother_imu_manager_.Newest() - smoother_range_manager_.Newest());
+      const bool add_range_keypose = range_is_available &&
+          (smoother_imu_manager_.Newest() > (smoother_range_manager_.Newest() - 0.01));
       const bool add_imu_keypose = (imu_is_available && (smoother_imu_manager_.Newest() - from_time) > params_.min_sec_btw_keyposes);
 
       // Can't add a new keypose until IMU is available (fully constraint 6DOF motion).
@@ -306,7 +308,8 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
             maybe_depth_ptr,
             maybe_attitude_ptr,
             maybe_range_ptr,
-            params_.imu_timestamp_epsilon_sec);
+            params_.allowed_misalignment_depth,
+            params_.allowed_misalignment_range);
 
         OnSmootherResult(smoother.UpdateGraphNoVision(
             *maybe_pim_ptr,
@@ -330,7 +333,8 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
           maybe_depth_ptr,
           maybe_attitude_ptr,
           maybe_range_ptr,
-          params_.imu_timestamp_epsilon_sec);
+          params_.allowed_misalignment_depth,
+          params_.allowed_misalignment_range);
 
       OnSmootherResult(smoother.UpdateGraphWithVision(
           frontend_result,
