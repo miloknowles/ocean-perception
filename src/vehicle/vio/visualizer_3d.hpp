@@ -17,6 +17,7 @@
 #include "core/stereo_camera.hpp"
 #include "core/thread_safe_queue.hpp"
 #include "vio/landmark_observation.hpp"
+#include "vio/ellipsoid.hpp"
 
 namespace bm {
 namespace vio {
@@ -152,6 +153,8 @@ class Visualizer3D final {
   // TODO(milo): Make a more elegant solution for landmark bookkeeping.
   std::queue<uid_t> queue_live_lmk_ids_;
   std::unordered_set<uid_t> set_live_lmk_ids_;
+
+  PrecomputedSpherePoints sphere_points_{40, 16};
 };
 
 }

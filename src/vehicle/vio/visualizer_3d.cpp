@@ -75,43 +75,23 @@ void Visualizer3D::AddCameraPose(const CameraPoseData& data)
   viz_.showWidget(widget_name, widget_keyframe, world_T_cam_cv);
   widget_names_.insert(widget_name);
 
+  // Show the position covariance as a 3D ellipsoid.
   if (params_.show_uncertainty && data.position_cov) {
-    if (widget_names_.count("cov_axis_0") != 0) {
-      viz_.removeWidget("cov_axis_0");
-      viz_.removeWidget("cov_axis_1");
-      viz_.removeWidget("cov_axis_2");
+    if (widget_names_.count("position_cov") != 0) {
+      viz_.removeWidget("position_cov");
     }
 
-    Eigen::SelfAdjointEigenSolver<Matrix3d> solver(*data.position_cov);
-    const Vector3d values = solver.eigenvalues();   // Eigenvalues are variances along axes.
-    const Matrix3d vectors = solver.eigenvectors(); // Columns are axes of ellipsoid.
-    const Vector3d stdevs = values.cwiseSqrt();
+    const EllipsoidParameters ellipsoid_params = ComputeCovarianceEllipsoid(*data.position_cov, 1.0);
+    const CvPoints3 ellipsoid_points = ToCvPoints3d(GetEllipsoidPoints(ellipsoid_params.scales, sphere_points_));
 
-    cv::viz::WArrow axis0 = cv::viz::WArrow(
-        cv::Point3d(),
-        stdevs(0) * cv::Point3d(vectors.col(0).x(), vectors.col(0).y(), vectors.col(0).z()),
-        0.01, cv::viz::Color::yellow());
-    cv::viz::WArrow axis1 = cv::viz::WArrow(
-        cv::Point3d(),
-        stdevs(1) * cv::Point3d(vectors.col(1).x(), vectors.col(1).y(), vectors.col(1).z()),
-        0.01, cv::viz::Color::yellow());
-    cv::viz::WArrow axis2 = cv::viz::WArrow(
-        cv::Point3d(),
-        stdevs(2) * cv::Point3d(vectors.col(2).x(), vectors.col(2).y(), vectors.col(2).z()),
-        0.01, cv::viz::Color::yellow());
+    const Matrix3d world_R_ellipsoid = EllipsoidRotationInWorld(ellipsoid_params);
+    const cv::viz::WCloud ellipsoid_widget(ellipsoid_points, cv::viz::Color::yellow());
 
-    // We show the ellipse axes in the WORLD frame, but need to offset the origin based on the
-    // camera's current position.
-    Matrix4d world_t_cam = Matrix4d::Identity();
-    world_t_cam.block<3, 1>(0, 3) = data.world_T_cam.block<3, 1>(0, 3);   // Copy translation.
-    const cv::Affine3d world_t_cam_cv = EigenMatrix4dToCvAffine3d(world_t_cam);
-
-    viz_.showWidget("cov_axis_0", axis0, world_t_cam_cv);
-    viz_.showWidget("cov_axis_1", axis1, world_t_cam_cv);
-    viz_.showWidget("cov_axis_2", axis2, world_t_cam_cv);
-    widget_names_.insert("cov_axis_0");
-    widget_names_.insert("cov_axis_1");
-    widget_names_.insert("cov_axis_2");
+    Matrix4d world_T_ellipsoid = Matrix4d::Identity();
+    world_T_ellipsoid.block<3, 3>(0, 0) = world_R_ellipsoid;
+    world_T_ellipsoid.block<3, 1>(0, 3) = data.world_T_cam.block<3, 1>(0, 3);
+    const cv::Affine3d world_T_ellipsoid_cv = EigenMatrix4dToCvAffine3d(world_T_ellipsoid);
+    viz_.showWidget("position_cov", ellipsoid_widget, world_T_ellipsoid_cv);
   }
 
   viz_lock_.unlock();

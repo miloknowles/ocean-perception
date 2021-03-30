@@ -26,10 +26,9 @@ PrecomputedSpherePoints::PrecomputedSpherePoints(int lat_lines, int lng_lines)
 
       // Conver to Euclidean coordinates.
       // https://stackoverflow.com/questions/20769011/converting-3d-polar-coordinates-to-cartesian-coordinates
-      // This creates latitude rings around the z axis.
-      const double x = std::sin(lat) * std::cos(lng);
+      const double z = std::sin(lat) * std::cos(lng);
       const double y = std::sin(lat) * std::sin(lng);
-      const double z = std::cos(lat);
+      const double x = std::cos(lat);
       points_.emplace_back(x, y, z);
     }
   }
