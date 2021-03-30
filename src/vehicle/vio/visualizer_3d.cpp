@@ -3,6 +3,7 @@
 #include <glog/logging.h>
 #include <eigen3/Eigen/Dense>
 #include <opencv2/core/eigen.hpp>
+#include <opencv2/highgui.hpp>
 
 #include "vio/visualizer_3d.hpp"
 
@@ -44,9 +45,13 @@ static cv::Affine3d EigenMatrix4dToCvAffine3d(const Matrix4d& world_T_cam)
 }
 
 
-void Visualizer3D::AddCameraPose(uid_t cam_id, const Image1b& left_image, const Matrix4d& world_T_cam, bool is_keyframe)
+void Visualizer3D::AddCameraPose(uid_t cam_id,
+                                 const Image1b& left_image,
+                                 const Matrix4d& world_T_cam,
+                                 bool is_keyframe,
+                                 const Cov3Ptr& position_cov)
 {
-  add_camera_pose_queue_.Push(std::move(CameraPoseData(cam_id, left_image, world_T_cam, is_keyframe)));
+  add_camera_pose_queue_.Push(std::move(CameraPoseData(cam_id, left_image, world_T_cam, is_keyframe, position_cov)));
 }
 
 
@@ -61,9 +66,33 @@ void Visualizer3D::AddCameraPose(const CameraPoseData& data)
 
   const std::string widget_name = GetCameraPoseWidgetName(data.cam_id);
   CHECK(widget_names_.count(widget_name) == 0) << "Trying to add existing cam_id: " << widget_name << std::endl;
-  cv::viz::WCameraPosition widget_keyframe(K, 1.0, data.is_keyframe ? cv::viz::Color::blue() : cv::viz::Color::red());
+  cv::viz::WCameraPosition widget_keyframe(1.0);
+
+  if (params_.show_frustums) {
+    widget_keyframe = cv::viz::WCameraPosition(K, 1.0, data.is_keyframe ? cv::viz::Color::blue() : cv::viz::Color::red());
+  }
+
   viz_.showWidget(widget_name, widget_keyframe, world_T_cam_cv);
   widget_names_.insert(widget_name);
+
+  // Show the position covariance as a 3D ellipsoid.
+  if (params_.show_uncertainty && data.position_cov) {
+    if (widget_names_.count("position_cov") != 0) {
+      viz_.removeWidget("position_cov");
+    }
+
+    const EllipsoidParameters ellipsoid_params = ComputeCovarianceEllipsoid(*data.position_cov, 1.0);
+    const CvPoints3 ellipsoid_points = ToCvPoints3d(GetEllipsoidPoints(ellipsoid_params.scales, sphere_points_));
+
+    const Matrix3d world_R_ellipsoid = EllipsoidRotationInWorld(ellipsoid_params);
+    const cv::viz::WCloud ellipsoid_widget(ellipsoid_points, cv::viz::Color::yellow());
+
+    Matrix4d world_T_ellipsoid = Matrix4d::Identity();
+    world_T_ellipsoid.block<3, 3>(0, 0) = world_R_ellipsoid;
+    world_T_ellipsoid.block<3, 1>(0, 3) = data.world_T_cam.block<3, 1>(0, 3);
+    const cv::Affine3d world_T_ellipsoid_cv = EigenMatrix4dToCvAffine3d(world_T_ellipsoid);
+    viz_.showWidget("position_cov", ellipsoid_widget, world_T_ellipsoid_cv);
+  }
 
   viz_lock_.unlock();
 }
@@ -71,7 +100,7 @@ void Visualizer3D::AddCameraPose(const CameraPoseData& data)
 
 void Visualizer3D::UpdateCameraPose(uid_t cam_id, const Matrix4d& world_T_cam)
 {
-  update_camera_pose_queue_.Push(CameraPoseData(cam_id, Image1b(), world_T_cam, false));
+  update_camera_pose_queue_.Push(CameraPoseData(cam_id, Image1b(), world_T_cam, false, nullptr));
 }
 
 
@@ -224,6 +253,14 @@ Visualizer3D::~Visualizer3D()
 {
   redraw_thread_.join();
   LOG(INFO) << "Joined Visualizer3D redraw thread" << std::endl;
+}
+
+
+void Visualizer3D::BlockUntilKeypress()
+{
+  cv::namedWindow("tmp");
+  cv::waitKey(0);
+  cv::destroyWindow("tmp");
 }
 
 

@@ -35,6 +35,7 @@ struct TestStateEstimatorParams : public ParamsBase
   bool use_imu = true;
   bool use_depth = true;
   bool use_range = true;
+  bool pause = false;
   float playback_speed = 4.0;
 
  private:
@@ -47,6 +48,7 @@ struct TestStateEstimatorParams : public ParamsBase
     parser.GetYamlParam("use_imu", &use_imu);
     parser.GetYamlParam("use_depth", &use_depth);
     parser.GetYamlParam("use_range", &use_range);
+    parser.GetYamlParam("pause", &pause);
     parser.GetYamlParam("playback_speed", &playback_speed);
   }
 };
@@ -73,7 +75,10 @@ TEST(VioTest, TestEuroc)
   SmootherResult::Callback smoother_callback = [&](const SmootherResult& result)
   {
     const core::uid_t cam_id = static_cast<core::uid_t>(result.keypose_id);
-    viz.AddCameraPose(cam_id, Image1b(), result.world_P_body.matrix(), true);
+    const Matrix3d body_cov_pose = result.cov_pose.block<3, 3>(3, 3);
+    const Matrix3d world_R_body = result.world_P_body.rotation().matrix();
+    const Matrix3d world_cov_pose = world_R_body * body_cov_pose * world_R_body.transpose();
+    viz.AddCameraPose(cam_id, Image1b(), result.world_P_body.matrix(), true, std::make_shared<Matrix3d>(world_cov_pose));
   };
 
   StateStamped::Callback filter_callback = [&](const StateStamped& ss)
@@ -107,6 +112,9 @@ TEST(VioTest, TestEuroc)
   viz.UpdateBodyPose("T0_world_body", P0_world_body.matrix());
   viz.SetViewerPose(P0_world_body.matrix());
 
+  if (test_params.pause) {
+    viz.BlockUntilKeypress(); // Start playback with a keypress.
+  }
   dataset.Playback(test_params.playback_speed, false);
 
   state_estimator.BlockUntilFinished();

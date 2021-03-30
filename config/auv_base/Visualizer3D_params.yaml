@@ -1,4 +1,6 @@
 %YAML:1.0
 
+show_frustums: 1
+show_uncertainty: 1
 max_stored_poses: 100
 max_stored_landmarks: 1000

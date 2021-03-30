@@ -17,11 +17,14 @@
 #include "core/stereo_camera.hpp"
 #include "core/thread_safe_queue.hpp"
 #include "vio/landmark_observation.hpp"
+#include "vio/ellipsoid.hpp"
 
 namespace bm {
 namespace vio {
 
 using namespace core;
+
+typedef std::shared_ptr<Matrix3d> Cov3Ptr;
 
 // Used to pass a camera pose (with an optional image) to the visualizer.
 struct CameraPoseData
@@ -32,16 +35,19 @@ struct CameraPoseData
   explicit CameraPoseData(uid_t cam_id,
                           const Image1b& left_image,
                           const Matrix4d& world_T_cam,
-                          bool is_keyframe)
+                          bool is_keyframe,
+                          const Cov3Ptr& position_cov)
       : cam_id(cam_id),
         left_image(left_image),
         world_T_cam(world_T_cam),
-        is_keyframe(is_keyframe) {}
+        is_keyframe(is_keyframe),
+        position_cov(position_cov) {}
 
   uid_t cam_id;
   Image1b left_image;
   Matrix4d world_T_cam;
   bool is_keyframe;
+  Cov3Ptr position_cov;
 };
 
 
@@ -67,6 +73,8 @@ class Visualizer3D final {
   {
     MACRO_PARAMS_STRUCT_CONSTRUCTORS(Params);
 
+    bool show_uncertainty = true;
+    bool show_frustums = false;       // Show camera frustums instead of pose axes.
     int max_stored_poses = 100;
     int max_stored_landmarks = 1000;
 
@@ -74,6 +82,8 @@ class Visualizer3D final {
     // Loads in params using a YAML parser.
     void LoadParams(const YamlParser& parser) override
     {
+      parser.GetYamlParam("show_uncertainty", &show_uncertainty);
+      parser.GetYamlParam("show_frustums", &show_frustums);
       parser.GetYamlParam("max_stored_poses", &max_stored_poses);
       parser.GetYamlParam("max_stored_landmarks", &max_stored_landmarks);
     }
@@ -89,7 +99,11 @@ class Visualizer3D final {
 
   // Adds a new camera frustrum at the given pose. If left_image is not empty, it is shown inside
   // of the camera frustum. Only keyframe cameras are stored (and can be updated later).
-  void AddCameraPose(uid_t cam_id, const Image1b& left_image, const Matrix4d& world_T_cam, bool is_keyframe);
+  void AddCameraPose(uid_t cam_id,
+                     const Image1b& left_image,
+                     const Matrix4d& world_T_cam,
+                     bool is_keyframe,
+                     const Cov3Ptr& position_cov = nullptr);
 
   // Update the pose associated with a cam_id (must correspond to a keyframe).
   void UpdateCameraPose(uid_t cam_id, const Matrix4d& world_T_cam);
@@ -108,6 +122,8 @@ class Visualizer3D final {
   // The thread is joined when this instance's destructor is called.
   void Start();
   void SetViewerPose(const Matrix4d& world_T_body);
+
+  void BlockUntilKeypress();
 
  private:
   // Internal functions that take items off of queues and add to the visualizer.
@@ -137,6 +153,8 @@ class Visualizer3D final {
   // TODO(milo): Make a more elegant solution for landmark bookkeeping.
   std::queue<uid_t> queue_live_lmk_ids_;
   std::unordered_set<uid_t> set_live_lmk_ids_;
+
+  PrecomputedSpherePoints sphere_points_{40, 16};
 };
 
 }

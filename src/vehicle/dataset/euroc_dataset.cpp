@@ -44,6 +44,8 @@ EurocDataset::EurocDataset(const std::string& toplevel_path) : DataProvider()
   } else {
     LOG(WARNING) << "[MISSING DATA] No range measurements found!" << std::endl;
   }
+
+  SanityCheck();
 }
 
 
@@ -78,7 +80,9 @@ void EurocDataset::ParseImu(const std::string& data_csv_path)
       }
       line = line.substr(idx + 1);
     }
-    CHECK_GT(timestamp, prev_timestamp) << "Euroc IMU data is not in chronological order!";
+    if (prev_timestamp != 0) {
+      CHECK_GT(timestamp, prev_timestamp) << "Euroc IMU data is not in chronological order!";
+    }
 
     const double norm_acc = gyr_acc_data.tail(3).norm();
     max_norm_acc = std::max(max_norm_acc, norm_acc);

@@ -73,7 +73,8 @@ class StateEstimator final {
     double min_sec_btw_keyposes = 0.5;        // Don't trigger a keypose if it hasn't been long since the last one.
 
     double smoother_init_wait_vision_sec = 3.0;   // Wait this long for VO to arrive during initialization.
-    double imu_timestamp_epsilon_sec = 0.03;      // An IMU measurement is considered "aligned" if within this amount of time from other sensors.
+    double allowed_misalignment_depth = 0.01;     // 10 ms for depth
+    double allowed_misalignment_range = 0.10;     // 100 ms for range, since this measurements comes in slowly.
 
     int show_feature_tracks = 0;
 
@@ -152,7 +153,8 @@ class StateEstimator final {
                                      DepthMeasurement::Ptr& maybe_depth_ptr,
                                      AttitudeMeasurement::Ptr& maybe_attitude_ptr,
                                      RangeMeasurement::Ptr& maybe_range_ptr,
-                                     seconds_t allowed_misalignment_sec);
+                                     seconds_t allowed_misalignment_depth,
+                                     seconds_t allowed_misalignment_range);
 
   // Smart the backend smoother with an initial timestamp and pose.
   void SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_body);

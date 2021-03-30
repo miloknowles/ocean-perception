@@ -9,6 +9,11 @@
 namespace bm {
 namespace dataset {
 
+static const double kMaxAcceleration = 20.0;    // m/s^2
+static const double kMaxAngularVelocity = 5.0;  // [rad / sec]
+static const double kMaxRange = 100.0;          // m
+static const double kMaxDepth = 20.0;           // m
+
 
 timestamp_t DataProvider::NextTimestamp(timestamp_t& next_imu_time,
                                         timestamp_t& next_depth_time,
@@ -194,6 +199,30 @@ timestamp_t DataProvider::FirstTimestamp() const
       kMaxTimestamp : range_data.front().timestamp;
 
   return std::min({first_imu, first_stereo, first_depth, first_range});
+}
+
+
+void DataProvider::SanityCheck()
+{
+  for (size_t i = 0; i < imu_data.size(); ++i) {
+    const ImuMeasurement imu = imu_data.at(i);
+    CHECK_LT(imu.a.norm(), kMaxAcceleration)
+        << "Bad acceleration: #" << i << "\n" << imu.a.transpose() << std::endl;
+    CHECK_LT(imu.w.norm(), kMaxAngularVelocity)
+        << "Bad angular velocity: #" << i << "\n" << imu.w.transpose() << std::endl;
+  }
+
+  for (size_t i = 0; i < depth_data.size(); ++i) {
+    const DepthMeasurement data = depth_data.at(i);
+    CHECK(data.depth <= kMaxDepth && data.depth >= 0)
+      << "Bad depth: #" << i << "\n" << "Value: " << data.depth << std::endl;
+  }
+
+  for (size_t i = 0; i < range_data.size(); ++i) {
+    const RangeMeasurement data = range_data.at(i);
+    CHECK(data.range <= kMaxRange && data.range >= 0)
+      << "Bad range: #" << i << "\n" << "Value: " << data.range << std::endl;
+  }
 }
 
 
