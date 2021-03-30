@@ -25,14 +25,14 @@ SmootherParams:
   pose_prior_noise_model: [0.001, 0.001, 0.001, 0.01, 0.01, 0.01]    # rad, rad, rad, m, m, m
   frontend_vo_noise_model: [0.1, 0.1, 0.1, 0.4, 0.4, 1.0]      # rad, rad, rad, m, m, m
   lmk_mono_reproj_err_sigma: 3.0        # px in u and v
-  lmk_stereo_reproj_err_sigma: 5.0      # px in u and v
+  lmk_stereo_reproj_err_sigma: 10.0      # px in u and v
   depth_sensor_noise_model_sigma: 0.5   # m
   range_noise_model_sigma: 0.5          # m
   attitude_noise_model_sigma: 0.5       # rad
   velocity_sigma: 0.3                   # m/s
 
   extra_smoothing_iters: 3
-  use_smart_stereo_factors: 0           # 1=ON, 0=OFF
+  use_smart_stereo_factors: 1           # 1=ON, 0=OFF
 
   # Noise model for the zero-prior on IMU bias.
   bias_prior_noise_model_sigma: 0.0001
