@@ -72,7 +72,10 @@ struct SmootherResult final
   gtsam::Vector3 v_world_body = kZeroVelocity;
   ImuBias imu_bias = kZeroImuBias;
 
-  // Marginal covariance matrices.
+  // Marginal covariance matrices. Note that these are RELATIVE covariances expressed in the current
+  // body frame (world_T_body). For example, to interpret cov_pose as uncertainty in the robot's
+  // world position, you would need to transform it as follows:
+  // world_cov_pose = world_R_body * cov_pose * world_R_body.transpose().
   Matrix6d cov_pose;
   Matrix3d cov_vel;
   Matrix6d cov_bias;
