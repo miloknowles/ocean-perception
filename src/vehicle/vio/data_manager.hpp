@@ -50,7 +50,7 @@ class DataManager {
   void PopUntil(seconds_t timestamp, std::vector<DataType>& out)
   {
     while (!queue_.Empty() && (MaybeConvertToSeconds(queue_.PeekFront().timestamp) <= timestamp)) {
-      out.emplace_back(queue_.Pop());
+      out.emplace_back(std::move(queue_.Pop()));
     }
   }
 

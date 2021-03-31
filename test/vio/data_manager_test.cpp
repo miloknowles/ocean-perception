@@ -72,6 +72,21 @@ TEST(VioTest, TestDataManager_01)
   const DepthMeasurement& newest = m.PopNewest();
   EXPECT_TRUE(m.Empty());
   EXPECT_EQ(126ul, newest.timestamp);
+
+  // Check that PopUntil works.
+  DataManager<DepthMeasurement> m2(4, true);
+  m2.Push(DepthMeasurement(14, 0.3));
+  m2.Push(DepthMeasurement(15, 0.3));
+  m2.Push(DepthMeasurement(15, 0.3));
+  m2.Push(DepthMeasurement(19, 0.3));
+  EXPECT_EQ(4ul, m2.Size());
+  std::vector<DepthMeasurement> out;
+  m2.PopUntil(ConvertToSeconds(15), out);
+  EXPECT_EQ(1ul, m2.Size());
+  EXPECT_EQ(3ul, out.size());
+  EXPECT_EQ(14ul, out.at(0).timestamp);
+  EXPECT_EQ(15ul, out.at(1).timestamp);
+  EXPECT_EQ(15ul, out.at(2).timestamp);
 }
 
 
