@@ -175,7 +175,7 @@ static void AddImuFactors(uid_t keypose_id,
 SmootherResult Smoother::UpdateGraphNoVision(const PimResult& pim_result,
                                              DepthMeasurement::ConstPtr maybe_depth_ptr,
                                              AttitudeMeasurement::ConstPtr maybe_attitude_ptr,
-                                             RangeMeasurement::ConstPtr maybe_range_ptr)
+                                             const MultiRange& maybe_ranges)
 {
   CHECK(pim_result.timestamps_aligned) << "Preintegrated IMU invalid" << std::endl;
 
@@ -233,17 +233,25 @@ SmootherResult Smoother::UpdateGraphNoVision(const PimResult& pim_result,
   }
 
   //========================================= RANGE FACTOR =========================================
-  if (maybe_range_ptr) {
-    const gtsam::Symbol beacon_sym('A', keypose_id);
-    new_values.insert(beacon_sym, maybe_range_ptr->point);
-    new_factors.addPrior(beacon_sym, maybe_range_ptr->point, params_.beacon_noise_model);
+  if (!maybe_ranges.empty()) {
+    const std::vector<char> beacon_chars = { 'f', 'g' };
+    CHECK_LE(maybe_ranges.size(), 2ul) << "Only support 2 beacons!" << std::endl;
 
-    new_factors.push_back(RangeFactor(
-        keypose_sym,
-        beacon_sym,
-        maybe_range_ptr->range,
-        params_.range_noise_model,
-        params_.body_P_receiver));
+    for (size_t i = 0; i < maybe_ranges.size(); ++i) {
+      const gtsam::Symbol beacon_sym(beacon_chars.at(i), keypose_id);
+      const RangeMeasurement& range_meas = maybe_ranges.at(i);
+      new_values.insert(beacon_sym, range_meas.point);
+      new_factors.addPrior(beacon_sym, range_meas.point, params_.beacon_noise_model);
+
+      const RobustModel::shared_ptr model = RobustModel::Create(mCauchy::Create(1.0), params_.range_noise_model);
+
+      new_factors.push_back(RangeFactor(
+          keypose_sym,
+          beacon_sym,
+          range_meas.range,
+          model,
+          params_.body_P_receiver));
+    }
   }
 
   //==================================== UPDATE FACTOR GRAPH =======================================
@@ -283,7 +291,7 @@ SmootherResult Smoother::UpdateGraphWithVision(
     PimResult::ConstPtr pim_result_ptr,
     DepthMeasurement::ConstPtr maybe_depth_ptr,
     AttitudeMeasurement::ConstPtr maybe_attitude_ptr,
-    RangeMeasurement::ConstPtr maybe_range_ptr)
+    const MultiRange& maybe_ranges)
 {
   CHECK(odom_result.is_keyframe) << "Smoother shouldn't receive a non-keyframe odometry result" << std::endl;
   CHECK(odom_result.lmk_obs.size() > 0) << "Smoother shouln't receive a keyframe with no observations" << std::endl;
@@ -408,21 +416,25 @@ SmootherResult Smoother::UpdateGraphWithVision(
   }
 
   //========================================= RANGE FACTOR =========================================
-  if (maybe_range_ptr) {
-    const gtsam::Symbol beacon_sym('A', keypose_id);
-    new_values.insert(beacon_sym, maybe_range_ptr->point);
-    new_factors.addPrior(beacon_sym, maybe_range_ptr->point, params_.beacon_noise_model);
+  if (!maybe_ranges.empty()) {
+    const std::vector<char> beacon_chars = { 'f', 'g' };
+    CHECK_LE(maybe_ranges.size(), 2ul) << "Only support 2 beacons!" << std::endl;
 
-    // Use a robust noise model to reduce the effect of bad VO estimates.
-    // https://ieeexplore.ieee.org/document/6696406?reload=true&arnumber=6696406
-    const RobustModel::shared_ptr model = RobustModel::Create(mCauchy::Create(1.0), params_.range_noise_model);
+    for (size_t i = 0; i < maybe_ranges.size(); ++i) {
+      const gtsam::Symbol beacon_sym(beacon_chars.at(i), keypose_id);
+      const RangeMeasurement& range_meas = maybe_ranges.at(i);
+      new_values.insert(beacon_sym, range_meas.point);
+      new_factors.addPrior(beacon_sym, range_meas.point, params_.beacon_noise_model);
 
-    new_factors.push_back(RangeFactor(
-        keypose_sym,
-        beacon_sym,
-        maybe_range_ptr->range,
-        model,
-        params_.body_P_receiver));
+      const RobustModel::shared_ptr model = RobustModel::Create(mCauchy::Create(1.0), params_.range_noise_model);
+
+      new_factors.push_back(RangeFactor(
+          keypose_sym,
+          beacon_sym,
+          range_meas.range,
+          model,
+          params_.body_P_receiver));
+    }
   }
 
   //================================= FACTOR GRAPH SAFETY CHECK ====================================

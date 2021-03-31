@@ -27,5 +27,10 @@ struct RangeMeasurement final
 };
 
 
+// Convenience type for receiving ranges from multiple beacons.
+typedef std::vector<RangeMeasurement> MultiRange;
+typedef std::shared_ptr<MultiRange> MultiRangePtr;
+typedef std::shared_ptr<const MultiRange> MultiRangeConstPtr;
+
 }
 }

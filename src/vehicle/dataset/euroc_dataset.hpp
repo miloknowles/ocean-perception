@@ -26,7 +26,10 @@ class EurocDataset : public DataProvider {
 
   void ParseDepth(const std::string& depth_csv_path);
 
-  void ParseRange(const std::string& range_csv_path);
+  // Load in range measurements from a list of paths. This supports range measurements from
+  // multiple receivers or beacons (e.g aps0 and aps1), which will all get put into the same
+  // vector and sorted by timestamp.
+  void ParseRange(const std::vector<std::string>& range_csv_paths);
 };
 
 

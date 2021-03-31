@@ -187,15 +187,18 @@ void StateEstimator::GetKeyposeAlignedMeasurements(
     PimResult::Ptr& maybe_pim_ptr,
     DepthMeasurement::Ptr& maybe_depth_ptr,
     AttitudeMeasurement::Ptr& maybe_attitude_ptr,
-    RangeMeasurement::Ptr& maybe_range_ptr,
+    MultiRange& maybe_ranges,
     seconds_t allowed_misalignment_depth,
     seconds_t allowed_misalignment_range)
 {
   smoother_range_manager_.DiscardBefore(to_time, true);
   const seconds_t range_time_offset = std::fabs(smoother_range_manager_.Oldest() - to_time);
 
-  maybe_range_ptr = (range_time_offset < allowed_misalignment_range) ?
-      std::make_shared<RangeMeasurement>(smoother_range_manager_.PopNewest()) : nullptr;
+  // Get all range measurements within the timestamp tolerance.
+  maybe_ranges.clear();
+  if (range_time_offset < allowed_misalignment_range) {
+    smoother_range_manager_.PopUntil(to_time, maybe_ranges);
+  }
 
   // Check if we have a nearby depth measurement (in time).
   smoother_depth_manager_.DiscardBefore(to_time, true);
@@ -301,13 +304,13 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
         PimResult::Ptr maybe_pim_ptr;
         DepthMeasurement::Ptr maybe_depth_ptr;
         AttitudeMeasurement::Ptr maybe_attitude_ptr;
-        RangeMeasurement::Ptr maybe_range_ptr;
+        MultiRange maybe_ranges;
         GetKeyposeAlignedMeasurements(
             from_time, to_time,
             maybe_pim_ptr,
             maybe_depth_ptr,
             maybe_attitude_ptr,
-            maybe_range_ptr,
+            maybe_ranges,
             params_.allowed_misalignment_depth,
             params_.allowed_misalignment_range);
 
@@ -315,7 +318,7 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
             *maybe_pim_ptr,
             maybe_depth_ptr,
             maybe_attitude_ptr,
-            maybe_range_ptr));
+            maybe_ranges));
       }
 
     // VO AVAILABLE ==> Add a keyframe and smooth.
@@ -326,13 +329,13 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
       PimResult::Ptr maybe_pim_ptr;
       DepthMeasurement::Ptr maybe_depth_ptr;
       AttitudeMeasurement::Ptr maybe_attitude_ptr;
-      RangeMeasurement::Ptr maybe_range_ptr;
+      MultiRange maybe_ranges;
       GetKeyposeAlignedMeasurements(
           from_time, to_time,
           maybe_pim_ptr,
           maybe_depth_ptr,
           maybe_attitude_ptr,
-          maybe_range_ptr,
+          maybe_ranges,
           params_.allowed_misalignment_depth,
           params_.allowed_misalignment_range);
 
@@ -341,7 +344,7 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
           maybe_pim_ptr,
           maybe_depth_ptr,
           maybe_attitude_ptr,
-          maybe_range_ptr));
+          maybe_ranges));
     }
 
   } // end while (!is_shutdown)

@@ -196,7 +196,7 @@ class Smoother final {
   SmootherResult UpdateGraphNoVision(const PimResult& pim_result,
                                      DepthMeasurement::ConstPtr maybe_depth_ptr = nullptr,
                                      AttitudeMeasurement::ConstPtr maybe_attitude_ptr = nullptr,
-                                     RangeMeasurement::ConstPtr maybe_range_ptr = nullptr);
+                                     const MultiRange& maybe_ranges = MultiRange());
 
   // Add a new keypose using a keyframe from the stereo frontend. If pim_result_ptr is supplied,
   // a preintegrated IMU factor is added also.
@@ -205,7 +205,7 @@ class Smoother final {
                                        PimResult::ConstPtr pim_result_ptr = nullptr,
                                        DepthMeasurement::ConstPtr maybe_depth_ptr = nullptr,
                                        AttitudeMeasurement::ConstPtr maybe_attitude_ptr = nullptr,
-                                       RangeMeasurement::ConstPtr maybe_range_ptr = nullptr);
+                                       const MultiRange& maybe_ranges = MultiRange());
 
   // Threadsafe access to the latest result.
   SmootherResult GetResult();

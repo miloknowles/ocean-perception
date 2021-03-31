@@ -152,7 +152,7 @@ class StateEstimator final {
                                      PimResult::Ptr& pim_result,
                                      DepthMeasurement::Ptr& maybe_depth_ptr,
                                      AttitudeMeasurement::Ptr& maybe_attitude_ptr,
-                                     RangeMeasurement::Ptr& maybe_range_ptr,
+                                     MultiRange& maybe_range_ptr,
                                      seconds_t allowed_misalignment_depth,
                                      seconds_t allowed_misalignment_range);
 

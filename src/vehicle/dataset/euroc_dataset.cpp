@@ -38,9 +38,15 @@ EurocDataset::EurocDataset(const std::string& toplevel_path) : DataProvider()
     LOG(WARNING) << "[MISSING DATA] No depth measurements found!" << std::endl;
   }
 
-  const std::string& range_csv = Join(mav0_path, "aps0/data.csv");
-  if (Exists(range_csv)) {
-    ParseRange(range_csv);
+  std::vector<std::string> range_csv_paths;
+  if (Exists(Join(mav0_path, "aps0/data.csv"))) {
+    range_csv_paths.emplace_back(Join(mav0_path, "aps0/data.csv"));
+  }
+  if (Exists(Join(mav0_path, "aps1/data.csv"))) {
+    range_csv_paths.emplace_back(Join(mav0_path, "aps1/data.csv"));
+  }
+  if (!range_csv_paths.empty()) {
+    ParseRange(range_csv_paths);
   } else {
     LOG(WARNING) << "[MISSING DATA] No range measurements found!" << std::endl;
   }
@@ -236,8 +242,10 @@ void EurocDataset::ParseDepth(const std::string& depth_csv_path)
 }
 
 
-void EurocDataset::ParseRange(const std::string& range_csv_path)
+static std::vector<RangeMeasurement> ParseRangeHelper(const std::string& range_csv_path)
 {
+  std::vector<RangeMeasurement> range_data;
+
   std::ifstream fin(range_csv_path.c_str());
   CHECK(fin.is_open()) << "Could not open file: " << range_csv_path << std::endl;
 
@@ -274,11 +282,26 @@ void EurocDataset::ParseRange(const std::string& range_csv_path)
   }
 
   fin.close();
+  return range_data;
+}
+
+
+void EurocDataset::ParseRange(const std::vector<std::string>& range_csv_paths)
+{
+  // Get range measurements from all sources.
+  for (const std::string& csv_path : range_csv_paths) {
+    LOG(INFO) << "Parsing range from: " << csv_path << std::endl;
+    const std::vector<RangeMeasurement> data = ParseRangeHelper(csv_path);
+    range_data.insert(range_data.end(), data.begin(), data.end());
+  }
+
+  // Now sort by timestamp so that they're in order.
+  std::sort(range_data.begin(), range_data.end(),
+      [](const RangeMeasurement& a, const RangeMeasurement& b) { return (a.timestamp <= b.timestamp); });
 
   LOG(INFO) << "Read in " << range_data.size() << " RANGE measurements.\n"
             << "  earliest=" << range_data.front().timestamp
-            << "  latest=" << range_data.back().timestamp << "\n"
-            << "  min=" << min_range << " max=" << max_range << std::endl;
+            << "  latest=" << range_data.back().timestamp << "\n";
 }
 
 
