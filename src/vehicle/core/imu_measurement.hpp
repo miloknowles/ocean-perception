@@ -19,7 +19,7 @@ struct ImuMeasurement final
 
   ImuMeasurement() = default;   // Needed in ImuManager
 
-  timestamp_t timestamp = kMinSeconds;
+  timestamp_t timestamp = kMinTimestamp;
   Vector3d w = Vector3d::Zero();
   Vector3d a = Vector3d::Zero();
 };

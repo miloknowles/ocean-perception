@@ -24,8 +24,8 @@ set(VIO_TEST_SOURCES
   vio/attitude_factor_test.cpp
   vio/ellipsoid_test.cpp)
 
-set(SANDBOX_TEST_SOURCES
-  test_move.cpp)
+set(LCM_TEST_SOURCES
+  lcmtypes/test_include.cpp)
 
 # Function for defining a test executable.
 function(MakeTestExecutable test_name test_sources)
@@ -40,15 +40,22 @@ function(MakeTestExecutable test_name test_sources)
     ${OpenCV_LIBRARIES}
     ${OpenCV_LIBS}
     gtsam
-    gtsam_unstable)
+    gtsam_unstable
+    vehicle_lcmtypes_cpp
+    lcm)
   add_test(NAME ${test_name} COMMAND ${test_name} --gtest_color=yes)
 endfunction()
+
+# Need to include build/vehicle so that we can
+# #include "lcmtypes/vehicle/type_t.hpp"
+include_directories(${PROJECT_BINARY_DIR}/lcmtypes)
 
 # https://stackoverflow.com/questions/5248749/passing-a-list-to-a-cmake-macro
 MakeTestExecutable(core_gtest_all "${CORE_TEST_SOURCES}")
 MakeTestExecutable(dataset_gtest_all "${DATASET_TEST_SOURCES}")
 MakeTestExecutable(vio_gtest_all "${VIO_TEST_SOURCES}")
 MakeTestExecutable(sandbox_gtest_all "${SANDBOX_TEST_SOURCES}")
+MakeTestExecutable(lcm_gtest_all "${LCM_TEST_SOURCES}")
 
 # NOTE(milo): Using the "copy" command didn't seem to work...
 # Move resource files to the install location so that tests can use them.
