@@ -43,6 +43,7 @@ if(PYTHONINTERP_FOUND)
   lcm_install_python(${python_install_sources})
 endif()
 
+# NOTE(milo): Don't want to install these to the system for now.
 # install(TARGETS vehicle_lcmtypes vehicle_lcmtypes_cpp
 #   EXPORT ${PROJECT_NAME}Targets
 #   RUNTIME DESTINATION bin

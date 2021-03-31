@@ -25,7 +25,7 @@ set(VIO_TEST_SOURCES
   vio/ellipsoid_test.cpp)
 
 set(LCM_TEST_SOURCES
-  lcmtypes/test_include.cpp)
+  lcmtypes/test_publish.cpp)
 
 # Function for defining a test executable.
 function(MakeTestExecutable test_name test_sources)
