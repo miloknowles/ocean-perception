@@ -1,0 +1,7 @@
+package vehicle;
+
+struct pose3_stamped_t
+{
+  header_t header;
+  pose3_t pose;
+}

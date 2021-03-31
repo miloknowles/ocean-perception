@@ -1,0 +1,8 @@
+package vehicle;
+
+struct header_t
+{
+  int64_t timestamp;
+  int64_t seq;
+  string frame_id;
+}

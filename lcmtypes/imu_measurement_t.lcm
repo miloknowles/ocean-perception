@@ -1,0 +1,8 @@
+package vehicle;
+
+struct imu_measurement_t
+{
+  header_t header;
+  point3_t linear_acc;
+  point3_t angular_vel;
+}

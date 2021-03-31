@@ -1,8 +1,0 @@
-package vehicle;
-
-struct range_t
-{
-  int64_t timestamp;
-  double range;
-  double point[3];
-}
