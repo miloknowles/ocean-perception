@@ -1,0 +1,13 @@
+package vehicle;
+
+// Represents an 8-bit image.
+// https://people.csail.mit.edu/albert/pubs/2010-huang-olson-moore-lcm-iros.pdf
+struct image_t
+{
+  int32_t width;
+  int32_t height;
+  int32_t channels;
+  string format;
+  int32_t size;
+  byte data[size];
+}
