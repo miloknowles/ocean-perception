@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0.2)
+cmake_minimum_required(VERSION 3.3.0)
 project(vehicle)
 
 # Make sure that custom modules like FindXXXX are found
@@ -93,10 +93,10 @@ include_directories(
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
-add_message_files(
-  FILES
-  TridentThrust.msg
-)
+# add_message_files(
+#   FILES
+#   TridentThrust.msg
+# )
 
 ## Generate services in the 'srv' folder
 # add_service_files(
@@ -113,13 +113,13 @@ add_message_files(
 # )
 
 ## Generate added messages and services with any dependencies listed here
-generate_messages(
-  DEPENDENCIES
-  std_msgs
-  geometry_msgs
-  sensor_msgs
-  nav_msgs
-)
+# generate_messages(
+#   DEPENDENCIES
+#   std_msgs
+#   geometry_msgs
+#   sensor_msgs
+#   nav_msgs
+# )
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -174,6 +174,8 @@ catkin_install_python(PROGRAMS
   python/python_node_test.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
+
+add_subdirectory(./lcmtypes)
 
 add_subdirectory(./src)
 

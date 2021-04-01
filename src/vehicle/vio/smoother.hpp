@@ -108,7 +108,7 @@ class Smoother final {
     IsotropicModel::shared_ptr depth_sensor_noise_model = IsotropicModel::Sigma(1, 0.05);
     IsotropicModel::shared_ptr attitude_noise_model = IsotropicModel::Sigma(2, 0.1);
     IsotropicModel::shared_ptr range_noise_model = IsotropicModel::Sigma(1, 0.5);
-    IsotropicModel::shared_ptr beacon_noise_model = IsotropicModel::Sigma(3, 0.1);
+    IsotropicModel::shared_ptr beacon_noise_model = IsotropicModel::Sigma(3, 0.01);
 
     gtsam::Pose3 body_P_imu = gtsam::Pose3::identity();
     gtsam::Pose3 body_P_cam = gtsam::Pose3::identity();
@@ -160,6 +160,10 @@ class Smoother final {
       parser.GetYamlParam("range_noise_model_sigma", &range_noise_model_sigma);
       range_noise_model = IsotropicModel::Sigma(1, range_noise_model_sigma);
 
+      double beacon_noise_model_sigma;
+      parser.GetYamlParam("beacon_noise_model_sigma", &beacon_noise_model_sigma);
+      beacon_noise_model = IsotropicModel::Sigma(3, beacon_noise_model_sigma);
+
       Matrix4d body_T_imu, body_T_cam, body_T_receiver;
       YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/imu0/body_T_imu"), body_T_imu);
       YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/cam0/body_T_cam"), body_T_cam);
@@ -196,7 +200,7 @@ class Smoother final {
   SmootherResult UpdateGraphNoVision(const PimResult& pim_result,
                                      DepthMeasurement::ConstPtr maybe_depth_ptr = nullptr,
                                      AttitudeMeasurement::ConstPtr maybe_attitude_ptr = nullptr,
-                                     RangeMeasurement::ConstPtr maybe_range_ptr = nullptr);
+                                     const MultiRange& maybe_ranges = MultiRange());
 
   // Add a new keypose using a keyframe from the stereo frontend. If pim_result_ptr is supplied,
   // a preintegrated IMU factor is added also.
@@ -205,7 +209,7 @@ class Smoother final {
                                        PimResult::ConstPtr pim_result_ptr = nullptr,
                                        DepthMeasurement::ConstPtr maybe_depth_ptr = nullptr,
                                        AttitudeMeasurement::ConstPtr maybe_attitude_ptr = nullptr,
-                                       RangeMeasurement::ConstPtr maybe_range_ptr = nullptr);
+                                       const MultiRange& maybe_ranges = MultiRange());
 
   // Threadsafe access to the latest result.
   SmootherResult GetResult();

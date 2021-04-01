@@ -1,0 +1,8 @@
+package vehicle;
+
+struct vector3_t
+{
+  double x;
+  double y;
+  double z;
+}

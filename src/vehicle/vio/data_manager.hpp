@@ -23,7 +23,7 @@ class DataManager {
   void Push(const DataType& item)
   {
     const seconds_t timestamp = MaybeConvertToSeconds(item.timestamp);
-    CHECK(queue_.Empty() || timestamp > Newest())
+    CHECK(queue_.Empty() || timestamp >= Newest())
         << "Trying to add measurement out of order.\n"
         << "timestamp=" << timestamp << " newest=" << Newest() << std::endl;
     queue_.Push(std::move(item));
@@ -44,6 +44,14 @@ class DataManager {
       queue_.Pop();
     }
     return queue_.Pop();
+  }
+
+  // Pop measurements and put them in "out" until the next item exceeds the timestamp.
+  void PopUntil(seconds_t timestamp, std::vector<DataType>& out)
+  {
+    while (!queue_.Empty() && (MaybeConvertToSeconds(queue_.PeekFront().timestamp) <= timestamp)) {
+      out.emplace_back(std::move(queue_.Pop()));
+    }
   }
 
   // Throw away measurements before (but NOT equal to) timestamp. If save_at_least_one is true,

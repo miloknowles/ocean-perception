@@ -223,6 +223,10 @@ void DataProvider::SanityCheck()
     CHECK(data.range <= kMaxRange && data.range >= 0)
       << "Bad range: #" << i << "\n" << "Value: " << data.range << std::endl;
   }
+
+  CHECK(TimestampsInOrder<ImuMeasurement>(imu_data, true));
+  CHECK(TimestampsInOrder<DepthMeasurement>(depth_data, true));
+  CHECK(TimestampsInOrder<RangeMeasurement>(range_data, false));
 }
 
 

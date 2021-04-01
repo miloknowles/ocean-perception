@@ -60,6 +60,7 @@ struct StereoDatasetItem
 };
 
 
+// Represents a groundruth state at a timestamp (just pose for now).
 struct GroundtruthItem
 {
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
@@ -74,6 +75,20 @@ struct GroundtruthItem
 };
 
 
+template <typename T>
+bool TimestampsInOrder(const std::vector<T>& data, bool strictly_increasing = false)
+{
+  for (size_t i = 1; i < data.size(); ++i) {
+    if (data.at(i).timestamp < data.at(i-1).timestamp ||
+       (strictly_increasing && data.at(i).timestamp == data.at(i-1).timestamp)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+
+// Generic interface for something that provides sensor data.
 class DataProvider {
  public:
   DataProvider() = default;
