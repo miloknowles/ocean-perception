@@ -2,6 +2,6 @@ package vehicle;
 
 struct pose3_t
 {
-  point3_t position;
+  vector3_t position;
   quaternion_t orientation;
 }

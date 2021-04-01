@@ -4,5 +4,5 @@ struct range_measurement_t
 {
   header_t header;
   double range;
-  point3_t point;
+  vector3_t point;
 }

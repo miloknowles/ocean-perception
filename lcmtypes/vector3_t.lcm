@@ -1,6 +1,6 @@
 package vehicle;
 
-struct point3_t
+struct vector3_t
 {
   double x;
   double y;
