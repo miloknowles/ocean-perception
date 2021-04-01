@@ -1,0 +1,7 @@
+package vehicle;
+
+struct depth_measurement_t
+{
+  header_t header;
+  double depth;
+}

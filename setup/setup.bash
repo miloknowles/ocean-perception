@@ -7,23 +7,28 @@
 #       vehicle
 #   farmsim
 #-------------------------------------------------------------------------------
-BM_HOME=$HOME/bluemeadow
-CATKIN_WS=${BM_HOME}/catkin_ws
+THIS_SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+
+export BM_HOME=$HOME/bluemeadow
+export BM_CATKIN_WS=${BM_HOME}/catkin_ws
+export BM_FARMSIM_DIR=${BM_HOME}/farmsim
+export BM_VEHICLE_DIR=${BM_CATKIN_WS}/src/vehicle
 
 alias source_ros="source /opt/ros/melodic/setup.bash"
-alias source_bm="source ${BM_HOME}/catkin_ws/devel/setup.bash"
+alias source_bm="source ${BM_CATKIN_WS}/devel/setup.bash"
 
 # Terminal navigation.
 alias bm="cd ${BM_HOME}"
-alias ws="cd ${CATKIN_WS}/src/vehicle/"
-alias bin="cd ${CATKIN_WS}/devel/lib/vehicle/"
-alias sim="cd ${BM_HOME}/farmsim/"
+alias ws="cd ${BM_VEHICLE_DIR}"
+alias bin="cd ${BM_CATKIN_WS}/devel/lib/vehicle/"
+alias sim="cd ${BM_FARMSIM_DIR}"
 
 # Starts up the Unity launcher.
 alias unity='/usr/local/bin/UnityHub.AppImage'
 
 # Convenient command for rebuilding C# lcmtypes.
-alias lcm-gen-csharp="${CATKIN_WS}/src/vehicle/setup/lcm-gen-cs.sh"
+export BM_LCMTYPES_PACKAGE="vehicle"
+alias lcm-gen-cs="${BM_CATKIN_WS}/src/vehicle/setup/lcm-gen-cs.sh"
 
 # Tell lcm-spy where to find lcmtypes.jar so that it can decode our custom messages.
 CLASSPATH="${CATKIN_WS}/build/vehicle/lcmtypes/vehicle_lcmtypes.jar"
@@ -32,3 +37,5 @@ export CLASSPATH
 source_ros
 source_bm
 bm
+
+export BM_DID_SOURCE_SETUP=1
