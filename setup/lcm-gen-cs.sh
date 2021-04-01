@@ -16,4 +16,15 @@ echo "* Generating bindings..."
 lcm-gen --csharp *.lcm
 
 echo "* Installing to build folder: ${LCMTYPES_BUILD_DIR}"
-mv ${LCMTYPES_PACKAGE}/* ${LCMTYPES_BUILD_DIR}
+cp ${LCMTYPES_PACKAGE}/* ${LCMTYPES_BUILD_DIR}
+
+# lcm-gen-csharp ~/bluemeadow/farmsim/unity/Assets/Scripts/lcmtypes
+# https://stackoverflow.com/questions/6482377/check-existence-of-input-argument-in-a-bash-shell-script
+if [ $# -gt 0 ]
+  then
+    echo "* Installing to specified folder: $1"
+    cp ${LCMTYPES_PACKAGE}/* $1
+fi
+
+echo "* Cleaning up build files"
+rm -rf ${LCMTYPES_PACKAGE}
