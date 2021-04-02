@@ -39,6 +39,7 @@ struct VioDatasetPlayerParams : public ParamsBase
   bool use_range = true;
   bool pause = false;
   float playback_speed = 4.0;
+  float filter_publish_hz = 50.0;
 
  private:
   void LoadParams(const YamlParser& parser) override
@@ -98,12 +99,28 @@ void Run(const std::string& path_to_config)
     lcm.publish("vio/smoother/world_P_body", &msg);
   };
 
+  Timer filter_publish_timer(true);
   StateStamped::Callback filter_callback = [&](const StateStamped& ss)
   {
+    // Limit the publishing rate to avoid overwhelming consumers.
+    if (filter_publish_timer.Elapsed().seconds() < (1.0 / app_params.filter_publish_hz)) {
+      return;
+    }
+
     Matrix4d world_T_body = Matrix4d::Identity();
     world_T_body.block<3, 3>(0, 0) = ss.state.q.toRotationMatrix();
     world_T_body.block<3, 1>(0, 3) = ss.state.t;
     viz.UpdateBodyPose("imu0", world_T_body);
+
+    // Publish pose estimate to LCM.
+    vehicle::pose3_stamped_t msg;
+    msg.header.timestamp = ConvertToNanoseconds(ss.timestamp);
+    msg.header.seq = -1;
+    msg.header.frame_id = "imu0";
+    pack_pose3_t(ss.state.q, ss.state.t, msg.pose);
+
+    lcm.publish("vio/filter/world_P_body", &msg);
+    filter_publish_timer.Reset();
   };
 
   for (size_t i = 0; i < groundtruth_poses.size(); ++i) {
