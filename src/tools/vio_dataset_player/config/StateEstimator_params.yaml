@@ -1,0 +1,113 @@
+%YAML:1.0
+
+#===============================================================================
+max_size_raw_stereo_queue: 100
+max_size_smoother_vo_queue: 100
+max_size_smoother_imu_queue: 1000
+max_size_smoother_depth_queue: 1000
+max_size_smoother_range_queue: 100
+max_size_filter_vo_queue: 100
+max_size_filter_imu_queue: 1000
+max_size_filter_depth_queue: 1000
+max_size_filter_range_queue: 100
+
+reliable_vision_min_lmks: 30       # State estimator uses vision if this many features are detected.
+max_sec_btw_keyposes: 0.5          # Make a keypose at least this often. NOTE: Need to change this is dataset playback sped up.
+min_sec_btw_keyposes: 0.6           # Make a keypose at most this often.
+smoother_init_wait_vision_sec: 1.0  # Wait this long on init for stereo frontend results to arrive.
+
+show_feature_tracks: 1              # 0=OFF, 1=ON
+
+body_nG_tol: 0.01                  # If a measured acceleration vector is this close to 9.81 m/s^2, assume that the vehicle is at rest.
+
+#===============================================================================
+SmootherParams:
+  pose_prior_noise_model: [0.001, 0.001, 0.001, 0.01, 0.01, 0.01]    # rad, rad, rad, m, m, m
+  frontend_vo_noise_model: [0.1, 0.1, 0.1, 0.4, 0.4, 1.0]      # rad, rad, rad, m, m, m
+  lmk_mono_reproj_err_sigma: 3.0        # px in u and v
+  lmk_stereo_reproj_err_sigma: 10.0      # px in u and v
+  depth_sensor_noise_model_sigma: 0.5   # m
+  range_noise_model_sigma: 0.7          # m
+  beacon_noise_model_sigma: 0.01        # m
+  attitude_noise_model_sigma: 0.5       # rad
+  velocity_sigma: 0.3                   # m/s
+
+  extra_smoothing_iters: 3
+  use_smart_stereo_factors: 0           # 1=ON, 0=OFF
+
+  # Noise model for the zero-prior on IMU bias.
+  bias_prior_noise_model_sigma: 0.0001
+
+  # Noise model for the IMU bias between factors.
+  bias_drift_noise_model_sigma: 0.0001
+
+#===============================================================================
+StateEkfParams:
+  # Process noise standard deviations.
+  # NOTE(milo): Set these values really high to make the filter follow the smoother more closely!
+  sigma_Q_t: 0.7     # translation (m/sec)
+  sigma_Q_v: 0.5     # velocity (m/sec/sec)
+  sigma_Q_a: 0.01     # acceleration (m/sec^2/sec)
+  sigma_Q_uq: 0.2    # orientation (3D tangent space) (rad/sec)
+  sigma_Q_w:  0.01    # angular velocity (rad/sec/sec)
+
+  # Sensor noise standard deviations.
+  sigma_R_imu_a: 0.0003924
+  sigma_R_imu_w: 0.000205689024915
+
+  sigma_R_depth: 2.0 # m
+  sigma_R_range: 2.0  # m
+
+#===============================================================================
+StereoFrontend:
+  stereo_max_depth: 15.0 # m
+  stereo_min_depth: 1.0   # m
+
+  max_avg_reprojection_error: 0.5 # px
+
+  # Kill off a tracked landmark if it hasn't been observed in this many frames.
+  # If set to zero, this means that a track dies as soon as it isn't observed in the current frame.
+  lost_point_lifespan: 0
+
+  # Kill off a tracked landmark if its more than this many observations.
+  # This prevents a landmark from gathering an unbounded number of observations.
+  tracked_point_lifespan: 300
+
+  # Trigger a keyframe if there aren't many landmarks. The StereoFrontend will try to create new
+  # landmarks for tracking.
+  trigger_keyframe_min_lmks: 10
+
+  # Trigger a keyframe at least every k frames.
+  # NOTE(milo): More frequent keyframe triggering results in a much better pose estimate.
+  trigger_keyframe_k: 5
+
+  FeatureDetector:
+    max_features_per_frame: 200
+    subpixel_corners: 0 # bool
+    min_distance_btw_tracked_and_detected_features: 15
+    gftt_quality_level: 0.01
+    gftt_block_size: 5
+    gftt_use_harris_corner_detector: 0 # bool
+    gftt_k: 0.04
+
+  FeatureTracker:
+    klt_maxiters: 30
+    klt_epsilon: 0.001
+    klt_winsize: 21
+    klt_max_level: 4
+
+  StereoMatcher:
+    templ_cols: 31
+    templ_rows: 11
+    max_disp: 128
+    max_matching_cost: 0.15
+    bidirectional: 0 # bool
+    subpixel_refinement: 0 # bool
+
+#===============================================================================
+ImuManager:
+  allowed_misalignment_sec: 0.05
+  max_queue_size: 1000
+
+  integration_error_sigma: 0.00001
+  use_2nd_order_coriolis: 1
