@@ -1,0 +1,8 @@
+package vehicle;
+
+struct stereo_image_t
+{
+  header_t header;
+  image_t img_left;
+  image_t img_right;
+}
