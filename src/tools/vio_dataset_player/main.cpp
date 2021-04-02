@@ -1,5 +1,7 @@
 #include <glog/logging.h>
 
+#include <lcm/lcm-cpp.hpp>
+
 #include <utility>
 #include <unordered_map>
 
@@ -17,7 +19,9 @@
 #include "vio/state_estimator.hpp"
 #include "vio/visualization_2d.hpp"
 #include "vio/visualizer_3d.hpp"
+#include "lcm_util/util_pose3_t.hpp"
 
+#include "vehicle/pose3_stamped_t.hpp"
 
 using namespace bm;
 using namespace core;
@@ -54,6 +58,12 @@ struct VioDatasetPlayerParams : public ParamsBase
 
 void Run(const std::string& path_to_config)
 {
+  lcm::LCM lcm;
+  if (!lcm.good()) {
+    LOG(WARNING) << "Failed to initialize LCM" << std::endl;
+    return;
+  }
+
   VioDatasetPlayerParams app_params(Join(path_to_config, "VioDatasetPlayer_params.yaml"));
   dataset::EurocDataset dataset(app_params.folder);
 
@@ -77,6 +87,15 @@ void Run(const std::string& path_to_config)
     const Matrix3d world_R_body = result.world_P_body.rotation().matrix();
     const Matrix3d world_cov_pose = world_R_body * body_cov_pose * world_R_body.transpose();
     viz.AddCameraPose(cam_id, Image1b(), result.world_P_body.matrix(), true, std::make_shared<Matrix3d>(world_cov_pose));
+
+    // Publish pose estimate to LCM.
+    vehicle::pose3_stamped_t msg;
+    msg.header.timestamp = ConvertToNanoseconds(result.timestamp);
+    msg.header.seq = -1;
+    msg.header.frame_id = "imu0";
+    pack_pose3_t(result.world_P_body, msg.pose);
+
+    lcm.publish("vio/smoother/world_P_body", &msg);
   };
 
   StateStamped::Callback filter_callback = [&](const StateStamped& ss)

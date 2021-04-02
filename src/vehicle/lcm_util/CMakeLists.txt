@@ -2,7 +2,8 @@ SET(LIBRARY_NAME ${PROJECT_NAME}_lcm_util)
 
 SET(LIBRARY_SRC
   decode_image.cpp
-  decode_image.hpp)
+  decode_image.hpp
+  util_pose3_t.hpp)
 
 add_library(${LIBRARY_NAME} SHARED ${LIBRARY_SRC})
 set_target_properties(${LIBRARY_NAME} PROPERTIES LINKER_LANGUAGE CXX)
