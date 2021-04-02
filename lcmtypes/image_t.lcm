@@ -8,6 +8,7 @@ struct image_t
   int32_t height;
   int32_t channels;
   string format;
+  string encoding;
   int32_t size;
   byte data[size];
 }
