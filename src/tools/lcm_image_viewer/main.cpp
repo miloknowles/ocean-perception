@@ -7,41 +7,19 @@
 #include "vehicle/image_t.hpp"
 #include "vehicle/stereo_image_t.hpp"
 
+#include "lcm_util/decode_image.hpp"
+
 
 static const cv::Scalar kColorRed = cv::Scalar(0, 0, 255);
 static const double kTextScale = 0.8;
-
-// https://stackoverflow.com/questions/14727267/opencv-read-jpeg-image-from-buffer
-static void DecodeJPG(const vehicle::image_t& msg, cv::Mat& out)
-{
-  CHECK_EQ("jpg", msg.encoding) << "Expected JPG image" << std::endl;
-
-  const bool is_color = msg.format == "rgb8" || msg.format == "bgr8";
-  const bool is_gray = msg.format == "mono8";
-  CHECK(is_color || is_gray) << "Unrecognized image format specifier: " << msg.format << std::endl;
-
-  const int buf_size = msg.size;
-  if (buf_size <= 0) {
-    LOG(WARNING) << "Tried to decode an image_t with size <= 0. Probably a mistake in the publisher." << std::endl;
-  }
-
-  const uchar* buf_data = msg.data.data();
-  cv::Mat raw_data(1, buf_size, is_color ? CV_8UC3 : CV_8UC1, (void*)buf_data);
-  cv::imdecode(raw_data, is_color ? cv::IMREAD_COLOR : cv::IMREAD_GRAYSCALE, &out);
-
-  // Might need to flip channels to convert RBG -> BGR.
-  if (is_color && msg.format == "rgb8") {
-    cv::cvtColor(out, out, cv::COLOR_RGB2BGR);
-  }
-}
 
 
 class LcmImageViewer final {
  public:
   LcmImageViewer() {}
 
-  void HandleStereo(const lcm::ReceiveBuffer* rbuf,
-                     const std::string& chan,
+  void HandleStereo(const lcm::ReceiveBuffer*,
+                     const std::string&,
                      const vehicle::stereo_image_t* msg)
   {
     CHECK_EQ(msg->img_left.encoding, msg->img_right.encoding)
@@ -50,8 +28,8 @@ class LcmImageViewer final {
     const std::string encoding = msg->img_left.encoding;
 
     if (encoding == "jpg") {
-      DecodeJPG(msg->img_left, left_);
-      DecodeJPG(msg->img_right, right_);
+      bm::DecodeJPG(msg->img_left, left_);
+      bm::DecodeJPG(msg->img_right, right_);
 
       if (left_.rows == 0 || left_.cols == 0) {
         LOG(WARNING) << "Problem decoding left image" << std::endl;

@@ -1,4 +1,5 @@
 add_subdirectory(./core)
+add_subdirectory(./lcm_util)
 # add_subdirectory(./imaging)
 add_subdirectory(./dataset)
 # add_subdirectory(./tag_detector)
