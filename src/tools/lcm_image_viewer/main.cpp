@@ -19,8 +19,8 @@ class LcmImageViewer final {
   LcmImageViewer() {}
 
   void HandleStereo(const lcm::ReceiveBuffer*,
-                     const std::string&,
-                     const vehicle::stereo_image_t* msg)
+                    const std::string&,
+                    const vehicle::stereo_image_t* msg)
   {
     CHECK_EQ(msg->img_left.encoding, msg->img_right.encoding)
         << "Left and right images have different encodings!" << std::endl;
@@ -62,6 +62,10 @@ class LcmImageViewer final {
 
 int main(int argc, char const *argv[])
 {
+  // Set up glog.
+  google::InitGoogleLogging(argv[0]);
+  FLAGS_logtostderr = 1;
+
   LOG(INFO) << "Starting lcm_image_viewer" << std::endl;
 
   if (argc != 2) {
