@@ -7,3 +7,6 @@ build/
 
 # Visual Studio
 .vscode
+
+# Don't track FLaME in this repo yet.
+src/external/flame/

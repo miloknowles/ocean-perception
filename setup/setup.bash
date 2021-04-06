@@ -23,6 +23,10 @@ alias ws="cd ${BM_VEHICLE_DIR}"
 alias bin="cd ${BM_CATKIN_WS}/devel/lib/vehicle/"
 alias sim="cd ${BM_FARMSIM_DIR}"
 
+# Add bluemeadow/local to the PATH.
+export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${BM_HOME}/local/lib"
+export PATH="${PATH}:${BM_HOME}/local/include:${BM_HOME}/local/bin:${BM_HOME}/local/lib"
+
 # Starts up the Unity launcher.
 alias unity='/usr/local/bin/UnityHub.AppImage'
 
