@@ -9,6 +9,7 @@
 #include <opencv2/imgproc.hpp>
 
 #include "core/file_utils.hpp"
+#include "core/image_util.hpp"
 #include "core/params_base.hpp"
 #include "core/pinhole_camera.hpp"
 #include "core/stereo_camera.hpp"
@@ -68,6 +69,24 @@ static void DrawDelaunay(Image3b& img, cv::Subdiv2D& subdiv, cv::Scalar color)
 }
 
 
+// if (prev_grabcut_mask_.rows <= 0) {
+//   cv::Mat1b channels[3];
+//   cv::split(stereo_pair.left_image, channels);
+//   prev_grabcut_mask_ = cv::Mat1b(stereo_pair.left_image.size(), cv::GC_BGD);
+//   prev_grabcut_mask_.setTo(cv::GC_FGD, (channels[0] <= channels[1]) | (channels[0] <= channels[2]));
+//   // cv::imshow("blue", mask);
+// }
+
+// // cv::Mat1b mask(stereo_pair.left_image.size(), 0);
+// cv::Mat1d bgdModel(cv::Size(65, 1), 0);
+// cv::Mat1d fgdModel(cv::Size(65, 1), 0);
+// cv::grabCut(stereo_pair.left_image, prev_grabcut_mask_, cv::Rect(), bgdModel, fgdModel, 5, cv::GC_INIT_WITH_MASK);
+// cv::Mat1b fgmask = (prev_grabcut_mask_ == 2) | (prev_grabcut_mask_ == 0);
+// // Image3b masked = stereo_pair.left_image;
+// // cv::bitwise_and(masked, masked, fgmask);
+// cv::imshow("foreground", fgmask);
+
+
 class Mesher final {
  public:
   Mesher() :
@@ -77,28 +96,34 @@ class Mesher final {
   {
   }
 
-  void ProcessStereo(const StereoImage& stereo_pair)
+  // https://docs.opencv.org/master/d8/d83/tutorial_py_grabcut.html
+  void ProcessStereo(const StereoImage3b& stereo_pair)
   {
+    // Need grayscale pair for detection/matching.
+    const StereoImage1b stereo1b = ConvertToGray(stereo_pair);
+
+    // Detect features and do stereo matching.
     VecPoint2f left_keypoints;
-    detector_.Detect(stereo_pair.left_image, VecPoint2f(), left_keypoints);
-
+    detector_.Detect(stereo1b.left_image, VecPoint2f(), left_keypoints);
     const std::vector<double>& disps = matcher_.MatchRectified(
-      stereo_pair.left_image, stereo_pair.right_image, left_keypoints);
+        stereo1b.left_image,
+        stereo1b.right_image,
+        left_keypoints);
 
-    const Image3b debug = vio::DrawStereoMatches(stereo_pair.left_image, stereo_pair.right_image, left_keypoints, disps);
-    cv::imshow("stereo_matches", debug);
+    const Image3b debug = vio::DrawStereoMatches(stereo1b.left_image, stereo1b.right_image, left_keypoints, disps);
+    // cv::imshow("stereo_matches", debug);
+    // cv::waitKey(0);
 
-    cv::Rect rect(0, 0, stereo_pair.left_image.cols, stereo_pair.left_image.rows);
+    // Do Delaunay triangulation.
+    cv::Rect rect(0, 0, stereo1b.left_image.cols, stereo1b.left_image.rows);
     cv::Subdiv2D subdiv(rect);
-
     subdiv.insert(left_keypoints);
 
-    cv::Mat3b bgr;
-    cv::cvtColor(stereo_pair.left_image, bgr, cv::COLOR_GRAY2BGR);
-    DrawDelaunay(bgr, subdiv, cv::Scalar(0, 0, 255));
+    // Draw the output triangles.
+    cv::Mat3b viz = stereo_pair.left_image;
+    DrawDelaunay(viz, subdiv, cv::Scalar(0, 0, 255));
 
-    cv::imshow("delaunay", bgr);
-
+    cv::imshow("delaunay", viz);
     cv::waitKey(1);
   }
 
@@ -108,6 +133,8 @@ class Mesher final {
   vio::StereoMatcher matcher_;
 
   Image1b prev_left_image_;
+
+  cv::Mat1b prev_grabcut_mask_;
 };
 
 
@@ -139,7 +166,7 @@ int main(int argc, char const *argv[])
 
   Mesher mesher;
 
-  dataset::StereoCallback stereo_cb = [&](const StereoImage& stereo_pair)
+  dataset::StereoCallback3b stereo_cb = [&](const StereoImage3b& stereo_pair)
   {
     const double time = ConvertToSeconds(stereo_pair.timestamp);
 

@@ -33,7 +33,7 @@ StateEstimator::StateEstimator(const Params& params, const StereoCamera& stereo_
 }
 
 
-void StateEstimator::ReceiveStereo(const StereoImage& stereo_pair)
+void StateEstimator::ReceiveStereo(const StereoImage1b& stereo_pair)
 {
   raw_stereo_queue_.Push(stereo_pair);
 }

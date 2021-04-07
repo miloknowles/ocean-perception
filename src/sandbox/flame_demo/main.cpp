@@ -88,7 +88,7 @@ int main(int argc, char const *argv[])
 
   Matrix4d world_T_cam_prev = Matrix4d::Identity();
 
-  dataset::StereoCallback stereo_cb = [&](const StereoImage& stereo_pair)
+  dataset::StereoCallback1b stereo_cb = [&](const StereoImage1b& stereo_pair)
   {
     const double time = ConvertToSeconds(stereo_pair.timestamp);
 

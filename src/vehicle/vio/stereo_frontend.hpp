@@ -91,7 +91,7 @@ class StereoFrontend final {
 
   // Track known visual landmarks into the current stereo pair, possibly initializing new ones.
   // prev_T_cur_prior could be an initial guess on the odometry from IMU.
-  VoResult Track(const StereoImage& stereo_pair,
+  VoResult Track(const StereoImage1b& stereo_pair,
                  const Matrix4d& prev_T_cur_prior,
                  bool force_keyframe = false);
 
