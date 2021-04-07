@@ -114,6 +114,51 @@ class Mesher final {
     // cv::imshow("stereo_matches", debug);
     // cv::waitKey(0);
 
+    int canny_thresh = 60;
+    cv::Mat canny_output;
+    // cv::Mat blurred;
+    // cv::blur(stereo1b.left_image, blurred, cv::Size(7, 7));
+    cv::Mat dilated;
+
+    int dilation_size = 7;
+
+    cv::Mat element = cv::getStructuringElement( cv::MORPH_RECT,
+                       cv::Size( 2*dilation_size + 1, 2*dilation_size+1 ),
+                       cv::Point( dilation_size, dilation_size ) );
+
+    // cv::dilate(stereo1b.left_image, dilated, element);
+    cv::morphologyEx(stereo1b.left_image, dilated, cv::MORPH_GRADIENT, element, cv::Point(-1, -1), 1);
+
+    cv::imshow("dilate", dilated);
+
+    cv::Canny(dilated, canny_output, canny_thresh, 2.0*canny_thresh);
+
+    cv::imshow("canny", canny_output);
+
+    // Find contours in the left image.
+    std::vector<std::vector<cv::Point>> contours;
+    std::vector<cv::Vec4i> hierarchy;
+    cv::findContours(canny_output, contours, hierarchy, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+
+    const double percent_of_image = 0.01 * static_cast<double>(stereo1b.left_image.rows * stereo1b.left_image.cols);
+
+    cv::Mat drawing = cv::Mat::zeros( canny_output.size(), CV_8UC3 );
+    for ( size_t i = 0; i< contours.size(); i++ ) {
+      // If it has a parent, skip (next, prev, child, parent).
+      // if (hierarchy.at(i)[3] >= 0) {
+      //   continue;
+      // }
+
+      // const double area = cv::contourArea(contours.at(i));
+      // if (area < percent_of_image) {
+      //   continue;
+      // }
+
+      cv::Scalar color = cv::Scalar( 0, 0, 255 );
+      cv::drawContours( drawing, contours, (int)i, color, 2, cv::LINE_8, hierarchy, 0 );
+    }
+    imshow( "Contours", drawing );
+
     // Do Delaunay triangulation.
     cv::Rect rect(0, 0, stereo1b.left_image.cols, stereo1b.left_image.rows);
     cv::Subdiv2D subdiv(rect);
@@ -124,7 +169,7 @@ class Mesher final {
     DrawDelaunay(viz, subdiv, cv::Scalar(0, 0, 255));
 
     cv::imshow("delaunay", viz);
-    cv::waitKey(1);
+    cv::waitKey(0);
   }
 
  private:
@@ -133,8 +178,6 @@ class Mesher final {
   vio::StereoMatcher matcher_;
 
   Image1b prev_left_image_;
-
-  cv::Mat1b prev_grabcut_mask_;
 };
 
 
