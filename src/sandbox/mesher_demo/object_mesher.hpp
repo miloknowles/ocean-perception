@@ -2,6 +2,8 @@
 
 #include <unordered_map>
 
+#include <boost/graph/adjacency_list.hpp>
+
 #include <opencv2/imgproc.hpp>
 
 #include "core/macros.hpp"
@@ -15,6 +17,8 @@
 #include "vio/feature_tracker.hpp"
 #include "vio/stereo_matcher.hpp"
 
+#include "grid_lookup.hpp"
+
 namespace bm {
 namespace mesher {
 
@@ -22,6 +26,9 @@ using namespace core;
 
 typedef std::vector<vio::LandmarkObservation> VecLmkObs;
 typedef std::unordered_map<uid_t, VecLmkObs> FeatureTracks;
+
+
+typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::undirectedS> LmkGraph;
 
 
 // Returns a binary mask where "1" indicates foreground and "0" indicates background.
@@ -45,6 +52,9 @@ class ObjectMesher final {
     vio::FeatureDetector::Params detector_params;
     vio::FeatureTracker::Params tracker_params;
     vio::StereoMatcher::Params matcher_params;
+
+    int lmk_grid_rows = 12;
+    int lmk_grid_cols = 16;
 
     double stereo_max_depth = 30.0;
     double stereo_min_depth = 0.5;
@@ -82,7 +92,8 @@ class ObjectMesher final {
         stereo_rig_(stereo_rig),
         detector_(vio::FeatureDetector::Params()),
         matcher_(vio::StereoMatcher::Params()),
-        tracker_(vio::FeatureTracker::Params()) {}
+        tracker_(vio::FeatureTracker::Params()),
+        lmk_grid_(params_.lmk_grid_rows, params_.lmk_grid_cols) {}
 
   void TrackAndTriangulate(const StereoImage1b& stereo_pair, bool force_keyframe);
   void ProcessStereo(const StereoImage1b& stereo_pair);
@@ -117,6 +128,8 @@ class ObjectMesher final {
   uid_t prev_camera_id_ = 0;
 
   FeatureTracks live_tracks_;
+
+  GridLookup<uid_t> lmk_grid_;
 };
 
 

@@ -1,11 +1,14 @@
 #include <glog/logging.h>
 
+#include <boost/graph/connected_components.hpp>
+
 #include <opencv2/imgproc.hpp>
 
 #include "object_mesher.hpp"
 #include "core/image_util.hpp"
 #include "core/math_util.hpp"
 #include "vio/visualization_2d.hpp"
+#include "neighbor_grid.hpp"
 
 namespace bm {
 namespace mesher {
@@ -251,6 +254,51 @@ void ObjectMesher::ProcessStereo(const StereoImage1b& stereo_pair)
   EstimateForegroundMask(iml, foreground_mask, 12, 25.0, 4);
   cv::imshow("foreground_mask", foreground_mask);
 
+  // Build a keypoint graph.
+  std::vector<uid_t> lmk_ids;
+  std::vector<cv::Point2f> lmk_points;
+  std::vector<double> lmk_disps;
+
+  for (auto it = live_tracks_.begin(); it != live_tracks_.end(); ++it) {
+    const uid_t lmk_id = it->first;
+    const vio::LandmarkObservation& lmk_obs = it->second.back();
+
+    // Skip observations from previous frames.
+    if (lmk_obs.camera_id != stereo_pair.camera_id) {
+      continue;
+    }
+    lmk_points.emplace_back(lmk_obs.pixel_location);
+    lmk_disps.emplace_back(lmk_obs.disparity);
+    lmk_ids.emplace_back(lmk_id);
+  }
+
+  // Map all of the features into the coarse grid so that we can find NNs.
+  lmk_grid_.Clear();
+  const std::vector<Vector2i> lmk_cells = MapToGridCells(
+      lmk_points, iml.rows, iml.cols, lmk_grid_.Rows(), lmk_grid_.Cols());
+
+  PopulateGrid(lmk_cells, lmk_grid_);
+
+  LmkGraph graph;
+
+  for (size_t i = 0; i < lmk_ids.size(); ++i) {
+    const uid_t lmk_id = lmk_ids.at(i);
+    const Vector2i lmk_cell = lmk_cells.at(i);
+    const core::Box2i roi(lmk_cell - Vector2i(1, 1), lmk_cell + Vector2i(1, 1));
+    const std::list<uid_t>& roi_indices = lmk_grid_.GetRoi(roi);
+
+    // Add a graph edge to all other landmarks nearby.
+    for (uid_t j : roi_indices) {
+      if (i == j) { continue; }
+      boost::add_edge(i, j, graph);
+    }
+  }
+
+  if (boost::num_vertices(graph) > 0) {
+    std::vector<int> component(boost::num_vertices(graph));
+    const int num_comp = boost::connected_components(graph, &component[0]);
+    LOG(INFO) << "Found " << std::to_string(num_comp) << " connected components in graph" << std::endl;
+  }
   // Do Delaunay triangulation.
   // cv::Rect rect(0, 0, iml.cols, iml.rows);
   // cv::Subdiv2D subdiv(rect);

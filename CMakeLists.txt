@@ -31,7 +31,7 @@ find_package(catkin REQUIRED COMPONENTS
 
 # Find non-catkin pacakges.
 find_package(OpenCV 3.2.0 EXACT REQUIRED)
-find_package(Boost        REQUIRED COMPONENTS serialization system filesystem thread regex timer)
+find_package(Boost        REQUIRED COMPONENTS serialization system filesystem thread regex timer graph)
 find_package(Eigen3 3.3.0 REQUIRED)
 find_package(yaml-cpp     REQUIRED CONFIG PATHS ${YAML_PATHS}) # YAML library
 find_package(Glog 0.3.5 REQUIRED)
