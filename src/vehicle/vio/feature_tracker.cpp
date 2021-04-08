@@ -74,6 +74,14 @@ void FeatureTracker::Track(const Image1b& ref_img,
       }
     }
   }
+
+  // Invalidate any points that have tracked out of the image.
+  for (size_t i = 0; i < px_cur.size(); ++i) {
+    const cv::Point2f& pt = px_cur.at(i);
+    if (pt.x <= 0 || pt.x >= cur_img.cols || pt.y <= 0 || pt.y >= cur_img.rows) {
+      status.at(i) = 0;
+    }
+  }
 }
 
 }

@@ -295,20 +295,40 @@ void ObjectMesher::ProcessStereo(const StereoImage1b& stereo_pair)
   }
 
   if (boost::num_vertices(graph) > 0) {
-    std::vector<int> component(boost::num_vertices(graph));
-    const int num_comp = boost::connected_components(graph, &component[0]);
+    std::vector<int> assignments(boost::num_vertices(graph));
+    const int num_comp = boost::connected_components(graph, &assignments[0]);
     LOG(INFO) << "Found " << std::to_string(num_comp) << " connected components in graph" << std::endl;
+
+    std::vector<int> nmembers(num_comp, 0);
+    std::vector<cv::Subdiv2D> subdivs(num_comp, { cv::Rect(0, 0, iml.cols, iml.rows) });
+
+    for (size_t i = 0; i < assignments.size(); ++i) {
+      const int cmp_id = assignments.at(i);
+      LOG(INFO) << lmk_points.at(i) << std::endl;
+      subdivs.at(cmp_id).insert(lmk_points.at(i));
+      ++nmembers.at(cmp_id);
+    }
+
+    // Draw the output triangles.
+    cv::Mat3b viz_triangles;
+    cv::cvtColor(iml, viz_triangles, cv::COLOR_GRAY2BGR);
+
+    for (size_t k = 0; k < subdivs.size(); ++k) {
+      if (nmembers.at(k) < 3) {
+        continue;
+      }
+      DrawDelaunay(viz_triangles, subdivs.at(k), cv::Scalar(0, 0, 255));
+    }
+
+    cv::imshow("delaunay", viz_triangles);
   }
+
+  cv::waitKey(1);
+
   // Do Delaunay triangulation.
   // cv::Rect rect(0, 0, iml.cols, iml.rows);
   // cv::Subdiv2D subdiv(rect);
   // subdiv.insert(left_keypoints);
-
-  // // Draw the output triangles.
-  // cv::Mat3b viz = stereo_pair.left_image;
-  // DrawDelaunay(viz, subdiv, cv::Scalar(0, 0, 255));
-
-  // cv::imshow("delaunay", viz);
   cv::waitKey(1);
 
   prev_left_image_ = iml;
