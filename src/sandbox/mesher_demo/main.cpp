@@ -14,16 +14,19 @@
 #include "core/pinhole_camera.hpp"
 #include "core/stereo_camera.hpp"
 #include "dataset/euroc_dataset.hpp"
+#include "dataset/himb_dataset.hpp"
+#include "dataset/caddy_dataset.hpp"
 #include "vio/data_manager.hpp"
 #include "vio/feature_detector.hpp"
 #include "vio/stereo_matcher.hpp"
 #include "vio/feature_tracker.hpp"
 #include "vio/visualization_2d.hpp"
+#include "object_mesher.hpp"
 
 
 using namespace bm;
 using namespace core;
-
+using namespace mesher;
 
 // Allows re-running without recompiling.
 struct MesherDemoParams : public ParamsBase
@@ -45,139 +48,14 @@ struct MesherDemoParams : public ParamsBase
 };
 
 
-static void DrawDelaunay(Image3b& img, cv::Subdiv2D& subdiv, cv::Scalar color)
-{
-  std::vector<cv::Vec6f> triangle_list;
-  subdiv.getTriangleList(triangle_list);
-  std::vector<cv::Point> pt(3);
-
-  const cv::Size size = img.size();
-  cv::Rect rect(0,0, size.width, size.height);
-
-  for (size_t i = 0; i < triangle_list.size(); ++i) {
-    const cv::Vec6f& t = triangle_list.at(i);
-    pt[0] = cv::Point(t[0], t[1]);
-    pt[1] = cv::Point(t[2], t[3]);
-    pt[2] = cv::Point(t[4], t[5]);
-
-    if (rect.contains(pt[0]) && rect.contains(pt[1]) && rect.contains(pt[2])) {
-      cv::line(img, pt[0], pt[1], color, 1, CV_AA, 0);
-	    cv::line(img, pt[1], pt[2], color, 1, CV_AA, 0);
-	    cv::line(img, pt[2], pt[0], color, 1, CV_AA, 0);
-    }
-  }
-}
-
-
-// if (prev_grabcut_mask_.rows <= 0) {
-//   cv::Mat1b channels[3];
-//   cv::split(stereo_pair.left_image, channels);
-//   prev_grabcut_mask_ = cv::Mat1b(stereo_pair.left_image.size(), cv::GC_BGD);
-//   prev_grabcut_mask_.setTo(cv::GC_FGD, (channels[0] <= channels[1]) | (channels[0] <= channels[2]));
-//   // cv::imshow("blue", mask);
-// }
-
-// // cv::Mat1b mask(stereo_pair.left_image.size(), 0);
-// cv::Mat1d bgdModel(cv::Size(65, 1), 0);
-// cv::Mat1d fgdModel(cv::Size(65, 1), 0);
-// cv::grabCut(stereo_pair.left_image, prev_grabcut_mask_, cv::Rect(), bgdModel, fgdModel, 5, cv::GC_INIT_WITH_MASK);
-// cv::Mat1b fgmask = (prev_grabcut_mask_ == 2) | (prev_grabcut_mask_ == 0);
-// // Image3b masked = stereo_pair.left_image;
-// // cv::bitwise_and(masked, masked, fgmask);
-// cv::imshow("foreground", fgmask);
-
-
-class Mesher final {
+class CustomSubdiv2D : public cv::Subdiv2D {
  public:
-  Mesher() :
-      detector_(vio::FeatureDetector::Params()),
-      matcher_(vio::StereoMatcher::Params()),
-      tracker_(vio::FeatureTracker::Params())
+  CustomSubdiv2D(const cv::Rect& rect) : cv::Subdiv2D(rect) {}
+
+  void DeleteEdge(int edge)
   {
+    deleteEdge(edge);
   }
-
-  // https://docs.opencv.org/master/d8/d83/tutorial_py_grabcut.html
-  void ProcessStereo(const StereoImage3b& stereo_pair)
-  {
-    // Need grayscale pair for detection/matching.
-    const StereoImage1b stereo1b = ConvertToGray(stereo_pair);
-
-    // Detect features and do stereo matching.
-    VecPoint2f left_keypoints;
-    detector_.Detect(stereo1b.left_image, VecPoint2f(), left_keypoints);
-    const std::vector<double>& disps = matcher_.MatchRectified(
-        stereo1b.left_image,
-        stereo1b.right_image,
-        left_keypoints);
-
-    const Image3b debug = vio::DrawStereoMatches(stereo1b.left_image, stereo1b.right_image, left_keypoints, disps);
-    // cv::imshow("stereo_matches", debug);
-    // cv::waitKey(0);
-
-    int canny_thresh = 60;
-    cv::Mat canny_output;
-    // cv::Mat blurred;
-    // cv::blur(stereo1b.left_image, blurred, cv::Size(7, 7));
-    cv::Mat dilated;
-
-    int dilation_size = 7;
-
-    cv::Mat element = cv::getStructuringElement( cv::MORPH_RECT,
-                       cv::Size( 2*dilation_size + 1, 2*dilation_size+1 ),
-                       cv::Point( dilation_size, dilation_size ) );
-
-    // cv::dilate(stereo1b.left_image, dilated, element);
-    cv::morphologyEx(stereo1b.left_image, dilated, cv::MORPH_GRADIENT, element, cv::Point(-1, -1), 1);
-
-    cv::imshow("dilate", dilated);
-
-    cv::Canny(dilated, canny_output, canny_thresh, 2.0*canny_thresh);
-
-    cv::imshow("canny", canny_output);
-
-    // Find contours in the left image.
-    std::vector<std::vector<cv::Point>> contours;
-    std::vector<cv::Vec4i> hierarchy;
-    cv::findContours(canny_output, contours, hierarchy, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
-
-    const double percent_of_image = 0.01 * static_cast<double>(stereo1b.left_image.rows * stereo1b.left_image.cols);
-
-    cv::Mat drawing = cv::Mat::zeros( canny_output.size(), CV_8UC3 );
-    for ( size_t i = 0; i< contours.size(); i++ ) {
-      // If it has a parent, skip (next, prev, child, parent).
-      // if (hierarchy.at(i)[3] >= 0) {
-      //   continue;
-      // }
-
-      // const double area = cv::contourArea(contours.at(i));
-      // if (area < percent_of_image) {
-      //   continue;
-      // }
-
-      cv::Scalar color = cv::Scalar( 0, 0, 255 );
-      cv::drawContours( drawing, contours, (int)i, color, 2, cv::LINE_8, hierarchy, 0 );
-    }
-    imshow( "Contours", drawing );
-
-    // Do Delaunay triangulation.
-    cv::Rect rect(0, 0, stereo1b.left_image.cols, stereo1b.left_image.rows);
-    cv::Subdiv2D subdiv(rect);
-    subdiv.insert(left_keypoints);
-
-    // Draw the output triangles.
-    cv::Mat3b viz = stereo_pair.left_image;
-    DrawDelaunay(viz, subdiv, cv::Scalar(0, 0, 255));
-
-    cv::imshow("delaunay", viz);
-    cv::waitKey(0);
-  }
-
- private:
-  vio::FeatureDetector detector_;
-  vio::FeatureTracker tracker_;
-  vio::StereoMatcher matcher_;
-
-  Image1b prev_left_image_;
 };
 
 
@@ -186,15 +64,17 @@ int main(int argc, char const *argv[])
   MesherDemoParams params(Join("/home/milo/bluemeadow/catkin_ws/src/vehicle/src/sandbox/mesher_demo/config", "MesherDemo_params.yaml"),
                           Join("/home/milo/bluemeadow/catkin_ws/src/vehicle/src/sandbox/mesher_demo/config", "shared_params.yaml"));
   dataset::EurocDataset dataset(params.folder);
+  // dataset::CaddyDataset dataset(params.folder, "genova-A");
+  // dataset::HimbDataset dataset(params.folder, "train");
 
   // Make an (ordered) queue of all groundtruth poses.
-  const std::vector<dataset::GroundtruthItem>& groundtruth_poses = dataset.GroundtruthPoses();
-  CHECK(!groundtruth_poses.empty()) << "No groundtruth poses found" << std::endl;
+  // const std::vector<dataset::GroundtruthItem>& groundtruth_poses = dataset.GroundtruthPoses();
+  // CHECK(!groundtruth_poses.empty()) << "No groundtruth poses found" << std::endl;
 
-  vio::DataManager<dataset::GroundtruthItem> gt_manager(groundtruth_poses.size(), true);
-  for (const dataset::GroundtruthItem& gt : groundtruth_poses) {
-    gt_manager.Push(gt);
-  }
+  // vio::DataManager<dataset::GroundtruthItem> gt_manager(groundtruth_poses.size(), true);
+  // for (const dataset::GroundtruthItem& gt : groundtruth_poses) {
+  //   gt_manager.Push(gt);
+  // }
 
   const PinholeCamera camera_model(415.876509, 415.876509, 375.5, 239.5, 480, 752);
   const StereoCamera stereo_rig(camera_model, 0.2);
@@ -207,25 +87,24 @@ int main(int argc, char const *argv[])
 
   Matrix4d world_T_cam_prev = Matrix4d::Identity();
 
-  Mesher mesher;
+  ObjectMesher::Params mparams(
+      Join("/home/milo/bluemeadow/catkin_ws/src/vehicle/src/sandbox/mesher_demo/config", "ObjectMesher_params.yaml"),
+      Join("/home/milo/bluemeadow/catkin_ws/src/vehicle/src/sandbox/mesher_demo/config", "shared_params.yaml"));
+  ObjectMesher mesher(mparams, stereo_rig);
 
-  dataset::StereoCallback3b stereo_cb = [&](const StereoImage3b& stereo_pair)
+  dataset::StereoCallback1b stereo_cb = [&](const StereoImage1b& stereo_pair)
   {
-    const double time = ConvertToSeconds(stereo_pair.timestamp);
+    // const double time = ConvertToSeconds(stereo_pair.timestamp);
 
     // Get the groundtruth pose nearest to this image.
-    gt_manager.DiscardBefore(time);
-    const dataset::GroundtruthItem gt = gt_manager.Pop();
+    // gt_manager.DiscardBefore(time);
+    // const dataset::GroundtruthItem gt = gt_manager.Pop();
+    // CHECK(std::fabs(ConvertToSeconds(gt.timestamp) - time) < 0.05) << "Timestamps not close enough" << std::endl;
 
-    CHECK(std::fabs(ConvertToSeconds(gt.timestamp) - time) < 0.05) << "Timestamps not close enough" << std::endl;
-
-    const Matrix4d world_T_cam = gt.world_T_body * params.body_T_cam;
-    const Vector3d translation = world_T_cam.block<3, 1>(0, 3) - world_T_cam_prev.block<3, 1>(0, 3);
-    const Image1b& img_gray = stereo_pair.left_image;
-    const uint32_t img_id = stereo_pair.camera_id;
-
-    Quaternionf q(world_T_cam.block<3, 3>(0, 0).cast<float>());
-    Vector3f t(world_T_cam.block<3, 1>(0, 3).cast<float>());
+    // const Matrix4d world_T_cam = gt.world_T_body * params.body_T_cam;
+    // const Vector3d translation = world_T_cam.block<3, 1>(0, 3) - world_T_cam_prev.block<3, 1>(0, 3);
+    // Quaternionf q(world_T_cam.block<3, 3>(0, 0).cast<float>());
+    // Vector3f t(world_T_cam.block<3, 1>(0, 3).cast<float>());
 
     mesher.ProcessStereo(stereo_pair);
   };

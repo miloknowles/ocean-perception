@@ -1,6 +1,6 @@
 add_executable(mesher_demo
-  mesher.cpp
-  mesher.hpp
+  object_mesher.cpp
+  object_mesher.hpp
   main.cpp)
 
 target_link_libraries(mesher_demo
