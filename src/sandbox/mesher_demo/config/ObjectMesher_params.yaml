@@ -20,7 +20,7 @@ FeatureDetector:
   max_features_per_frame: 100
   subpixel_corners: 0 # bool
   min_distance_btw_tracked_and_detected_features: 5
-  gftt_quality_level: 0.01
+  gftt_quality_level: 0.03
   gftt_block_size: 5
   gftt_use_harris_corner_detector: 0 # bool
   gftt_k: 0.04

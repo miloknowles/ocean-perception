@@ -57,10 +57,12 @@ class ObjectMesher final {
     int lmk_grid_cols = 20;
 
     float edge_min_foreground_percent = 0.9;
-    double edge_max_depth_change = 2.0;
+    double edge_max_depth_change = 1.0;
 
     double stereo_max_depth = 30.0;
     double stereo_min_depth = 0.5;
+
+    double klt_fwd_bwd_tol = 2.0;
 
     // Kill off a tracked landmark if it hasn't been observed in this many frames.
     // If set to zero, this means that a track dies as soon as it isn't observed in the current frame.

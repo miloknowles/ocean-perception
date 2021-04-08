@@ -47,7 +47,7 @@ void FeatureTracker::Track(const Image1b& ref_img,
                            params_.klt_max_level,
                            kTerminationCriteria,
                            cv::OPTFLOW_USE_INITIAL_FLOW & cv::OPTFLOW_LK_GET_MIN_EIGENVALS,
-                           0.001);
+                           0.0001);
 
   if (bidirectional) {
     VecPoint2f px_ref_bkw;
@@ -61,7 +61,7 @@ void FeatureTracker::Track(const Image1b& ref_img,
                             params_.klt_max_level,
                             kTerminationCriteria,
                             cv::OPTFLOW_USE_INITIAL_FLOW & cv::OPTFLOW_LK_GET_MIN_EIGENVALS,
-                            0.001);
+                            0.0001);
 
     // Invalidate any points that could be tracked in reverse.
     for (size_t i = 0; i < px_ref.size(); ++i) {

@@ -144,7 +144,7 @@ void ObjectMesher::TrackAndTriangulate(const StereoImage1b& stereo_pair, bool fo
                    status,
                    error,
                    true,
-                   5.0);
+                   params_.klt_fwd_bwd_tol);
   }
 
   CHECK_EQ(live_lmk_pts_prev.size(), live_lmk_pts_cur.size());
