@@ -53,8 +53,10 @@ class ObjectMesher final {
     vio::FeatureTracker::Params tracker_params;
     vio::StereoMatcher::Params matcher_params;
 
-    int lmk_grid_rows = 12;
-    int lmk_grid_cols = 16;
+    int lmk_grid_rows = 16;
+    int lmk_grid_cols = 20;
+
+    float edge_min_foreground_percent = 0.9;
 
     double stereo_max_depth = 30.0;
     double stereo_min_depth = 0.5;

@@ -88,6 +88,24 @@ static bool FindObservationFromCameraId(const VecLmkObs& lmk_obs,
 }
 
 
+static void CountEdgePixels(const cv::Point2f& a,
+                            const cv::Point2f& b,
+                            const Image1b& mask,
+                            int& edge_sum,
+                            int& edge_length)
+{
+  edge_sum = 0;
+
+  cv::LineIterator it(mask, a, b, 8, false);
+  edge_length = it.count;
+
+  for (int i = 0; i < it.count; ++i, ++it) {
+    const uint8_t v = mask.at<uint8_t>(it.pos());
+    edge_sum += v > 0 ? 1 : 0;
+  }
+}
+
+
 void ObjectMesher::TrackAndTriangulate(const StereoImage1b& stereo_pair, bool force_keyframe)
 {
   std::vector<uid_t> live_lmk_ids;
@@ -290,14 +308,25 @@ void ObjectMesher::ProcessStereo(const StereoImage1b& stereo_pair)
     // Add a graph edge to all other landmarks nearby.
     for (uid_t j : roi_indices) {
       if (i == j) { continue; }
-      boost::add_edge(i, j, graph);
+
+      // Only add an edge to the grab if it has texture (an object) underneath it.
+      int edge_length = 0;
+      int edge_sum = 0;
+      CountEdgePixels(lmk_points.at(i), lmk_points.at(j), foreground_mask, edge_sum, edge_length);
+
+      const float fgd_percent = static_cast<float>(edge_sum) / static_cast<float>(edge_length);
+      // LOG(INFO) << fgd_percent << std::endl;
+
+      if (fgd_percent > params_.edge_min_foreground_percent) {
+        boost::add_edge(i, j, graph);
+      }
     }
   }
 
   if (boost::num_vertices(graph) > 0) {
     std::vector<int> assignments(boost::num_vertices(graph));
     const int num_comp = boost::connected_components(graph, &assignments[0]);
-    LOG(INFO) << "Found " << std::to_string(num_comp) << " connected components in graph" << std::endl;
+    // LOG(INFO) << "Found " << std::to_string(num_comp) << " connected components in graph" << std::endl;
 
     std::vector<int> nmembers(num_comp, 0);
     std::vector<cv::Subdiv2D> subdivs(num_comp, { cv::Rect(0, 0, iml.cols, iml.rows) });
