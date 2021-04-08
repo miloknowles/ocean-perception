@@ -309,17 +309,23 @@ void ObjectMesher::ProcessStereo(const StereoImage1b& stereo_pair)
     for (uid_t j : roi_indices) {
       if (i == j) { continue; }
 
+      // Only add edge if the vertices are within some 3D distance from each other.
+      const double depth_i = stereo_rig_.DispToDepth(lmk_disps.at(i));
+      const double depth_j = stereo_rig_.DispToDepth(lmk_disps.at(j));
+      if (std::fabs(depth_i - depth_j) > params_.edge_max_depth_change) {
+        continue;
+      }
+
       // Only add an edge to the grab if it has texture (an object) underneath it.
       int edge_length = 0;
       int edge_sum = 0;
       CountEdgePixels(lmk_points.at(i), lmk_points.at(j), foreground_mask, edge_sum, edge_length);
-
       const float fgd_percent = static_cast<float>(edge_sum) / static_cast<float>(edge_length);
-      // LOG(INFO) << fgd_percent << std::endl;
-
-      if (fgd_percent > params_.edge_min_foreground_percent) {
-        boost::add_edge(i, j, graph);
+      if (fgd_percent < params_.edge_min_foreground_percent) {
+        continue;
       }
+
+      boost::add_edge(i, j, graph);
     }
   }
 

@@ -57,6 +57,7 @@ class ObjectMesher final {
     int lmk_grid_cols = 20;
 
     float edge_min_foreground_percent = 0.9;
+    double edge_max_depth_change = 2.0;
 
     double stereo_max_depth = 30.0;
     double stereo_min_depth = 0.5;
