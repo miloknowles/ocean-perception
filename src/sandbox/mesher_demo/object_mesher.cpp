@@ -304,7 +304,6 @@ void ObjectMesher::ProcessStereo(const StereoImage1b& stereo_pair)
 
     for (size_t i = 0; i < assignments.size(); ++i) {
       const int cmp_id = assignments.at(i);
-      LOG(INFO) << lmk_points.at(i) << std::endl;
       subdivs.at(cmp_id).insert(lmk_points.at(i));
       ++nmembers.at(cmp_id);
     }
@@ -314,6 +313,7 @@ void ObjectMesher::ProcessStereo(const StereoImage1b& stereo_pair)
     cv::cvtColor(iml, viz_triangles, cv::COLOR_GRAY2BGR);
 
     for (size_t k = 0; k < subdivs.size(); ++k) {
+      // Ignore meshes without at least one triangle.
       if (nmembers.at(k) < 3) {
         continue;
       }
@@ -323,12 +323,6 @@ void ObjectMesher::ProcessStereo(const StereoImage1b& stereo_pair)
     cv::imshow("delaunay", viz_triangles);
   }
 
-  cv::waitKey(1);
-
-  // Do Delaunay triangulation.
-  // cv::Rect rect(0, 0, iml.cols, iml.rows);
-  // cv::Subdiv2D subdiv(rect);
-  // subdiv.insert(left_keypoints);
   cv::waitKey(1);
 
   prev_left_image_ = iml;
