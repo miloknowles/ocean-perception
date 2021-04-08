@@ -14,7 +14,7 @@ trigger_keyframe_min_lmks: 10
 
 # Trigger a keyframe at least every k frames.
 # NOTE(milo): More frequent keyframe triggering results in a much better pose estimate.
-trigger_keyframe_k: 5
+trigger_keyframe_k: 10
 
 FeatureDetector:
   max_features_per_frame: 100

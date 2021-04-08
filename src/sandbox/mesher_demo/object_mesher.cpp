@@ -281,8 +281,10 @@ void ObjectMesher::ProcessStereo(const StereoImage1b& stereo_pair)
     const uid_t lmk_id = it->first;
     const vio::LandmarkObservation& lmk_obs = it->second.back();
 
+    const size_t num_obs = it->second.size();
+
     // Skip observations from previous frames.
-    if (lmk_obs.camera_id != stereo_pair.camera_id) {
+    if (lmk_obs.camera_id != stereo_pair.camera_id || num_obs < 2) {
       continue;
     }
     lmk_points.emplace_back(lmk_obs.pixel_location);
@@ -332,7 +334,6 @@ void ObjectMesher::ProcessStereo(const StereoImage1b& stereo_pair)
   if (boost::num_vertices(graph) > 0) {
     std::vector<int> assignments(boost::num_vertices(graph));
     const int num_comp = boost::connected_components(graph, &assignments[0]);
-    // LOG(INFO) << "Found " << std::to_string(num_comp) << " connected components in graph" << std::endl;
 
     std::vector<int> nmembers(num_comp, 0);
     std::vector<cv::Subdiv2D> subdivs(num_comp, { cv::Rect(0, 0, iml.cols, iml.rows) });
