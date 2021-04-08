@@ -87,6 +87,8 @@ class ObjectMesher final {
       parser.GetYamlParam("lost_point_lifespan", &lost_point_lifespan);
       parser.GetYamlParam("trigger_keyframe_min_lmks", &trigger_keyframe_min_lmks);
       parser.GetYamlParam("trigger_keyframe_k", &trigger_keyframe_k);
+      parser.GetYamlParam("edge_min_foreground_percent", &edge_min_foreground_percent);
+      parser.GetYamlParam("edge_max_depth_change", &edge_max_depth_change);
     }
   };
 
@@ -130,6 +132,7 @@ class ObjectMesher final {
   vio::StereoMatcher matcher_;
 
   Image1b prev_left_image_;
+  Image1b prev_prev_left_image_;
   uid_t prev_camera_id_ = 0;
 
   FeatureTracks live_tracks_;
