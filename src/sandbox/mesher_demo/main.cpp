@@ -30,6 +30,7 @@ struct MesherDemoParams : public ParamsBase
   MACRO_PARAMS_STRUCT_CONSTRUCTORS(MesherDemoParams);
   std::string folder;
   float playback_speed = 4.0;
+  bool pause = false;
   Matrix4d body_T_cam = Matrix4d::Identity();
 
  private:
@@ -40,6 +41,7 @@ struct MesherDemoParams : public ParamsBase
     folder = std::string(cvfolder.c_str());
     parser.GetYamlParam("playback_speed", &playback_speed);
     YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/cam0/body_T_cam"), body_T_cam);
+    parser.GetYamlParam("pause", &pause);
   }
 };
 
@@ -87,6 +89,14 @@ int main(int argc, char const *argv[])
   };
 
   dataset.RegisterStereoCallback(stereo_cb);
+
+  if (params.pause) {
+    dataset.StepUntil(dataset::DataSource::STEREO);
+    cv::imshow("PAUSE", Image1b(cv::Size(200, 200)));
+    LOG(INFO) << "Paused. Press a key on the PAUSE window to continue." << std::endl;
+    cv::waitKey(0);
+  }
+
   dataset.Playback(params.playback_speed, false);
 
   LOG(INFO) << "DONE" << std::endl;

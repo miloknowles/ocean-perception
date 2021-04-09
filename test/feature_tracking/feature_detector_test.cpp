@@ -14,7 +14,7 @@ using namespace core;
 using namespace ft;
 
 
-TEST(VioTest, TestDetectSingle)
+TEST(DetectorTest, TestDetectSingle)
 {
   const Image1b iml = cv::imread("./resources/caddy_32_left.jpg", cv::IMREAD_GRAYSCALE);
   const Image1b imr = cv::imread("./resources/caddy_32_right.jpg", cv::IMREAD_GRAYSCALE);
@@ -50,7 +50,7 @@ TEST(VioTest, TestDetectSingle)
 }
 
 
-TEST(VioTest, TestDetectSequence)
+TEST(DetectorTest, TestDetectSequence)
 {
   FeatureDetector::Params params;
   FeatureDetector detector(params);

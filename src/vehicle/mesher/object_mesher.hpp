@@ -27,6 +27,42 @@ using namespace ft;
 typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::undirectedS> LmkGraph;
 
 
+template <typename Data>
+class CoordinateMap final {
+ public:
+  typedef std::unordered_map<int, std::unordered_map<int, Data>> MapType;
+
+  void Insert(int x, int y, const Data& data)
+  {
+    if (map_.count(x) == 0) {
+      map_.emplace(x, std::unordered_map<int, Data>());
+    }
+    map_.at(x).emplace(y, data);
+  }
+
+  void Insert(const Vector2i coord, const Data& data)
+  {
+    Insert(coord.x, coord.y, data);
+  }
+
+  Data At(int x, int y) const
+  {
+    return map_.at(x).at(y);
+  }
+
+  Data At(const Vector2i& coord) const
+  {
+    return At(coord.x, coord.y);
+  }
+
+ private:
+  MapType map_;
+};
+
+
+typedef std::unordered_map<int, CoordinateMap<int>> MultiCoordinateMap;
+
+
 // Returns a binary mask where "1" indicates foreground and "0" indicates background.
 void EstimateForegroundMask(const Image1b& gray,
                             Image1b& mask,

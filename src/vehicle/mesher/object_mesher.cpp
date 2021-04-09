@@ -4,8 +4,10 @@
 
 #include <opencv2/imgproc.hpp>
 
+#include "core/timer.hpp"
 #include "core/image_util.hpp"
 #include "core/math_util.hpp"
+#include "core/color_mapping.hpp"
 #include "feature_tracking/visualization_2d.hpp"
 #include "mesher/neighbor_grid.hpp"
 #include "mesher/object_mesher.hpp"
@@ -47,7 +49,13 @@ void EstimateForegroundMask(const Image1b& gray,
 }
 
 
-void DrawDelaunay(Image3b& img, cv::Subdiv2D& subdiv, cv::Scalar color)
+void DrawDelaunay(int k,
+                  Image3b& img,
+                  cv::Subdiv2D& subdiv,
+                  const CoordinateMap<int>& vertex_lookup,
+                  const CoordinateMap<double>& vertex_disps,
+                  double min_disp = 0.5,
+                  double max_disp = 32.0)
 {
   std::vector<cv::Vec6f> triangle_list;
   subdiv.getTriangleList(triangle_list);
@@ -56,6 +64,8 @@ void DrawDelaunay(Image3b& img, cv::Subdiv2D& subdiv, cv::Scalar color)
   const cv::Size size = img.size();
   cv::Rect rect(0,0, size.width, size.height);
 
+  const double disp_range = max_disp - min_disp;
+
   for (size_t i = 0; i < triangle_list.size(); ++i) {
     const cv::Vec6f& t = triangle_list.at(i);
     pt[0] = cv::Point(t[0], t[1]);
@@ -63,9 +73,20 @@ void DrawDelaunay(Image3b& img, cv::Subdiv2D& subdiv, cv::Scalar color)
     pt[2] = cv::Point(t[4], t[5]);
 
     if (rect.contains(pt[0]) && rect.contains(pt[1]) && rect.contains(pt[2])) {
-      cv::line(img, pt[0], pt[1], color, 1, CV_AA, 0);
-	    cv::line(img, pt[1], pt[2], color, 1, CV_AA, 0);
-	    cv::line(img, pt[2], pt[0], color, 1, CV_AA, 0);
+      const int v0 = vertex_lookup.At((int)pt[0].x, (int)pt[0].y);
+      const int v1 = vertex_lookup.At((int)pt[1].x, (int)pt[1].y);
+      const int v2 = vertex_lookup.At((int)pt[2].x, (int)pt[2].y);
+
+      const std::vector<double> disps = {
+        0.5*vertex_disps.At(k, v0) + 0.5*vertex_disps.At(k, v1),
+        0.5*vertex_disps.At(k, v1) + 0.5*vertex_disps.At(k, v2),
+        0.5*vertex_disps.At(k, v2) + 0.5*vertex_disps.At(k, v0)
+      };
+
+      const std::vector<cv::Vec3b> colors = ColormapVector(disps, 0.5, 32.0, cv::COLORMAP_PARULA);
+      cv::line(img, pt[0], pt[1], colors.at(0), 1, CV_AA, 0);
+	    cv::line(img, pt[1], pt[2], colors.at(1), 1, CV_AA, 0);
+	    cv::line(img, pt[2], pt[0], colors.at(2), 1, CV_AA, 0);
     }
   }
 }
@@ -93,13 +114,17 @@ void ObjectMesher::ProcessStereo(const StereoImage1b& stereo_pair)
 {
   const Image1b& iml = stereo_pair.left_image;
 
+  Timer timer(true);
   tracker_.TrackAndTriangulate(stereo_pair, false);
+  LOG(INFO) << "TrackAndTriangulate: " << timer.Tock().milliseconds() << std::endl;
 
   const Image3b& viz_tracks = tracker_.VisualizeFeatureTracks();
+
   cv::imshow("Feature Tracks", viz_tracks);
 
   Image1b foreground_mask;
   EstimateForegroundMask(iml, foreground_mask, params_.foreground_ksize, params_.foreground_min_gradient, 4);
+
   cv::imshow("Foreground Mask", foreground_mask);
 
   // Build a keypoint graph.
@@ -127,6 +152,7 @@ void ObjectMesher::ProcessStereo(const StereoImage1b& stereo_pair)
   const std::vector<Vector2i> lmk_cells = MapToGridCells(
       lmk_points, iml.rows, iml.cols, lmk_grid_.Rows(), lmk_grid_.Cols());
 
+  timer.Reset();
   PopulateGrid(lmk_cells, lmk_grid_);
 
   LmkGraph graph;
@@ -163,14 +189,29 @@ void ObjectMesher::ProcessStereo(const StereoImage1b& stereo_pair)
 
   if (boost::num_vertices(graph) > 0) {
     std::vector<int> assignments(boost::num_vertices(graph));
+
+    timer.Reset();
     const int num_comp = boost::connected_components(graph, &assignments[0]);
 
     std::vector<int> nmembers(num_comp, 0);
     std::vector<cv::Subdiv2D> subdivs(num_comp, { cv::Rect(0, 0, iml.cols, iml.rows) });
 
+    // std::unordered_map<int, uid_t> vertex_id_to_lmk_id;
+    // std::unordered_map<int, double> vertex_disps;
+
+    CoordinateMap<uid_t> vertex_id_to_lmk_id;
+    CoordinateMap<double> vertex_disps;
+    MultiCoordinateMap vertex_lookup;
+
+    timer.Reset();
     for (size_t i = 0; i < assignments.size(); ++i) {
       const int cmp_id = assignments.at(i);
-      subdivs.at(cmp_id).insert(lmk_points.at(i));
+      const cv::Point2f lmk_pt = lmk_points.at(i);
+      const int vertex_id = subdivs.at(cmp_id).insert(lmk_pt);
+      vertex_lookup[cmp_id].Insert((int)lmk_pt.x, (int)lmk_pt.y, vertex_id);
+      vertex_id_to_lmk_id.Insert(cmp_id, vertex_id, lmk_ids.at(i));
+      vertex_disps.Insert(cmp_id, vertex_id, lmk_disps.at(i));
+
       ++nmembers.at(cmp_id);
     }
 
@@ -183,7 +224,7 @@ void ObjectMesher::ProcessStereo(const StereoImage1b& stereo_pair)
       if (nmembers.at(k) < 3) {
         continue;
       }
-      DrawDelaunay(viz_triangles, subdivs.at(k), cv::Scalar(0, 0, 255));
+      DrawDelaunay(k, viz_triangles, subdivs.at(k), vertex_lookup.at(k), vertex_disps);
     }
 
     cv::imshow("delaunay", viz_triangles);
