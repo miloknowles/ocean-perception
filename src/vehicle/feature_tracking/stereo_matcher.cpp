@@ -2,10 +2,10 @@
 
 #include "opencv2/imgproc/imgproc.hpp"
 
-#include "vio/stereo_matcher.hpp"
+#include "feature_tracking/stereo_matcher.hpp"
 
 namespace bm {
-namespace vio {
+namespace ft {
 
 
 double StereoMatcher::MatchRectified(const Image1b& left_rectified,

@@ -10,6 +10,7 @@ target_link_libraries(vio_dataset_player
   ${PROJECT_NAME}_lcm_util
   ${PROJECT_NAME}_core
   ${PROJECT_NAME}_dataset
+  ${PROJECT_NAME}_ft
   ${PROJECT_NAME}_vio
   vehicle_lcmtypes_cpp
   lcm

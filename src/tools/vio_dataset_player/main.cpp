@@ -17,9 +17,9 @@
 #include "core/file_utils.hpp"
 #include "dataset/euroc_dataset.hpp"
 #include "vio/state_estimator.hpp"
-#include "vio/visualization_2d.hpp"
 #include "vio/visualizer_3d.hpp"
 #include "lcm_util/util_pose3_t.hpp"
+#include "feature_tracking/visualization_2d.hpp"
 
 #include "vehicle/pose3_stamped_t.hpp"
 
@@ -38,6 +38,7 @@ struct VioDatasetPlayerParams : public ParamsBase
   bool use_depth = true;
   bool use_range = true;
   bool pause = false;
+  bool visualize = true;
   float playback_speed = 4.0;
   float filter_publish_hz = 50.0;
 
@@ -52,6 +53,7 @@ struct VioDatasetPlayerParams : public ParamsBase
     parser.GetYamlParam("use_depth", &use_depth);
     parser.GetYamlParam("use_range", &use_range);
     parser.GetYamlParam("pause", &pause);
+    parser.GetYamlParam("visualize", &visualize);
     parser.GetYamlParam("playback_speed", &playback_speed);
   }
 };
@@ -160,12 +162,14 @@ void Run(const std::string& path_to_config)
 
 int main(int argc, char const *argv[])
 {
-  if (argc < 2) {
-    LOG(WARNING) << "Need to specify a path to this app's config folder" << std::endl;
-    return 1;
+  std::string path_to_config = "/home/milo/bluemeadow/catkin_ws/src/vehicle/src/tools/vio_dataset_player/config";
+
+  if (argc == 2) {
+    path_to_config = std::string(argv[1]);
+  } else {
+    LOG(WARNING) << "Using default path to config folder, should specify" << std::endl;
   }
 
-  const std::string path_to_config(argv[1]);
   Run(path_to_config);
 
   return 0;

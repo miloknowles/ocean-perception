@@ -16,12 +16,8 @@
 #include "dataset/euroc_dataset.hpp"
 #include "dataset/himb_dataset.hpp"
 #include "dataset/caddy_dataset.hpp"
-#include "vio/data_manager.hpp"
-#include "vio/feature_detector.hpp"
-#include "vio/stereo_matcher.hpp"
-#include "vio/feature_tracker.hpp"
-#include "vio/visualization_2d.hpp"
-#include "object_mesher.hpp"
+#include "core/data_manager.hpp"
+#include "mesher/object_mesher.hpp"
 
 
 using namespace bm;
@@ -48,17 +44,6 @@ struct MesherDemoParams : public ParamsBase
 };
 
 
-class CustomSubdiv2D : public cv::Subdiv2D {
- public:
-  CustomSubdiv2D(const cv::Rect& rect) : cv::Subdiv2D(rect) {}
-
-  void DeleteEdge(int edge)
-  {
-    deleteEdge(edge);
-  }
-};
-
-
 int main(int argc, char const *argv[])
 {
   MesherDemoParams params(Join("/home/milo/bluemeadow/catkin_ws/src/vehicle/src/sandbox/mesher_demo/config", "MesherDemo_params.yaml"),
@@ -78,14 +63,6 @@ int main(int argc, char const *argv[])
 
   const PinholeCamera camera_model(415.876509, 415.876509, 375.5, 239.5, 480, 752);
   const StereoCamera stereo_rig(camera_model, 0.2);
-
-  Eigen::Matrix3f K;
-  K << camera_model.fx(), 0,                 camera_model.cx(),
-       0,                 camera_model.fy(), camera_model.cy(),
-       0,                 0,                 1;
-  const Eigen::Matrix3f Kinv = K.inverse();
-
-  Matrix4d world_T_cam_prev = Matrix4d::Identity();
 
   ObjectMesher::Params mparams(
       Join("/home/milo/bluemeadow/catkin_ws/src/vehicle/src/sandbox/mesher_demo/config", "ObjectMesher_params.yaml"),

@@ -7,10 +7,10 @@
 #include <opencv2/imgproc.hpp>
 #include <opencv2/viz/types.hpp>
 
-#include "vio/visualization_2d.hpp"
+#include "feature_tracking/visualization_2d.hpp"
 
 namespace bm {
-namespace vio {
+namespace ft {
 
 
 Image3b DrawFeatures(const Image1b& cur_img, const VecPoint2f& cur_keypoints)

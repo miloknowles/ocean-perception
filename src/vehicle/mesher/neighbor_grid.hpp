@@ -5,7 +5,7 @@
 #include "core/uid.hpp"
 #include "core/cv_types.hpp"
 #include "core/eigen_types.hpp"
-#include "grid_lookup.hpp"
+#include "core/grid_lookup.hpp"
 
 namespace bm {
 namespace mesher {

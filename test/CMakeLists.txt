@@ -5,7 +5,13 @@ set(CORE_TEST_SOURCES
   core/stereo_camera_test.cpp
   core/grid_lookup_test.cpp
   core/math_util_test.cpp
-  core/sliding_buffer_test.cpp)
+  core/sliding_buffer_test.cpp
+  core/data_manager_test.cpp)
+
+SET(FT_TEST_SOURCES
+  feature_tracking/feature_detector_test.cpp
+  feature_tracking/feature_tracker_test.cpp
+  feature_tracking/stereo_matcher_test.cpp)
 
 SET(DATASET_TEST_SOURCES
   dataset/euroc_dataset_test.cpp
@@ -13,13 +19,7 @@ SET(DATASET_TEST_SOURCES
 
 set(VIO_TEST_SOURCES
   vio/single_axis_factor_test.cpp
-  vio/data_manager_test.cpp
-  vio/feature_detector_test.cpp
-  vio/feature_tracker_test.cpp
-  vio/stereo_matcher_test.cpp
   vio/stereo_frontend_test.cpp
-  vio/viz_test.cpp
-  vio/state_estimator_test.cpp
   vio/state_ekf_test.cpp
   vio/imu_manager_test.cpp
   vio/attitude_factor_test.cpp
@@ -38,8 +38,9 @@ function(MakeTestExecutable test_name test_sources)
     ${PROJECT_NAME}_core
     ${PROJECT_NAME}_vio
     ${PROJECT_NAME}_dataset
+    ${PROJECT_NAME}_ft
+    ${PROJECT_NAME}_mesher
     ${OpenCV_LIBRARIES}
-    ${OpenCV_LIBS}
     gtsam
     gtsam_unstable
     vehicle_lcmtypes_cpp
@@ -53,9 +54,9 @@ include_directories(${PROJECT_BINARY_DIR}/lcmtypes)
 
 # https://stackoverflow.com/questions/5248749/passing-a-list-to-a-cmake-macro
 MakeTestExecutable(core_gtest_all "${CORE_TEST_SOURCES}")
+MakeTestExecutable(ft_gtest_all "${FT_TEST_SOURCES}")
 MakeTestExecutable(dataset_gtest_all "${DATASET_TEST_SOURCES}")
 MakeTestExecutable(vio_gtest_all "${VIO_TEST_SOURCES}")
-MakeTestExecutable(sandbox_gtest_all "${SANDBOX_TEST_SOURCES}")
 MakeTestExecutable(lcm_gtest_all "${LCM_TEST_SOURCES}")
 
 # NOTE(milo): Using the "copy" command didn't seem to work...

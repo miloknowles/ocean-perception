@@ -14,7 +14,7 @@
 #include "core/depth_measurement.hpp"
 #include "core/range_measurement.hpp"
 #include "vio/stereo_frontend.hpp"
-#include "vio/data_manager.hpp"
+#include "core/data_manager.hpp"
 #include "vio/imu_manager.hpp"
 #include "vio/state_estimator_util.hpp"
 #include "vio/state_ekf.hpp"

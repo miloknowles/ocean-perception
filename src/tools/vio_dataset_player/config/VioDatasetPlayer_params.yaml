@@ -7,4 +7,5 @@ use_imu: 1
 use_depth: 1
 use_range: 1
 pause: 0
+visualize: 1
 playback_speed: 2.0

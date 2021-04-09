@@ -134,7 +134,7 @@ void StateEstimator::StereoFrontendLoop()
     // Process a stereo image pair (KLT tracking, odometry estimation, etc.)
     // TODO(milo): Use initial odometry estimate other than identity!
     VoResult result = stereo_frontend_.Track(
-        raw_stereo_queue_.Pop(), Matrix4d::Identity(), false);
+        raw_stereo_queue_.Pop(), Matrix4d::Identity());
 
     if (params_.show_feature_tracks) {
       const Image3b& viz = stereo_frontend_.VisualizeFeatureTracks();

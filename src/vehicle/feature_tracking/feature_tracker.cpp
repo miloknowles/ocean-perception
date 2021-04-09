@@ -1,10 +1,10 @@
 #include <glog/logging.h>
 #include <opencv2/video/tracking.hpp>
 
-#include "vio/feature_tracker.hpp"
+#include "feature_tracking/feature_tracker.hpp"
 
 namespace bm {
-namespace vio {
+namespace ft {
 
 
 void FeatureTracker::Track(const Image1b& ref_img,

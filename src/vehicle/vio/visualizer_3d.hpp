@@ -16,7 +16,7 @@
 #include "core/pinhole_camera.hpp"
 #include "core/stereo_camera.hpp"
 #include "core/thread_safe_queue.hpp"
-#include "vio/landmark_observation.hpp"
+#include "core/landmark_observation.hpp"
 #include "vio/ellipsoid.hpp"
 
 namespace bm {

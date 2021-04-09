@@ -11,8 +11,8 @@
 #include "core/uid.hpp"
 #include "core/transform_util.hpp"
 #include "vio/stereo_frontend.hpp"
-#include "vio/visualization_2d.hpp"
 #include "vio/visualizer_3d.hpp"
+#include "feature_tracking/visualization_2d.hpp"
 
 using namespace bm;
 using namespace core;

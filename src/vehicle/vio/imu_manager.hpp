@@ -4,7 +4,7 @@
 #include "core/macros.hpp"
 #include "core/imu_measurement.hpp"
 #include "core/uid.hpp"
-#include "vio/data_manager.hpp"
+#include "core/data_manager.hpp"
 #include "vio/noise_model.hpp"
 
 #include <gtsam/navigation/ImuFactor.h>

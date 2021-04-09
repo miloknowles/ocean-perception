@@ -41,15 +41,11 @@ inline Image3b CastImage3fTo3b(const Image3f& im)
 }
 
 
-inline Image1b ReadAndConvertToGrayScale(const std::string& img_path, bool equalize = false) {
+inline Image1b ReadAndConvertToGrayScale(const std::string& img_path) {
   cv::Mat img = cv::imread(img_path, cv::IMREAD_ANYCOLOR);
   if (img.channels() > 1) {
     cv::cvtColor(img, img, cv::COLOR_BGR2GRAY);
   }
-  // TODO(milo): Could add histogram equilization here.
-  // if (equalize) {
-    // cv::equalizeHist(img, img);
-  // }
   return img;
 }
 
