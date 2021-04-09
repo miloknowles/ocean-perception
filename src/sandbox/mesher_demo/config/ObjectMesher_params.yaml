@@ -9,11 +9,11 @@ edge_max_depth_change: 1.5
 
 #===============================================================================
 StereoTracker:
-  stereo_max_depth: 30.0 # m
+  stereo_max_depth: 20.0 # m
   stereo_min_depth: 0.2   # m
 
   # Kill off a tracked landmark if it hasn't been seen since "k" frames ago.
-  retrack_frames_k: 3
+  retrack_frames_k: 5
 
   # Trigger a keyframe if there aren't many landmarks. The StereoFrontend will try to create new
   # landmarks for tracking.
@@ -21,7 +21,7 @@ StereoTracker:
 
   # Trigger a keyframe at least every k frames.
   # NOTE(milo): More frequent keyframe triggering results in a much better pose estimate.
-  trigger_keyframe_k: 10
+  trigger_keyframe_k: 20
 
   FeatureDetector:
     max_features_per_frame: 200
@@ -36,12 +36,12 @@ StereoTracker:
     klt_maxiters: 5
     klt_epsilon: 0.01
     klt_winsize: 21
-    klt_max_level: 2
+    klt_max_level: 3
 
   StereoMatcher:
-    templ_cols: 31
-    templ_rows: 11
-    max_disp: 128
+    templ_cols: 21
+    templ_rows: 21
+    max_disp: 64
     max_matching_cost: 0.15
     bidirectional: 0 # bool
     subpixel_refinement: 0 # bool
