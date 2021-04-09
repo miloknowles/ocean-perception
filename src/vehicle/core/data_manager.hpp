@@ -7,9 +7,7 @@
 #include "core/thread_safe_queue.hpp"
 
 namespace bm {
-namespace vio {
-
-using namespace core;
+namespace core {
 
 
 template <typename DataType>

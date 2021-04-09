@@ -5,9 +5,7 @@
 #include "core/cv_types.hpp"
 
 namespace bm {
-namespace vio {
-
-using namespace core;
+namespace core {
 
 
 // A 2D observation of a landmark in an image.

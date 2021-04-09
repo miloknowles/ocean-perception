@@ -5,6 +5,7 @@ SET(LIBRARY_SRC
   eigen_types.hpp
   macros.hpp
   cv_types.hpp
+  data_manager.hpp
   image_util.hpp
   grid_lookup.hpp
   pinhole_camera.hpp
@@ -19,6 +20,7 @@ SET(LIBRARY_SRC
   timer.hpp
   timestamp.hpp
   imu_measurement.hpp
+  landmark_observation.hpp
   depth_measurement.hpp
   range_measurement.hpp
   stereo_image.hpp

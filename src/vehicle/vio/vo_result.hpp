@@ -7,7 +7,7 @@
 #include "core/uid.hpp"
 #include "core/eigen_types.hpp"
 
-#include "vio/landmark_observation.hpp"
+#include "core/landmark_observation.hpp"
 
 namespace bm {
 namespace vio {

@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
 #include "core/depth_measurement.hpp"
-#include "vio/data_manager.hpp"
+#include "core/data_manager.hpp"
 #include "vio/imu_manager.hpp"
 
 using namespace bm;

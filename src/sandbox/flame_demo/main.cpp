@@ -19,7 +19,7 @@
 #include "core/pinhole_camera.hpp"
 #include "core/stereo_camera.hpp"
 #include "dataset/euroc_dataset.hpp"
-#include "vio/data_manager.hpp"
+#include "core/data_manager.hpp"
 
 
 using namespace bm;

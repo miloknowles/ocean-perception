@@ -13,7 +13,7 @@
 #include "core/stereo_image.hpp"
 #include "core/stereo_camera.hpp"
 #include "core/sliding_buffer.hpp"
-#include "vio/landmark_observation.hpp"
+#include "core/landmark_observation.hpp"
 #include "vio/feature_detector.hpp"
 #include "vio/feature_tracker.hpp"
 #include "vio/stereo_matcher.hpp"
@@ -132,7 +132,6 @@ class ObjectMesher final {
   uid_t prev_kf_id_ = 0;
 
   vio::FeatureDetector detector_;
-  vio::FeatureTracker tracker_;
   vio::StereoMatcher matcher_;
 
   SlidingBuffer<Image1b> img_buffer_;

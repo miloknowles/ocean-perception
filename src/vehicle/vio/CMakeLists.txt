@@ -3,10 +3,8 @@ SET(LIBRARY_NAME ${PROJECT_NAME}_vio)
 SET(LIBRARY_SRC
   state_estimator_util.hpp
   attitude_measurement.hpp
-  landmark_observation.hpp
   noise_model.hpp
   vo_result.hpp
-  data_manager.hpp
   ellipsoid.cpp
   ellipsoid.hpp
   feature_detector.cpp

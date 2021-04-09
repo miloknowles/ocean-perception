@@ -11,8 +11,8 @@
 #include "core/timestamp.hpp"
 #include "core/stereo_image.hpp"
 #include "core/stereo_camera.hpp"
+#include "core/landmark_observation.hpp"
 
-#include "vio/landmark_observation.hpp"
 #include "vio/feature_detector.hpp"
 #include "vio/feature_tracker.hpp"
 #include "vio/stereo_matcher.hpp"
