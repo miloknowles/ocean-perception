@@ -67,7 +67,6 @@ class ObjectMesher final {
 
     // Kill off a tracked landmark if it hasn't been observed in this many frames.
     // If set to zero, this means that a track dies as soon as it isn't observed in the current frame.
-    int lost_point_lifespan = 0;
     int retrack_frames_k = 3; // Retrack points from the previous k frames.
 
     // Trigger a keyframe if we only have 0% of maximum keypoints.
@@ -86,11 +85,13 @@ class ObjectMesher final {
 
       parser.GetYamlParam("stereo_max_depth", &stereo_max_depth);
       parser.GetYamlParam("stereo_min_depth", &stereo_min_depth);
-      parser.GetYamlParam("lost_point_lifespan", &lost_point_lifespan);
+      parser.GetYamlParam("retrack_frames_k", &retrack_frames_k);
       parser.GetYamlParam("trigger_keyframe_min_lmks", &trigger_keyframe_min_lmks);
       parser.GetYamlParam("trigger_keyframe_k", &trigger_keyframe_k);
       parser.GetYamlParam("edge_min_foreground_percent", &edge_min_foreground_percent);
       parser.GetYamlParam("edge_max_depth_change", &edge_max_depth_change);
+
+      CHECK(retrack_frames_k >= 1 && retrack_frames_k < 5);
     }
   };
 

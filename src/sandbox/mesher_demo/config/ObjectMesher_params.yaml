@@ -9,7 +9,7 @@ stereo_min_depth: 0.8   # m
 
 # Kill off a tracked landmark if it hasn't been observed in this many frames.
 # If set to zero, this means that a track dies as soon as it isn't observed in the current frame.
-lost_point_lifespan: 1
+retrack_frames_k: 3
 
 # Trigger a keyframe if there aren't many landmarks. The StereoFrontend will try to create new
 # landmarks for tracking.

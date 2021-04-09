@@ -71,23 +71,6 @@ void DrawDelaunay(Image3b& img, cv::Subdiv2D& subdiv, cv::Scalar color)
 }
 
 
-// Helper function to grab an observation that was observed from query_camera_id.
-// Returns whether or not the query was successful.
-static bool FindObservationFromCameraId(const VecLmkObs& lmk_obs,
-                                        uid_t query_camera_id,
-                                        cv::Point2f& query_lmk_obs)
-{
-  for (const vio::LandmarkObservation& obs : lmk_obs) {
-    if (obs.camera_id == query_camera_id) {
-      query_lmk_obs = obs.pixel_location;
-      return true;
-    }
-  }
-
-  return true;
-}
-
-
 static void CountEdgePixels(const cv::Point2f& a,
                             const cv::Point2f& b,
                             const Image1b& mask,
@@ -271,7 +254,7 @@ void ObjectMesher::ProcessStereo(const StereoImage1b& stereo_pair)
     const size_t num_obs = it->second.size();
 
     // Skip observations from previous frames.
-    if (lmk_obs.camera_id != stereo_pair.camera_id || num_obs < 2) {
+    if (lmk_obs.camera_id < (stereo_pair.camera_id - params_.retrack_frames_k) || num_obs < 2) {
       continue;
     }
     lmk_points.emplace_back(lmk_obs.pixel_location);
@@ -364,7 +347,9 @@ void ObjectMesher::KillOffLostLandmarks(uid_t cur_camera_id)
     CHECK(!observations.empty());
 
     const int frames_since_last_seen = (int)cur_camera_id - observations.back().camera_id;
-    if (frames_since_last_seen > params_.lost_point_lifespan) {
+
+    // If this landmark hasn't been observed in retrack_frames_k, it won't be retracked, so kill.
+    if (frames_since_last_seen > params_.retrack_frames_k) {
       lmk_ids_to_kill.emplace_back(lmk_id);
     }
   }
