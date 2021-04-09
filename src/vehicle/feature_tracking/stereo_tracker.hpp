@@ -87,6 +87,7 @@ class StereoTracker final {
   Image3b VisualizeFeatureTracks() const;
 
   const FeatureTracks& GetLiveTracks() const { return live_tracks_; }
+  void KillLandmark(uid_t lmk_id);
 
  private:
   // Get the next available landmark uid_t.

@@ -66,6 +66,8 @@ StereoFrontend:
   lm_max_error_stdevs: 3.0
   sigma_tracked_point: 5.0
 
+  kill_nonrigid_lmks: 1
+
   StereoTracker:
     stereo_max_depth: 15.0 # m
     stereo_min_depth: 1.0   # m

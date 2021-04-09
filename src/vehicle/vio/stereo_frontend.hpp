@@ -37,6 +37,7 @@ class StereoFrontend final {
     double sigma_tracked_point = 5.0;
     int lm_max_iters = 20;
     double lm_max_error_stdevs = 3.0;
+    bool kill_nonrigid_lmks = true;
 
    private:
     void LoadParams(const YamlParser& parser) override
@@ -47,6 +48,7 @@ class StereoFrontend final {
       parser.GetYamlParam("sigma_tracked_point", &sigma_tracked_point);
       parser.GetYamlParam("lm_max_iters", &lm_max_iters);
       parser.GetYamlParam("lm_max_error_stdevs", &lm_max_error_stdevs);
+      parser.GetYamlParam("kill_nonrigid_lmks", &kill_nonrigid_lmks);
 
       CHECK_GE(sigma_tracked_point, 1.0);
       CHECK_GE(lm_max_iters, 5);

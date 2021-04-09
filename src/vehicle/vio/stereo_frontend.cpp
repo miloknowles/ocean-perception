@@ -1,3 +1,5 @@
+#include <unordered_set>
+
 #include <glog/logging.h>
 
 #include <opencv2/calib3d.hpp>
@@ -87,6 +89,7 @@ VoResult StereoFrontend::Track(const StereoImage1b& stereo_pair,
   // Get landmarks that were observed in the current frame AND the previous keyframe.
   std::vector<Vector3d> lmk_pts_prev_kf_3d;
   std::vector<Vector2d> lmk_pts_curr_f_2d;
+  std::vector<uid_t> lmk_ids_prev_kf;
 
   for (size_t i = 0; i < lmk_ids.size(); ++i) {
     const uid_t lmk_id = lmk_ids.at(i);
@@ -98,6 +101,7 @@ VoResult StereoFrontend::Track(const StereoImage1b& stereo_pair,
       const Vector3d p_lkf = stereo_rig_.LeftCamera().Backproject(Vector2d(pt.x, pt.y), stereo_rig_.DispToDepth(disp));
       lmk_pts_prev_kf_3d.emplace_back(p_lkf);
       lmk_pts_curr_f_2d.emplace_back(lmk_points.at(i).x, lmk_points.at(i).y);
+      lmk_ids_prev_kf.emplace_back(lmk_id);
     }
   }
 
@@ -128,6 +132,29 @@ VoResult StereoFrontend::Track(const StereoImage1b& stereo_pair,
       result.status |= StereoFrontend::Status::ODOM_ESTIMATION_FAILED;
     }
     result.lkf_T_cam = cur_T_lkf_.inverse();
+
+    //======================== REMOVE OUTLIER POINTS =============================
+    std::unordered_set<uid_t> inlier_lmk_ids;
+    for (const int idx : lm_inlier_indices) {
+      const uid_t lmk_id = lmk_ids_prev_kf.at(idx);
+      inlier_lmk_ids.insert(lmk_id);
+    }
+
+    VecLmkObs inlier_obs;
+    for (const LandmarkObservation& lmk_obs : result.lmk_obs) {
+      if (inlier_lmk_ids.count(lmk_obs.landmark_id) != 0) {
+        inlier_obs.emplace_back(lmk_obs);
+      }
+    }
+
+    std::swap(inlier_obs, result.lmk_obs);
+
+    if (params_.kill_nonrigid_lmks) {
+      for (const int idx : lm_outlier_indices) {
+        const uid_t lmk_id = lmk_ids_prev_kf.at(idx);
+        tracker_.KillLandmark(lmk_id);
+      }
+    }
   }
 
   // Houskeeping (need to do before early return).
@@ -136,13 +163,6 @@ VoResult StereoFrontend::Track(const StereoImage1b& stereo_pair,
     timestamp_lkf_ = stereo_pair.timestamp;
     prev_keyframe_id_ = stereo_pair.camera_id;
   }
-
-  //======================== REMOVE OUTLIER POINTS =============================
-  // for (const int outlier_idx : lm_outlier_indices) {
-  //   const uid_t lmk_idx = p_cur_uid_list.at(outlier_idx);
-
-  //   live_tracks_.at(lmk_idx).erase(live_tracks_.at(lmk_idx).end());
-  // }
 
   return result;
 }

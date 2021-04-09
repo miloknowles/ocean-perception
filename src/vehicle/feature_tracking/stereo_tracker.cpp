@@ -179,6 +179,14 @@ void StereoTracker::KillOffLostLandmarks(uid_t cur_camera_id)
 }
 
 
+void StereoTracker::KillLandmark(uid_t lmk_id)
+{
+  if (live_tracks_.count(lmk_id) != 0) {
+    live_tracks_.erase(lmk_id);
+  }
+}
+
+
 Image3b StereoTracker::VisualizeFeatureTracks() const
 {
   VecPoint2f ref_keypoints, cur_keypoints, untracked_ref, untracked_cur;
