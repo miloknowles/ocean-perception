@@ -104,6 +104,9 @@ class DataProvider {
   // If there is a tie between different sources, prioritizes (1) IMU, (2) APS, (3) STEREO.
   bool Step(bool verbose = false);
 
+  // Step until a measurement from the specifeid DataSource is processed.
+  void StepUntil(DataSource source);
+
   // Plays back all available data in real time, chronologically. Optionally changes the speed of
   // playback based on the factor "speed". If speed is < 0, returns data as fast as possible.
   void Playback(float speed = 1.0f, bool verbose = false);

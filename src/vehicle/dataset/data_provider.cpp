@@ -143,6 +143,25 @@ bool DataProvider::Step(bool verbose)
 }
 
 
+void DataProvider::StepUntil(DataSource source)
+{
+  size_t* idx_ptr;
+  if (source == DataSource::IMU) {
+    idx_ptr = &next_imu_idx_;
+  } else if (source == DataSource::RANGE) {
+    idx_ptr = &next_range_idx_;
+  } else if (source == DataSource::DEPTH) {
+    idx_ptr = &next_depth_idx_;
+  } else {
+    idx_ptr = &next_stereo_idx_;
+  }
+
+  const size_t idx0 = *idx_ptr;
+
+  while ((*idx_ptr) == idx0 && Step()) {}
+}
+
+
 void DataProvider::PlaybackWorker(float speed, bool verbose)
 {
   while (Step(verbose)) {

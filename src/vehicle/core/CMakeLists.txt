@@ -5,6 +5,7 @@ SET(LIBRARY_SRC
   eigen_types.hpp
   macros.hpp
   cv_types.hpp
+  color_mapping.hpp
   data_manager.hpp
   image_util.hpp
   grid_lookup.hpp
