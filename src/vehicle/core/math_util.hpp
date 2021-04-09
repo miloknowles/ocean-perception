@@ -31,6 +31,22 @@ inline int NextOddInt(int x)
 }
 
 
+// Modulo operation that works for positive and negative integers (like in Python).
+// Example 1: WrapInt(4, 3) == 1
+// Example 2: WrapInt(-1, 3) == 2
+// Example 3: WrapInt(-3, 3) == 0
+inline int WrapInt(int k, int N)
+{
+  if (k >= 0) {
+    return k % N;
+  }
+  if ((-k) % N == 0) {
+    return 0;
+  }
+  return N - ((-k) % N);
+}
+
+
 // Return the unit direction vector.
 inline Vector2d NormalizedDirection(const ld::KeyLine& kl)
 {

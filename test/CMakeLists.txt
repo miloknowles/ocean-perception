@@ -4,7 +4,8 @@ set(CORE_TEST_SOURCES
   core/params_base_test.cpp
   core/stereo_camera_test.cpp
   core/grid_lookup_test.cpp
-  core/math_util_test.cpp)
+  core/math_util_test.cpp
+  core/sliding_buffer_test.cpp)
 
 SET(DATASET_TEST_SOURCES
   dataset/euroc_dataset_test.cpp

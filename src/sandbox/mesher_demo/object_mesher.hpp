@@ -12,6 +12,7 @@
 #include "core/cv_types.hpp"
 #include "core/stereo_image.hpp"
 #include "core/stereo_camera.hpp"
+#include "core/sliding_buffer.hpp"
 #include "vio/landmark_observation.hpp"
 #include "vio/feature_detector.hpp"
 #include "vio/feature_tracker.hpp"
@@ -67,6 +68,7 @@ class ObjectMesher final {
     // Kill off a tracked landmark if it hasn't been observed in this many frames.
     // If set to zero, this means that a track dies as soon as it isn't observed in the current frame.
     int lost_point_lifespan = 0;
+    int retrack_frames_k = 3; // Retrack points from the previous k frames.
 
     // Trigger a keyframe if we only have 0% of maximum keypoints.
     int trigger_keyframe_min_lmks = 10;
@@ -100,6 +102,7 @@ class ObjectMesher final {
         detector_(vio::FeatureDetector::Params()),
         matcher_(vio::StereoMatcher::Params()),
         tracker_(vio::FeatureTracker::Params()),
+        img_buffer_(params_.retrack_frames_k),
         lmk_grid_(params_.lmk_grid_rows, params_.lmk_grid_cols) {}
 
   void TrackAndTriangulate(const StereoImage1b& stereo_pair, bool force_keyframe);
@@ -131,8 +134,9 @@ class ObjectMesher final {
   vio::FeatureTracker tracker_;
   vio::StereoMatcher matcher_;
 
-  Image1b prev_left_image_;
-  Image1b prev_prev_left_image_;
+  SlidingBuffer<Image1b> img_buffer_;
+  // Image1b prev_left_image_;
+  // Image1b prev_prev_left_image_;
   uid_t prev_camera_id_ = 0;
 
   FeatureTracks live_tracks_;

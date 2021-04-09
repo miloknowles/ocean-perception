@@ -108,9 +108,12 @@ static void CountEdgePixels(const cv::Point2f& a,
 
 void ObjectMesher::TrackAndTriangulate(const StereoImage1b& stereo_pair, bool force_keyframe)
 {
-  std::vector<uid_t> live_lmk_ids;
-  std::vector<uid_t> live_cam_ids;
-  VecPoint2f live_lmk_pts_prev, live_lmk_pts_prev_prev;
+  std::map<int, std::vector<uid_t>> live_lmk_ids_k_ago;
+  std::map<int, VecPoint2f> live_lmk_pts_k_ago;
+  for (int k = 0; k <= params_.retrack_frames_k; ++k) {
+    live_lmk_ids_k_ago.emplace(k, std::vector<uid_t>());
+    live_lmk_pts_k_ago.emplace(k, VecPoint2f());
+  }
 
   for (const auto& item : live_tracks_) {
     const uid_t lmk_id = item.first;
@@ -118,58 +121,45 @@ void ObjectMesher::TrackAndTriangulate(const StereoImage1b& stereo_pair, bool fo
     // NOTE(milo): Observations are sorted in order of INCREASING camera_id, so the last
     // observation is the most recent.
     const VecLmkObs& observations = item.second;
-
     CHECK(!observations.empty());
 
-    // NOTE(milo): Only support k-1 --> k tracking right now.
-    // TODO(milo): Also try to "revive" landmarks that haven't been seen since k-2 or k-3.
-
-    // Get landmarks from 1 frame ago.
-    if (observations.back().camera_id == (stereo_pair.camera_id - 1)) {
-      live_lmk_ids.emplace_back(lmk_id);
-      live_cam_ids.emplace_back(observations.back().camera_id);
-      live_lmk_pts_prev.emplace_back(observations.back().pixel_location);
-
-    // Get landmarks from 2 frames ago.
-    } else if (observations.back().camera_id == (stereo_pair.camera_id - 2)) {
-      live_lmk_pts_prev_prev.emplace_back(observations.back().pixel_location);
+    // This landmark was last seen "k" frames ago.
+    const int k = stereo_pair.camera_id - observations.back().camera_id;
+    if (k > params_.retrack_frames_k) {
+      continue;
     }
+
+    live_lmk_ids_k_ago.at(k).emplace_back(lmk_id);
+    live_lmk_pts_k_ago.at(k).emplace_back(observations.back().pixel_location);
   }
 
   //======================== KANADE-LUCAS OPTICAL FLOW =========================
-  VecPoint2f live_lmk_pts_cur;
-  std::vector<uchar> status;
-  std::vector<float> error;
-  if (!live_lmk_pts_prev.empty()) {
-    tracker_.Track(prev_left_image_,
+  std::vector<uid_t> good_lmk_ids;
+  VecPoint2f good_lmk_pts;
+
+  for (int k = 1; k <= params_.retrack_frames_k; ++k) {
+    if (live_lmk_pts_k_ago.at(k).empty()) {
+      continue;
+    }
+
+    VecPoint2f live_lmk_pts_cur;
+    std::vector<uchar> status;
+    std::vector<float> error;
+
+    tracker_.Track(img_buffer_.Get(k-1),
                    stereo_pair.left_image,
-                   live_lmk_pts_prev,
+                   live_lmk_pts_k_ago.at(k),
                    live_lmk_pts_cur,
                    status,
                    error,
                    true,
                    params_.klt_fwd_bwd_tol);
-  }
 
-  CHECK_EQ(live_lmk_pts_prev.size(), live_lmk_pts_cur.size());
-
-  // Filter out unsuccessful KLT tracks.
-  const std::vector<uid_t> good_lmk_ids = SubsetFromMaskCv<uid_t>(live_lmk_ids, status);
-  const VecPoint2f good_lmk_pts = SubsetFromMaskCv<cv::Point2f>(live_lmk_pts_cur, status);
-
-  //========================= RE-TRACKING PROCEDURE (K-2) ======================
-  VecPoint2f revive_lmk_pts_cur;
-  if (!live_lmk_pts_prev_prev.empty()) {
-    tracker_.Track(prev_prev_left_image_,
-                   stereo_pair.left_image,
-                   live_lmk_pts_prev_prev,
-                   revive_lmk_pts_cur,
-                   status,
-                   error,
-                   true,
-                   params_.klt_fwd_bwd_tol);
-
-
+    // Filter out unsuccessful KLT tracks.
+    std::vector<uid_t> good_lmk_ids_k = SubsetFromMaskCv<uid_t>(live_lmk_ids_k_ago.at(k), status);
+    VecPoint2f good_lmk_pts_k = SubsetFromMaskCv<cv::Point2f>(live_lmk_pts_cur, status);
+    good_lmk_ids.insert(good_lmk_ids.end(), good_lmk_ids_k.begin(), good_lmk_ids_k.end());
+    good_lmk_pts.insert(good_lmk_pts.end(), good_lmk_pts_k.begin(), good_lmk_pts_k.end());
   }
 
   // Decide if a new keyframe should be initialized.
@@ -250,8 +240,7 @@ void ObjectMesher::TrackAndTriangulate(const StereoImage1b& stereo_pair, bool fo
   KillOffLostLandmarks(stereo_pair.camera_id);
 
   // Housekeeping.
-  prev_prev_left_image_ = prev_left_image_;
-  prev_left_image_ = stereo_pair.left_image;
+  img_buffer_.Add(stereo_pair.left_image);
   prev_camera_id_ = stereo_pair.camera_id;
 }
 
@@ -422,7 +411,7 @@ Image3b ObjectMesher::VisualizeFeatureTracks()
     }
   }
 
-  return vio::DrawFeatureTracks(prev_left_image_, ref_keypoints, cur_keypoints, untracked_ref, untracked_cur);
+  return vio::DrawFeatureTracks(img_buffer_.Head(), ref_keypoints, cur_keypoints, untracked_ref, untracked_cur);
 }
 
 }
