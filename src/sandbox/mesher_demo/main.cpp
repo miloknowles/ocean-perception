@@ -17,7 +17,7 @@
 #include "dataset/himb_dataset.hpp"
 #include "dataset/caddy_dataset.hpp"
 #include "core/data_manager.hpp"
-#include "object_mesher.hpp"
+#include "mesher/object_mesher.hpp"
 
 
 using namespace bm;

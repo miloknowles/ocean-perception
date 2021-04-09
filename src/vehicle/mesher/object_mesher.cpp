@@ -4,11 +4,11 @@
 
 #include <opencv2/imgproc.hpp>
 
-#include "object_mesher.hpp"
 #include "core/image_util.hpp"
 #include "core/math_util.hpp"
 #include "feature_tracking/visualization_2d.hpp"
-#include "neighbor_grid.hpp"
+#include "mesher/neighbor_grid.hpp"
+#include "mesher/object_mesher.hpp"
 
 namespace bm {
 namespace mesher {

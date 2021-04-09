@@ -39,6 +39,7 @@ function(MakeTestExecutable test_name test_sources)
     ${PROJECT_NAME}_vio
     ${PROJECT_NAME}_dataset
     ${PROJECT_NAME}_ft
+    ${PROJECT_NAME}_mesher
     ${OpenCV_LIBRARIES}
     gtsam
     gtsam_unstable
@@ -56,7 +57,6 @@ MakeTestExecutable(core_gtest_all "${CORE_TEST_SOURCES}")
 MakeTestExecutable(ft_gtest_all "${FT_TEST_SOURCES}")
 MakeTestExecutable(dataset_gtest_all "${DATASET_TEST_SOURCES}")
 MakeTestExecutable(vio_gtest_all "${VIO_TEST_SOURCES}")
-MakeTestExecutable(sandbox_gtest_all "${SANDBOX_TEST_SOURCES}")
 MakeTestExecutable(lcm_gtest_all "${LCM_TEST_SOURCES}")
 
 # NOTE(milo): Using the "copy" command didn't seem to work...

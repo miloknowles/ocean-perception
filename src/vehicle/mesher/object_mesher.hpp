@@ -82,16 +82,7 @@ class ObjectMesher final {
  private:
   Params params_;
   StereoCamera stereo_rig_;
-
-  uid_t next_lmk_id_ = 0;
-  uid_t prev_kf_id_ = 0;
-
   StereoTracker tracker_;
-
-  uid_t prev_camera_id_ = 0;
-
-  FeatureTracks live_tracks_;
-
   GridLookup<uid_t> lmk_grid_;
 };
 

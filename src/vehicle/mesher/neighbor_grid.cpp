@@ -1,4 +1,4 @@
-#include "neighbor_grid.hpp"
+#include "mesher/neighbor_grid.hpp"
 
 namespace bm {
 namespace mesher {
