@@ -13,7 +13,7 @@ using namespace core;
 using namespace ft;
 
 
-TEST(VioTest, TestStereoMatcherSingle)
+TEST(MatcherTest, TestSingle)
 {
   StereoMatcher::Params opt;
   StereoMatcher matcher(opt);
@@ -35,7 +35,7 @@ TEST(VioTest, TestStereoMatcherSingle)
 }
 
 
-TEST(VioTest, TestStereoMatcherSequence)
+TEST(MatcherTest, TestSequence)
 {
   StereoMatcher::Params opt;
   StereoMatcher matcher(opt);

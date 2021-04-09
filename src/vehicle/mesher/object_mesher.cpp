@@ -4,6 +4,7 @@
 
 #include <opencv2/imgproc.hpp>
 
+#include "core/timer.hpp"
 #include "core/image_util.hpp"
 #include "core/math_util.hpp"
 #include "feature_tracking/visualization_2d.hpp"
@@ -93,13 +94,19 @@ void ObjectMesher::ProcessStereo(const StereoImage1b& stereo_pair)
 {
   const Image1b& iml = stereo_pair.left_image;
 
+  Timer timer(true);
   tracker_.TrackAndTriangulate(stereo_pair, false);
+  LOG(INFO) << "TrackAndTriangulate: " << timer.Tock().milliseconds() << std::endl;
 
   const Image3b& viz_tracks = tracker_.VisualizeFeatureTracks();
+  // LOG(INFO) << "VisualizeFeatureTracks: " << timer.Tock().milliseconds() << std::endl;
+
   cv::imshow("Feature Tracks", viz_tracks);
 
   Image1b foreground_mask;
   EstimateForegroundMask(iml, foreground_mask, params_.foreground_ksize, params_.foreground_min_gradient, 4);
+  // LOG(INFO) << "EstimateForegroundMask: " << timer.Tock().milliseconds() << std::endl;
+
   cv::imshow("Foreground Mask", foreground_mask);
 
   // Build a keypoint graph.
@@ -127,7 +134,9 @@ void ObjectMesher::ProcessStereo(const StereoImage1b& stereo_pair)
   const std::vector<Vector2i> lmk_cells = MapToGridCells(
       lmk_points, iml.rows, iml.cols, lmk_grid_.Rows(), lmk_grid_.Cols());
 
+  timer.Reset();
   PopulateGrid(lmk_cells, lmk_grid_);
+  // LOG(INFO) << "PopulateGrid: " << timer.Tock().milliseconds() << std::endl;
 
   LmkGraph graph;
 
@@ -161,18 +170,25 @@ void ObjectMesher::ProcessStereo(const StereoImage1b& stereo_pair)
     }
   }
 
+  // LOG(INFO) << "Build graph: " << timer.Tock().milliseconds() << std::endl;
+
   if (boost::num_vertices(graph) > 0) {
     std::vector<int> assignments(boost::num_vertices(graph));
+
+    timer.Reset();
     const int num_comp = boost::connected_components(graph, &assignments[0]);
+    // LOG(INFO) << "CCs: " << timer.Tock().milliseconds() << std::endl;
 
     std::vector<int> nmembers(num_comp, 0);
     std::vector<cv::Subdiv2D> subdivs(num_comp, { cv::Rect(0, 0, iml.cols, iml.rows) });
 
+    timer.Reset();
     for (size_t i = 0; i < assignments.size(); ++i) {
       const int cmp_id = assignments.at(i);
       subdivs.at(cmp_id).insert(lmk_points.at(i));
       ++nmembers.at(cmp_id);
     }
+    // LOG(INFO) << "Delaunay (all): " << timer.Tock().milliseconds() << std::endl;
 
     // Draw the output triangles.
     cv::Mat3b viz_triangles;

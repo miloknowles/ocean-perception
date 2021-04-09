@@ -15,7 +15,7 @@ using namespace core;
 using namespace ft;
 
 
-TEST(VioTest, TestTrackLR)
+TEST(TrackerTest, TestTrackLR)
 {
   FeatureDetector::Params dopt;
   FeatureTracker::Params topt;
