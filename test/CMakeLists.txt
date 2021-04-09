@@ -20,7 +20,6 @@ SET(DATASET_TEST_SOURCES
 set(VIO_TEST_SOURCES
   vio/single_axis_factor_test.cpp
   vio/stereo_frontend_test.cpp
-  vio/state_estimator_test.cpp
   vio/state_ekf_test.cpp
   vio/imu_manager_test.cpp
   vio/attitude_factor_test.cpp

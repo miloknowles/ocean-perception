@@ -1,5 +1,4 @@
 add_executable(mesher_demo
-  grid_lookup.hpp
   neighbor_grid.cpp
   neighbor_grid.hpp
   object_mesher.cpp
