@@ -13,7 +13,7 @@ TEST(DatasetTest, TestEurocDataset)
   const std::string toplevel_folder = "/home/milo/datasets/Unity3D/farmsim/euroc_test1";
   EurocDataset dataset(toplevel_folder);
 
-  StereoCallback stereo_cb = [](const StereoImage&) {};
+  StereoCallback1b stereo_cb = [](const StereoImage1b&) {};
   ImuCallback imu_cb = [](const ImuMeasurement&) {};
 
   dataset.RegisterStereoCallback(stereo_cb);

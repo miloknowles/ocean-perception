@@ -26,7 +26,8 @@ SET(LIBRARY_SRC
   fixed_queue.hpp
   thread_safe_queue.hpp
   yaml_parser.hpp
-  params_base.hpp)
+  params_base.hpp
+  sliding_buffer.hpp)
 
 # NOTE(milo): This is how to debug the INCLUDE_DIRECTORIES if needed.
 # message("===================================================")

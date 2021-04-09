@@ -4,6 +4,7 @@
 #include <opencv2/highgui.hpp>
 
 #include "core/cv_types.hpp"
+#include "core/stereo_image.hpp"
 
 namespace bm {
 namespace core {
@@ -50,6 +51,25 @@ inline Image1b ReadAndConvertToGrayScale(const std::string& img_path, bool equal
     // cv::equalizeHist(img, img);
   // }
   return img;
+}
+
+
+inline Image1b MaybeConvertToGray(const cv::Mat& im)
+{
+  if (im.channels() == 1) {
+    return im;
+  } else {
+    Image1b im_gray;
+    cv::cvtColor(im, im_gray, cv::COLOR_BGR2GRAY);
+    return im_gray;
+  }
+}
+
+
+inline StereoImage1b ConvertToGray(const StereoImage3b& pair)
+{
+  return StereoImage1b(pair.timestamp, pair.camera_id,
+      MaybeConvertToGray(pair.left_image), MaybeConvertToGray(pair.right_image));
 }
 
 

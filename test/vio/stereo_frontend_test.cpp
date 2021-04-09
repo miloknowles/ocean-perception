@@ -38,7 +38,7 @@ TEST(VioTest, TestFrontendFarmSim)
 
   Matrix4d world_T_lkf = Matrix4d::Identity();
 
-  dataset::StereoCallback callback = [&](const StereoImage& stereo_data)
+  dataset::StereoCallback1b callback = [&](const StereoImage1b& stereo_data)
   {
     Matrix4d prev_T_cur_prior = Matrix4d::Identity();
     const VoResult& result = stereo_frontend.Track(stereo_data, prev_T_cur_prior);
@@ -99,7 +99,7 @@ TEST(VioTest, TestFrontendHimb)
 
   Matrix4d world_T_lkf = Matrix4d::Identity();
 
-  dataset::StereoCallback callback = [&](const StereoImage& stereo_data)
+  dataset::StereoCallback1b callback = [&](const StereoImage1b& stereo_data)
   {
     Matrix4d prev_T_cur_prior = Matrix4d::Identity();
     const VoResult& result = stereo_frontend.Track(stereo_data, prev_T_cur_prior);

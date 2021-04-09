@@ -87,7 +87,7 @@ static bool FindObservationFromCameraId(const VecLandmarkObservation& lmk_obs, u
 }
 
 
-VoResult StereoFrontend::Track(const StereoImage& stereo_pair,
+VoResult StereoFrontend::Track(const StereoImage1b& stereo_pair,
                                const Matrix4d& prev_T_cur_prior,
                                bool force_keyframe)
 {

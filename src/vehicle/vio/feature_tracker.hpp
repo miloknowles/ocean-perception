@@ -48,7 +48,9 @@ class FeatureTracker final {
              const VecPoint2f& px_ref,
              VecPoint2f& px_cur,
              std::vector<uchar>& status,
-             std::vector<float>& error);
+             std::vector<float>& error,
+             bool bidirectional = false,
+             float fwd_bkw_thresh_px = 5.0);
 
  private:
   Params params_;

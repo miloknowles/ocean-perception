@@ -124,7 +124,7 @@ class StateEstimator final {
 
   StateEstimator(const Params& params, const StereoCamera& stereo_rig);
 
-  void ReceiveStereo(const StereoImage& stereo_pair);
+  void ReceiveStereo(const StereoImage1b& stereo_pair);
   void ReceiveImu(const ImuMeasurement& imu_data);
   void ReceiveDepth(const DepthMeasurement& depth_data);
   void ReceiveRange(const RangeMeasurement& range_data);
@@ -177,7 +177,7 @@ class StateEstimator final {
   double depth_sign_ = 1.0;
 
   StereoFrontend stereo_frontend_;
-  ThreadsafeQueue<StereoImage> raw_stereo_queue_;
+  ThreadsafeQueue<StereoImage1b> raw_stereo_queue_;
 
   std::thread stereo_frontend_thread_;
   std::thread smoother_thread_;

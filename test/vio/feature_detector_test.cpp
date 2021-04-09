@@ -61,7 +61,7 @@ TEST(VioTest, TestDetectSequence)
 
   cv::namedWindow("FeatureDetector", cv::WINDOW_AUTOSIZE);
 
-  dataset::StereoCallback stereo_cb = [&detector](const StereoImage& stereo_data)
+  dataset::StereoCallback1b stereo_cb = [&detector](const StereoImage1b& stereo_data)
   {
     VecPoint2f tracked_kp, new_kp;
     detector.Detect(stereo_data.left_image, tracked_kp, new_kp);

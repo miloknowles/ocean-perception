@@ -119,12 +119,20 @@ bool DataProvider::Step(bool verbose)
 
     // NOTE(milo): Using non-const left/right images so that we can avoid copy them into the
     // stereo image (use std::move instead to steal the underlying data).
-    Image1b imgl = ReadAndConvertToGrayScale(path_left, false);
-    Image1b imgr = ReadAndConvertToGrayScale(path_right, false);
-    const StereoImage stereo_image(timestamp, next_stereo_idx_, std::move(imgl), std::move(imgr));
+    const cv::Mat iml = cv::imread(path_left, cv::IMREAD_ANYCOLOR);
+    const cv::Mat imr = cv::imread(path_right, cv::IMREAD_ANYCOLOR);
+    if (iml.channels() > 1) {
+      const StereoImage3b stereo3b(timestamp, next_stereo_idx_, Image3b(iml), Image3b(imr));
+      for (const StereoCallback3b& f : stereo_callbacks_3b_) {
+        f(stereo3b);
+      }
+    }
 
-    for (const StereoCallback& function : stereo_callbacks_) {
-      function(stereo_image);
+    Image1b iml_gray = MaybeConvertToGray(iml);
+    Image1b imr_gray = MaybeConvertToGray(imr);
+    const StereoImage1b stereo1b(timestamp, next_stereo_idx_, std::move(iml_gray), std::move(imr_gray));
+    for (const StereoCallback1b& f : stereo_callbacks_1b_) {
+      f(stereo1b);
     }
     ++next_stereo_idx_;
   }

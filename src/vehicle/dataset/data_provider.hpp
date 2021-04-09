@@ -38,7 +38,8 @@ inline std::string to_string(const DataSource& d)
 }
 
 // Callback function signatures.
-typedef std::function<void(const StereoImage&)> StereoCallback;
+typedef std::function<void(const StereoImage1b&)> StereoCallback1b;
+typedef std::function<void(const StereoImage3b&)> StereoCallback3b;
 typedef std::function<void(const ImuMeasurement&)> ImuCallback;
 typedef std::function<void(const DepthMeasurement&)> DepthCallback;
 typedef std::function<void(const RangeMeasurement&)> RangeCallback;
@@ -93,7 +94,8 @@ class DataProvider {
  public:
   DataProvider() = default;
 
-  void RegisterStereoCallback(StereoCallback cb) { stereo_callbacks_.emplace_back(cb); }
+  void RegisterStereoCallback(StereoCallback1b cb) { stereo_callbacks_1b_.emplace_back(cb); }
+  void RegisterStereoCallback(StereoCallback3b cb) { stereo_callbacks_3b_.emplace_back(cb); }
   void RegisterImuCallback(ImuCallback cb) { imu_callbacks_.emplace_back(cb); }
   void RegisterDepthCallback(DepthCallback cb) { depth_callbacks_.emplace_back(cb); }
   void RegisterRangeCallback(RangeCallback cb) { range_callbacks_.emplace_back(cb); }
@@ -131,7 +133,8 @@ class DataProvider {
   // Playback() runs this member function in its own thread.
   void PlaybackWorker(float speed, bool verbose);
 
-  std::vector<StereoCallback> stereo_callbacks_;
+  std::vector<StereoCallback1b> stereo_callbacks_1b_;
+  std::vector<StereoCallback3b> stereo_callbacks_3b_;
   std::vector<ImuCallback> imu_callbacks_;
   std::vector<DepthCallback> depth_callbacks_;
   std::vector<RangeCallback> range_callbacks_;
