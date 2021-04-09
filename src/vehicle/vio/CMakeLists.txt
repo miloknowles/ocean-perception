@@ -7,14 +7,6 @@ SET(LIBRARY_SRC
   vo_result.hpp
   ellipsoid.cpp
   ellipsoid.hpp
-  feature_detector.cpp
-  feature_detector.hpp
-  feature_tracker.cpp
-  feature_tracker.hpp
-  stereo_matcher.cpp
-  stereo_matcher.hpp
-  visualization_2d.cpp
-  visualization_2d.hpp
   optimize_odometry.cpp
   optimize_odometry.hpp
   single_axis_factor.hpp
@@ -40,9 +32,9 @@ target_include_directories(${LIBRARY_NAME} PRIVATE
 target_link_libraries(${LIBRARY_NAME}
   ${PROJECT_NAME}_core
   ${PROJECT_NAME}_anms
+  ${PROJECT_NAME}_ft
   ${Boost_LIBRARIES}
   ${OpenCV_LIBRARIES}
-  ${OpenCV_LIBS}
   ${GLOG_LIBRARIES}
   Boost::boost
   gtsam

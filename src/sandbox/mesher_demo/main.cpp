@@ -17,10 +17,6 @@
 #include "dataset/himb_dataset.hpp"
 #include "dataset/caddy_dataset.hpp"
 #include "core/data_manager.hpp"
-#include "vio/feature_detector.hpp"
-#include "vio/stereo_matcher.hpp"
-#include "vio/feature_tracker.hpp"
-#include "vio/visualization_2d.hpp"
 #include "object_mesher.hpp"
 
 
@@ -52,8 +48,8 @@ int main(int argc, char const *argv[])
 {
   MesherDemoParams params(Join("/home/milo/bluemeadow/catkin_ws/src/vehicle/src/sandbox/mesher_demo/config", "MesherDemo_params.yaml"),
                           Join("/home/milo/bluemeadow/catkin_ws/src/vehicle/src/sandbox/mesher_demo/config", "shared_params.yaml"));
-  // dataset::EurocDataset dataset(params.folder);
-  dataset::CaddyDataset dataset(params.folder, "genova-A");
+  dataset::EurocDataset dataset(params.folder);
+  // dataset::CaddyDataset dataset(params.folder, "genova-A");
   // dataset::HimbDataset dataset(params.folder, "train");
 
   // Make an (ordered) queue of all groundtruth poses.

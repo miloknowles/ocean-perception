@@ -3,14 +3,14 @@
 
 #include <opencv2/highgui.hpp>
 
-#include "vio/visualization_2d.hpp"
-#include "vio/feature_detector.hpp"
-#include "vio/stereo_matcher.hpp"
+#include "feature_tracking/visualization_2d.hpp"
+#include "feature_tracking/feature_detector.hpp"
+#include "feature_tracking/stereo_matcher.hpp"
 #include "dataset/euroc_dataset.hpp"
 
 using namespace bm;
 using namespace core;
-using namespace vio;
+using namespace ft;
 
 
 TEST(VioTest, TestStereoMatcherSingle)

@@ -13,15 +13,17 @@
 #include "core/stereo_camera.hpp"
 #include "core/landmark_observation.hpp"
 
-#include "vio/feature_detector.hpp"
-#include "vio/feature_tracker.hpp"
-#include "vio/stereo_matcher.hpp"
+#include "feature_tracking/feature_detector.hpp"
+#include "feature_tracking/feature_tracker.hpp"
+#include "feature_tracking/stereo_matcher.hpp"
+
 #include "vio/vo_result.hpp"
 
 namespace bm {
 namespace vio {
 
 using namespace core;
+using namespace ft;
 
 typedef std::unordered_map<uid_t, VecLandmarkObservation> FeatureTracks;
 

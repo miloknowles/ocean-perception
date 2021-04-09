@@ -14,9 +14,9 @@
 #include "core/stereo_camera.hpp"
 #include "core/sliding_buffer.hpp"
 #include "core/landmark_observation.hpp"
-#include "vio/feature_detector.hpp"
-#include "vio/feature_tracker.hpp"
-#include "vio/stereo_matcher.hpp"
+#include "feature_tracking/feature_detector.hpp"
+#include "feature_tracking/feature_tracker.hpp"
+#include "feature_tracking/stereo_matcher.hpp"
 
 #include "grid_lookup.hpp"
 
@@ -24,8 +24,9 @@ namespace bm {
 namespace mesher {
 
 using namespace core;
+using namespace ft;
 
-typedef std::vector<vio::LandmarkObservation> VecLmkObs;
+typedef std::vector<LandmarkObservation> VecLmkObs;
 typedef std::unordered_map<uid_t, VecLmkObs> FeatureTracks;
 
 
@@ -50,9 +51,12 @@ class ObjectMesher final {
   {
     MACRO_PARAMS_STRUCT_CONSTRUCTORS(Params);
 
-    vio::FeatureDetector::Params detector_params;
-    vio::FeatureTracker::Params tracker_params;
-    vio::StereoMatcher::Params matcher_params;
+    FeatureDetector::Params detector_params;
+    FeatureTracker::Params tracker_params;
+    StereoMatcher::Params matcher_params;
+
+    int foreground_ksize = 12;
+    float foreground_min_gradient = 25.0;
 
     int lmk_grid_rows = 16;
     int lmk_grid_cols = 20;
@@ -79,10 +83,12 @@ class ObjectMesher final {
     void LoadParams(const YamlParser& parser) override
     {
       // Each sub-module has a subtree in the params.yaml.
-      detector_params = vio::FeatureDetector::Params(parser.GetYamlNode("FeatureDetector"));
-      tracker_params = vio::FeatureTracker::Params(parser.GetYamlNode("FeatureTracker"));
-      matcher_params = vio::StereoMatcher::Params(parser.GetYamlNode("StereoMatcher"));
+      detector_params = FeatureDetector::Params(parser.GetYamlNode("FeatureDetector"));
+      tracker_params = FeatureTracker::Params(parser.GetYamlNode("FeatureTracker"));
+      matcher_params = StereoMatcher::Params(parser.GetYamlNode("StereoMatcher"));
 
+      parser.GetYamlParam("foreground_ksize", &foreground_ksize);
+      parser.GetYamlParam("foreground_min_gradient", &foreground_min_gradient);
       parser.GetYamlParam("stereo_max_depth", &stereo_max_depth);
       parser.GetYamlParam("stereo_min_depth", &stereo_min_depth);
       parser.GetYamlParam("retrack_frames_k", &retrack_frames_k);
@@ -91,7 +97,7 @@ class ObjectMesher final {
       parser.GetYamlParam("edge_min_foreground_percent", &edge_min_foreground_percent);
       parser.GetYamlParam("edge_max_depth_change", &edge_max_depth_change);
 
-      CHECK(retrack_frames_k >= 1 && retrack_frames_k < 5);
+      CHECK(retrack_frames_k >= 1 && retrack_frames_k < 8);
     }
   };
 
@@ -100,9 +106,9 @@ class ObjectMesher final {
   ObjectMesher(const Params& params, const StereoCamera& stereo_rig)
       : params_(params),
         stereo_rig_(stereo_rig),
-        detector_(vio::FeatureDetector::Params()),
-        matcher_(vio::StereoMatcher::Params()),
-        tracker_(vio::FeatureTracker::Params()),
+        detector_(params.detector_params),
+        matcher_(params.matcher_params),
+        tracker_(params.tracker_params),
         img_buffer_(params_.retrack_frames_k),
         lmk_grid_(params_.lmk_grid_rows, params_.lmk_grid_cols) {}
 
@@ -131,8 +137,9 @@ class ObjectMesher final {
   uid_t next_lmk_id_ = 0;
   uid_t prev_kf_id_ = 0;
 
-  vio::FeatureDetector detector_;
-  vio::StereoMatcher matcher_;
+  FeatureDetector detector_;
+  StereoMatcher matcher_;
+  FeatureTracker tracker_;
 
   SlidingBuffer<Image1b> img_buffer_;
   // Image1b prev_left_image_;

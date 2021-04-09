@@ -7,7 +7,7 @@
 #include "core/cv_types.hpp"
 
 namespace bm {
-namespace vio {
+namespace ft {
 
 using namespace core;
 

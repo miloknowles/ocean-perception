@@ -11,5 +11,6 @@ target_link_libraries(mesher_demo
   ${PROJECT_NAME}_core
   ${PROJECT_NAME}_dataset
   ${PROJECT_NAME}_vio
+  ${PROJECT_NAME}_ft
   glog
   ${Boost_LIBRARIES})

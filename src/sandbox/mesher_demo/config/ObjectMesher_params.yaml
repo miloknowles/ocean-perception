@@ -1,15 +1,18 @@
 %YAML:1.0
 
 #===============================================================================
-edge_min_foreground_percent: 0.5
+foreground_ksize: 15
+foreground_min_gradient: 10.0
+
+edge_min_foreground_percent: 0.7
 edge_max_depth_change: 1.5
 
 stereo_max_depth: 30.0 # m
-stereo_min_depth: 0.8   # m
+stereo_min_depth: 0.5   # m
 
 # Kill off a tracked landmark if it hasn't been observed in this many frames.
 # If set to zero, this means that a track dies as soon as it isn't observed in the current frame.
-retrack_frames_k: 3
+retrack_frames_k: 5
 
 # Trigger a keyframe if there aren't many landmarks. The StereoFrontend will try to create new
 # landmarks for tracking.
@@ -20,9 +23,9 @@ trigger_keyframe_min_lmks: 10
 trigger_keyframe_k: 10
 
 FeatureDetector:
-  max_features_per_frame: 100
+  max_features_per_frame: 150
   subpixel_corners: 0 # bool
-  min_distance_btw_tracked_and_detected_features: 5
+  min_distance_btw_tracked_and_detected_features: 20
   gftt_quality_level: 0.02
   gftt_block_size: 5
   gftt_use_harris_corner_detector: 0 # bool

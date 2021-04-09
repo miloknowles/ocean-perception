@@ -6,7 +6,7 @@
 #include "core/timer.hpp"
 #include "vio/optimize_odometry.hpp"
 #include "vio/stereo_frontend.hpp"
-#include "vio/visualization_2d.hpp"
+#include "feature_tracking/visualization_2d.hpp"
 
 namespace bm {
 namespace vio {

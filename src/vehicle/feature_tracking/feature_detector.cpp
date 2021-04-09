@@ -3,11 +3,11 @@
 #include <opencv2/imgproc.hpp>
 #include <glog/logging.h>
 
-#include "vio/feature_detector.hpp"
+#include "feature_tracking/feature_detector.hpp"
 #include "anms/anms.h"
 
 namespace bm {
-namespace vio {
+namespace ft {
 
 static const int kOrbFirstLevel = 0;
 

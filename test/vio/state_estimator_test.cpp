@@ -15,9 +15,8 @@
 #include "core/timer.hpp"
 #include "core/uid.hpp"
 #include "dataset/euroc_dataset.hpp"
-// #include "dataset/himb_dataset.hpp"
 #include "vio/state_estimator.hpp"
-#include "vio/visualization_2d.hpp"
+#include "feature_tracking/visualization_2d.hpp"
 #include "vio/visualizer_3d.hpp"
 
 

@@ -17,7 +17,7 @@
 #include "core/file_utils.hpp"
 #include "dataset/euroc_dataset.hpp"
 #include "vio/state_estimator.hpp"
-#include "vio/visualization_2d.hpp"
+#include "feature_tracking/visualization_2d.hpp"
 #include "vio/visualizer_3d.hpp"
 #include "lcm_util/util_pose3_t.hpp"
 

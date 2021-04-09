@@ -7,7 +7,7 @@
 #include "object_mesher.hpp"
 #include "core/image_util.hpp"
 #include "core/math_util.hpp"
-#include "vio/visualization_2d.hpp"
+#include "feature_tracking/visualization_2d.hpp"
 #include "neighbor_grid.hpp"
 
 namespace bm {
@@ -184,7 +184,7 @@ void ObjectMesher::TrackAndTriangulate(const StereoImage1b& stereo_pair, bool fo
       live_tracks_.emplace(lmk_id, VecLmkObs());
 
       // Now insert the latest observation.
-      const vio::LandmarkObservation lmk_obs(lmk_id, stereo_pair.camera_id, pt, disp, 0.0, 0.0);
+      const LandmarkObservation lmk_obs(lmk_id, stereo_pair.camera_id, pt, disp, 0.0, 0.0);
       live_tracks_.at(lmk_id).emplace_back(lmk_obs);
     }
 
@@ -212,7 +212,7 @@ void ObjectMesher::TrackAndTriangulate(const StereoImage1b& stereo_pair, bool fo
     CHECK_GT(live_tracks_.count(lmk_id), 0) << "Tracked point should already exist in live_tracks_!" << std::endl;
 
     // Now insert the latest observation.
-    const vio::LandmarkObservation lmk_obs(lmk_id, stereo_pair.camera_id, pt, disp, 0.0, 0.0);
+    const LandmarkObservation lmk_obs(lmk_id, stereo_pair.camera_id, pt, disp, 0.0, 0.0);
     live_tracks_.at(lmk_id).emplace_back(lmk_obs);
   }
 
@@ -239,7 +239,7 @@ void ObjectMesher::ProcessStereo(const StereoImage1b& stereo_pair)
   cv::imshow("Feature Tracks", viz_tracks);
 
   Image1b foreground_mask;
-  EstimateForegroundMask(iml, foreground_mask, 12, 25.0, 4);
+  EstimateForegroundMask(iml, foreground_mask, params_.foreground_ksize, params_.foreground_min_gradient, 4);
   cv::imshow("foreground_mask", foreground_mask);
 
   // Build a keypoint graph.
@@ -249,12 +249,12 @@ void ObjectMesher::ProcessStereo(const StereoImage1b& stereo_pair)
 
   for (auto it = live_tracks_.begin(); it != live_tracks_.end(); ++it) {
     const uid_t lmk_id = it->first;
-    const vio::LandmarkObservation& lmk_obs = it->second.back();
+    const LandmarkObservation& lmk_obs = it->second.back();
 
     const size_t num_obs = it->second.size();
 
     // Skip observations from previous frames.
-    if (lmk_obs.camera_id < (stereo_pair.camera_id - params_.retrack_frames_k) || num_obs < 2) {
+    if (lmk_obs.camera_id < (stereo_pair.camera_id - params_.retrack_frames_k)) {
       continue;
     }
     lmk_points.emplace_back(lmk_obs.pixel_location);
@@ -369,7 +369,7 @@ Image3b ObjectMesher::VisualizeFeatureTracks()
 
     CHECK(!lmk_obs.empty()) << "Landmark should have one or more observations stored" << std::endl;
 
-    const vio::LandmarkObservation& lmk_last_obs = lmk_obs.back();
+    const LandmarkObservation& lmk_last_obs = lmk_obs.back();
 
     CHECK_LE(lmk_last_obs.camera_id, prev_camera_id_)
         << "Found landmark observation for future camera_id" << std::endl;
@@ -386,7 +386,7 @@ Image3b ObjectMesher::VisualizeFeatureTracks()
       } else {
         CHECK_GE(lmk_obs.size(), 2);
         cur_keypoints.emplace_back(lmk_last_obs.pixel_location);
-        const vio::LandmarkObservation& lmk_lastlast_obs = lmk_obs.at(lmk_obs.size() - 2);
+        const LandmarkObservation& lmk_lastlast_obs = lmk_obs.at(lmk_obs.size() - 2);
         ref_keypoints.emplace_back(lmk_lastlast_obs.pixel_location);
       }
 
@@ -396,7 +396,7 @@ Image3b ObjectMesher::VisualizeFeatureTracks()
     }
   }
 
-  return vio::DrawFeatureTracks(img_buffer_.Head(), ref_keypoints, cur_keypoints, untracked_ref, untracked_cur);
+  return DrawFeatureTracks(img_buffer_.Head(), ref_keypoints, cur_keypoints, untracked_ref, untracked_cur);
 }
 
 }
