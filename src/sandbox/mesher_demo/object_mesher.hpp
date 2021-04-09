@@ -23,9 +23,6 @@ namespace mesher {
 using namespace core;
 using namespace ft;
 
-// typedef std::vector<LandmarkObservation> VecLmkObs;
-// typedef std::unordered_map<uid_t, VecLmkObs> FeatureTracks;
-
 
 typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::undirectedS> LmkGraph;
 

@@ -113,8 +113,6 @@ void ObjectMesher::ProcessStereo(const StereoImage1b& stereo_pair)
     const uid_t lmk_id = it->first;
     const LandmarkObservation& lmk_obs = it->second.back();
 
-    const size_t num_obs = it->second.size();
-
     // Skip observations from previous frames.
     if (lmk_obs.camera_id < (stereo_pair.camera_id - params_.tracker_params.retrack_frames_k)) {
       continue;

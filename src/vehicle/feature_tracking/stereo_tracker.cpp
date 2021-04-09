@@ -11,7 +11,7 @@ namespace bm {
 namespace ft {
 
 
-void StereoTracker::TrackAndTriangulate(const StereoImage1b& stereo_pair, bool force_keyframe)
+bool StereoTracker::TrackAndTriangulate(const StereoImage1b& stereo_pair, bool force_keyframe)
 {
   std::map<int, std::vector<uid_t>> live_lmk_ids_k_ago;
   std::map<int, VecPoint2f> live_lmk_pts_k_ago;
@@ -147,6 +147,8 @@ void StereoTracker::TrackAndTriangulate(const StereoImage1b& stereo_pair, bool f
   // Housekeeping.
   img_buffer_.Add(stereo_pair.left_image);
   prev_camera_id_ = stereo_pair.camera_id;
+
+  return is_keyframe;
 }
 
 
@@ -177,7 +179,7 @@ void StereoTracker::KillOffLostLandmarks(uid_t cur_camera_id)
 }
 
 
-Image3b StereoTracker::VisualizeFeatureTracks()
+Image3b StereoTracker::VisualizeFeatureTracks() const
 {
   VecPoint2f ref_keypoints, cur_keypoints, untracked_ref, untracked_cur;
 

@@ -77,13 +77,14 @@ class StereoTracker final {
         tracker_(params.tracker_params),
         img_buffer_(params_.retrack_frames_k) {}
 
-  void TrackAndTriangulate(const StereoImage1b& stereo_pair, bool force_keyframe);
+  // Returns whether a new keyframe was initialized.
+  bool TrackAndTriangulate(const StereoImage1b& stereo_pair, bool force_keyframe);
 
   // Draws current feature tracks:
   // BLUE = Newly detected feature
   // GREEN = Successfully tracked in the most recent image
   // RED = Lost tracking (could be revived in a future image)
-  Image3b VisualizeFeatureTracks();
+  Image3b VisualizeFeatureTracks() const;
 
   const FeatureTracks& GetLiveTracks() const { return live_tracks_; }
 
