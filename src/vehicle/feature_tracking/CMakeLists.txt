@@ -8,7 +8,9 @@ SET(LIBRARY_SRC
   stereo_matcher.cpp
   stereo_matcher.hpp
   visualization_2d.cpp
-  visualization_2d.hpp)
+  visualization_2d.hpp
+  stereo_tracker.cpp
+  stereo_tracker.hpp)
 
 add_library(${LIBRARY_NAME} SHARED ${LIBRARY_SRC})
 set_target_properties(${LIBRARY_NAME} PROPERTIES LINKER_LANGUAGE CXX)

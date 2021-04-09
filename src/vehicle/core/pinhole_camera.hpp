@@ -36,6 +36,8 @@ class PinholeCamera final {
   double cy() const { return cy_; }
   double Width() const { return width_; }
   double Height() const { return height_; }
+  Matrix3d K() const { return K_; }
+  Matrix3d Kinv() const { return K_inv_; }
 
   // Project 3D point in the camera's RDF frame.
   Vector2d Project(const Vector3d& p_cam) const

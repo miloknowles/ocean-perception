@@ -13,12 +13,9 @@
 #include "core/stereo_image.hpp"
 #include "core/stereo_camera.hpp"
 #include "core/sliding_buffer.hpp"
+#include "core/grid_lookup.hpp"
 #include "core/landmark_observation.hpp"
-#include "feature_tracking/feature_detector.hpp"
-#include "feature_tracking/feature_tracker.hpp"
-#include "feature_tracking/stereo_matcher.hpp"
-
-#include "grid_lookup.hpp"
+#include "feature_tracking/stereo_tracker.hpp"
 
 namespace bm {
 namespace mesher {
@@ -26,8 +23,8 @@ namespace mesher {
 using namespace core;
 using namespace ft;
 
-typedef std::vector<LandmarkObservation> VecLmkObs;
-typedef std::unordered_map<uid_t, VecLmkObs> FeatureTracks;
+// typedef std::vector<LandmarkObservation> VecLmkObs;
+// typedef std::unordered_map<uid_t, VecLmkObs> FeatureTracks;
 
 
 typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::undirectedS> LmkGraph;
@@ -51,9 +48,7 @@ class ObjectMesher final {
   {
     MACRO_PARAMS_STRUCT_CONSTRUCTORS(Params);
 
-    FeatureDetector::Params detector_params;
-    FeatureTracker::Params tracker_params;
-    StereoMatcher::Params matcher_params;
+    StereoTracker::Params tracker_params;
 
     int foreground_ksize = 12;
     float foreground_min_gradient = 25.0;
@@ -64,40 +59,16 @@ class ObjectMesher final {
     float edge_min_foreground_percent = 0.9;
     double edge_max_depth_change = 1.0;
 
-    double stereo_max_depth = 30.0;
-    double stereo_min_depth = 0.5;
-
-    double klt_fwd_bwd_tol = 2.0;
-
-    // Kill off a tracked landmark if it hasn't been observed in this many frames.
-    // If set to zero, this means that a track dies as soon as it isn't observed in the current frame.
-    int retrack_frames_k = 3; // Retrack points from the previous k frames.
-
-    // Trigger a keyframe if we only have 0% of maximum keypoints.
-    int trigger_keyframe_min_lmks = 10;
-
-    // Trigger a keyframe at least every k frames.
-    int trigger_keyframe_k = 10;
-
    private:
     void LoadParams(const YamlParser& parser) override
     {
       // Each sub-module has a subtree in the params.yaml.
-      detector_params = FeatureDetector::Params(parser.GetYamlNode("FeatureDetector"));
-      tracker_params = FeatureTracker::Params(parser.GetYamlNode("FeatureTracker"));
-      matcher_params = StereoMatcher::Params(parser.GetYamlNode("StereoMatcher"));
+      tracker_params = StereoTracker::Params(parser.GetYamlNode("StereoTracker"));
 
       parser.GetYamlParam("foreground_ksize", &foreground_ksize);
       parser.GetYamlParam("foreground_min_gradient", &foreground_min_gradient);
-      parser.GetYamlParam("stereo_max_depth", &stereo_max_depth);
-      parser.GetYamlParam("stereo_min_depth", &stereo_min_depth);
-      parser.GetYamlParam("retrack_frames_k", &retrack_frames_k);
-      parser.GetYamlParam("trigger_keyframe_min_lmks", &trigger_keyframe_min_lmks);
-      parser.GetYamlParam("trigger_keyframe_k", &trigger_keyframe_k);
       parser.GetYamlParam("edge_min_foreground_percent", &edge_min_foreground_percent);
       parser.GetYamlParam("edge_max_depth_change", &edge_max_depth_change);
-
-      CHECK(retrack_frames_k >= 1 && retrack_frames_k < 8);
     }
   };
 
@@ -106,29 +77,10 @@ class ObjectMesher final {
   ObjectMesher(const Params& params, const StereoCamera& stereo_rig)
       : params_(params),
         stereo_rig_(stereo_rig),
-        detector_(params.detector_params),
-        matcher_(params.matcher_params),
-        tracker_(params.tracker_params),
-        img_buffer_(params_.retrack_frames_k),
+        tracker_(params.tracker_params, stereo_rig),
         lmk_grid_(params_.lmk_grid_rows, params_.lmk_grid_cols) {}
 
-  void TrackAndTriangulate(const StereoImage1b& stereo_pair, bool force_keyframe);
   void ProcessStereo(const StereoImage1b& stereo_pair);
-
-  // Draws current feature tracks:
-  // BLUE = Newly detected feature
-  // GREEN = Successfully tracked in the most recent image
-  // RED = Lost tracking (could be revived in a future image)
-  Image3b VisualizeFeatureTracks();
-
- private:
-  // Get the next available landmark uid_t.
-  uid_t AllocateLandmarkId() { return next_lmk_id_++; }
-
-  // Kill off any landmarks that haven't been seen in lost_point_lifespan frames.
-  // This should be called AFTER tracking points in to the current image so that the most recent
-  // observations are available.
-  void KillOffLostLandmarks(uid_t cur_camera_id);
 
  private:
   Params params_;
@@ -137,13 +89,8 @@ class ObjectMesher final {
   uid_t next_lmk_id_ = 0;
   uid_t prev_kf_id_ = 0;
 
-  FeatureDetector detector_;
-  StereoMatcher matcher_;
-  FeatureTracker tracker_;
+  StereoTracker tracker_;
 
-  SlidingBuffer<Image1b> img_buffer_;
-  // Image1b prev_left_image_;
-  // Image1b prev_prev_left_image_;
   uid_t prev_camera_id_ = 0;
 
   FeatureTracks live_tracks_;

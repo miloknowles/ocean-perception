@@ -13,6 +13,8 @@ template <typename Scalar>
 class GridLookup final {
  public:
   GridLookup(int rows, int cols) : rows_(rows), cols_(cols) {
+    assert(rows >= 1 && cols >= 1);
+
     // Preallocate all of the grid memory.
     grid_.resize(rows);
     for (int i = 0; i < rows; ++i) {
@@ -23,14 +25,14 @@ class GridLookup final {
   // Mutable accessor.
   std::list<Scalar>& GetCellMutable(int row, int col)
   {
-    assert(row >= 0 && row < rows_ && col >= 0 && col <= cols_);
+    assert(row >= 0 && row < rows_ && col >= 0 && col < cols_);
     return grid_.at(row).at(col);
   }
 
   // Immutable accessor.
   std::list<Scalar> GetCell(int row, int col) const
   {
-    assert(row >= 0 && row < rows_ && col >= 0 && col <= cols_);
+    assert(row >= 0 && row < rows_ && col >= 0 && col < cols_);
     return grid_.at(row).at(col);
   }
 
@@ -63,6 +65,9 @@ class GridLookup final {
       }
     }
   }
+
+  int Rows() const { return rows_; }
+  int Cols() const { return cols_; }
 
  private:
   int rows_, cols_;
