@@ -1,9 +1,16 @@
 #include <glog/logging.h>
 
 #include "zed_recorder.hpp"
+#include "core/imu_measurement.hpp"
+#include "core/depth_measurement.hpp"
+#include "core/stereo_image.hpp"
+#include "dataset/euroc_data_writer.hpp"
 
 namespace bm {
 namespace zed {
+
+using namespace core;
+
 
 ZedRecorder::ZedRecorder(const std::string& output_folder)
   : output_folder_(output_folder), shutdown_(false)
@@ -75,6 +82,8 @@ void ZedRecorder::CaptureLoop()
 
   sl::SensorsData sensors_data;
 
+  dataset::EurocDataWriter writer(output_folder_);
+
   while (elapsed_ms < 5000 && !shutdown_) {
     // Depending on your camera model, different sensors are available.
     // They do not run at the same rate: therefore, to not miss any new samples we iterate as fast as possible
@@ -82,12 +91,22 @@ void ZedRecorder::CaptureLoop()
     // NOTE: There is no need to acquire images with grab(). getSensorsData runs in a separate internal capture thread.
     if (zed.getSensorsData(sensors_data, sl::TIME_REFERENCE::CURRENT) == sl::ERROR_CODE::SUCCESS) {
       // Check if a new IMU sample is available. IMU is the sensor with the highest update frequency.
+
       if (ts.isNew(sensors_data.imu)) {
         std::cout << "Sample " << count++ << "\n";
         std::cout << " - IMU:\n";
         std::cout << " \t Orientation: {" << sensors_data.imu.pose.getOrientation() << "}\n";
         std::cout << " \t Acceleration: {" << sensors_data.imu.linear_acceleration << "} [m/sec^2]\n";
         std::cout << " \t Angular Velocity: {" << sensors_data.imu.angular_velocity << "} [deg/sec]\n";
+
+        const timestamp_t timestamp = sensors_data.imu.timestamp.getNanoseconds();
+        const Vector3d angular_vel(sensors_data.imu.angular_velocity.x,
+                                   sensors_data.imu.angular_velocity.y,
+                                   sensors_data.imu.angular_velocity.y);
+        const Vector3d linear_accel(sensors_data.imu.linear_acceleration.x,
+                                    sensors_data.imu.linear_acceleration.y,
+                                    sensors_data.imu.linear_acceleration.z);
+        writer.WriteImu(ImuMeasurement(timestamp, angular_vel, linear_accel));
 
         // Check if Magnetometer data has been updated.
         if (ts.isNew(sensors_data.magnetometer))

@@ -8,7 +8,9 @@ SET(LIBRARY_SRC
   himb_dataset.cpp
   himb_dataset.hpp
   caddy_dataset.cpp
-  caddy_dataset.hpp)
+  caddy_dataset.hpp
+  euroc_data_writer.cpp
+  euroc_data_writer.hpp)
 
 add_library(${LIBRARY_NAME} SHARED ${LIBRARY_SRC})
 set_target_properties(${LIBRARY_NAME} PROPERTIES LINKER_LANGUAGE CXX)
