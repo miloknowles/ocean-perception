@@ -57,6 +57,8 @@ class ZedRecorder final {
   std::atomic_bool shutdown_;
   std::thread thread_;
   std::string output_folder_;
+
+  uid_t camera_id_ = 0;
 };
 
 

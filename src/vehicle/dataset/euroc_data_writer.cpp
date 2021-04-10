@@ -1,5 +1,6 @@
 #include <glog/logging.h>
 #include <fstream>
+#include <opencv2/highgui.hpp>
 
 #include "core/file_utils.hpp"
 
@@ -28,6 +29,8 @@ EurocDataWriter::EurocDataWriter(const std::string& folder)
   mkdir(depth_folder_);
   mkdir(left_folder_);
   mkdir(right_folder_);
+  mkdir(Join(left_folder_, "data"));
+  mkdir(Join(right_folder_, "data"));
 }
 
 
@@ -39,9 +42,35 @@ void EurocDataWriter::WriteImu(const ImuMeasurement& data)
   char buf[100];
   const int sz = std::snprintf(buf, 100, "%zu,%lf,%lf,%lf,%lf,%lf,%lf\n",
       data.timestamp, data.w.x(), data.w.y(), data.w.z(), data.a.x(), data.a.y(), data.a.z());
+  CHECK(sz < 100) << "Buffer overflow! Need to allocate larger char[]" << std::endl;
 
   out << std::string(buf);
   out.close();
+}
+
+
+void EurocDataWriter::WriteStereo(const StereoImage3b& data)
+{
+  std::ofstream ofl, ofr;
+  ofl.open(Join(left_folder_, "data.csv"), std::ios_base::app);
+  ofr.open(Join(right_folder_, "data.csv"), std::ios_base::app);
+
+  char buf[100];
+
+  const std::string img_name = std::to_string(data.camera_id) + ".png";
+  const std::string data_img_name = Join("data", img_name);
+
+  // https://stackoverflow.com/questions/153890/printing-leading-0s-in-c
+  const int sz = std::snprintf(buf, 100, "%zu,%s\n",data.timestamp, img_name);
+  CHECK(sz < 100) << "Buffer overflow! Need to allocate larger char[]" << std::endl;
+
+  ofl << std::string(buf);
+  ofr << std::string(buf);
+  ofl.close();
+  ofr.close();
+
+  cv::imwrite(Join(left_folder_, data_img_name), data.left_image);
+  cv::imwrite(Join(right_folder_, data_img_name), data.right_image);
 }
 
 

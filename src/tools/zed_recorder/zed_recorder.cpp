@@ -12,6 +12,36 @@ namespace zed {
 using namespace core;
 
 
+
+// Mapping between MAT_TYPE and CV_TYPE
+// https://github.com/stereolabs/zed-opencv/blob/master/cpp/src/main.cpp
+int getOCVtype(sl::MAT_TYPE type) {
+  int cv_type = -1;
+  switch (type) {
+    case sl::MAT_TYPE::F32_C1: cv_type = CV_32FC1; break;
+    case sl::MAT_TYPE::F32_C2: cv_type = CV_32FC2; break;
+    case sl::MAT_TYPE::F32_C3: cv_type = CV_32FC3; break;
+    case sl::MAT_TYPE::F32_C4: cv_type = CV_32FC4; break;
+    case sl::MAT_TYPE::U8_C1: cv_type = CV_8UC1; break;
+    case sl::MAT_TYPE::U8_C2: cv_type = CV_8UC2; break;
+    case sl::MAT_TYPE::U8_C3: cv_type = CV_8UC3; break;
+    case sl::MAT_TYPE::U8_C4: cv_type = CV_8UC4; break;
+    default: break;
+  }
+  return cv_type;
+}
+
+/**
+* Conversion function between sl::Mat and cv::Mat
+* https://github.com/stereolabs/zed-opencv/blob/master/cpp/src/main.cpp
+**/
+cv::Mat slMat2cvMat(sl::Mat& input) {
+  // Since cv::Mat data requires a uchar* pointer, we get the uchar1 pointer from sl::Mat (getPtr<T>())
+  // cv::Mat and sl::Mat will share a single memory structure
+  return cv::Mat(input.getHeight(), input.getWidth(), getOCVtype(input.getDataType()), input.getPtr<sl::uchar1>(sl::MEM::CPU), input.getStepBytes(sl::MEM::CPU));
+}
+
+
 ZedRecorder::ZedRecorder(const std::string& output_folder)
   : output_folder_(output_folder), shutdown_(false)
 {
@@ -54,6 +84,7 @@ void ZedRecorder::CaptureLoop()
   init_parameters.coordinate_system = sl::COORDINATE_SYSTEM::IMAGE; // RDF
   init_parameters.sdk_verbose = true;
   init_parameters.depth_mode = sl::DEPTH_MODE::NONE;
+  init_parameters.camera_resolution = sl::RESOLUTION::HD720;
 
   sl::ERROR_CODE returned_state = zed.open(init_parameters);
   if (returned_state != sl::ERROR_CODE::SUCCESS) {
@@ -91,7 +122,6 @@ void ZedRecorder::CaptureLoop()
     // NOTE: There is no need to acquire images with grab(). getSensorsData runs in a separate internal capture thread.
     if (zed.getSensorsData(sensors_data, sl::TIME_REFERENCE::CURRENT) == sl::ERROR_CODE::SUCCESS) {
       // Check if a new IMU sample is available. IMU is the sensor with the highest update frequency.
-
       if (ts.isNew(sensors_data.imu)) {
         std::cout << "Sample " << count++ << "\n";
         std::cout << " - IMU:\n";
@@ -115,6 +145,16 @@ void ZedRecorder::CaptureLoop()
         // Check if Barometer data has been updated.
         if (ts.isNew(sensors_data.barometer))
             std::cout << " - Barometer\n \t Atmospheric pressure:" << sensors_data.barometer.pressure << " [hPa]\n";
+      }
+
+      if (zed.grab() == sl::ERROR_CODE::SUCCESS) {
+        sl::Mat iml, imr;
+        zed.retrieveImage(iml, sl::VIEW::LEFT, sl::MEM::CPU);
+        zed.retrieveImage(imr, sl::VIEW::RIGHT, sl::MEM::CPU);
+        const timestamp_t timestamp = zed.getTimestamp(sl::TIME_REFERENCE::IMAGE);
+        const StereoImage3b stereo_pair(timestamp, camera_id_, slMat2cvMat(iml), slMat2cvMat(imr));
+        writer.WriteStereo(stereo_pair);
+        ++camera_id_;
       }
     }
 
