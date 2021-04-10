@@ -116,7 +116,7 @@ void ObjectMesher::ProcessStereo(const StereoImage1b& stereo_pair)
 
   Timer timer(true);
   tracker_.TrackAndTriangulate(stereo_pair, false);
-  LOG(INFO) << "TrackAndTriangulate: " << timer.Tock().milliseconds() << std::endl;
+  // LOG(INFO) << "TrackAndTriangulate: " << timer.Tock().milliseconds() << std::endl;
 
   const Image3b& viz_tracks = tracker_.VisualizeFeatureTracks();
 

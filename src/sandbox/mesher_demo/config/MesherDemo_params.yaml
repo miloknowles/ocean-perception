@@ -1,7 +1,7 @@
 %YAML:1.0
 
-folder: /home/milo/datasets/Unity3D/farmsim/waypoints1
-# folder: /home/milo/datasets/himb/HIMB1_docksite/
+# folder: /home/milo/datasets/Unity3D/farmsim/waypoints1
+folder: /home/milo/datasets/himb/HIMB2_labsite/
 # folder: /home/milo/datasets/caddy/caddy_gestures_v2/
-playback_speed: 8.0
+playback_speed: 2.0
 pause: 1
