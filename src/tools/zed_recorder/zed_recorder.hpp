@@ -1,13 +1,17 @@
 #pragma once
 
+#include <glog/logging.h>
+
 #include <atomic>
 #include <string>
 #include <thread>
 
 #include <sl/Camera.hpp>
 
+#include "core/timestamp.hpp"
 
 namespace sl {
+
 
 // Basic structure to compare timestamps of a sensor. Determines if a specific sensor data has been updated or not.
 struct TimestampHandler
@@ -35,8 +39,29 @@ struct TimestampHandler
 };
 }
 
+
 namespace bm {
 namespace zed {
+
+
+// Useful for limiting the rate of a data stream to a nominal value.
+class DataSubsampler final {
+ public:
+  DataSubsampler(double target_hz)
+      : target_hz_(target_hz),
+        dt_(core::ConvertToNanoseconds(1.0 / target_hz_)) {}
+
+  bool ShouldSample(core::timestamp_t ts)
+  {
+    CHECK_GE(ts, last_);
+    return (ts - last_) >= dt_;
+  }
+
+ private:
+  double target_hz_;
+  core::timestamp_t dt_;
+  core::timestamp_t last_ = 0;
+};
 
 
 class ZedRecorder final {
@@ -59,6 +84,11 @@ class ZedRecorder final {
   std::string output_folder_;
 
   uid_t camera_id_ = 0;
+
+  DataSubsampler cam_sampler_{30.0};
+  DataSubsampler imu_sampler_{100.0};
+
+  double max_duration_sec_ = 120;
 };
 
 
