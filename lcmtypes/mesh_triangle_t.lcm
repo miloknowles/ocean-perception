@@ -1,0 +1,7 @@
+package vehicle;
+
+// http://docs.ros.org/en/melodic/api/shape_msgs/html/msg/MeshTriangle.html
+struct mesh_triangle_t
+{
+  int32_t vertex_indices[3];
+}

@@ -3,6 +3,7 @@ SET(LIBRARY_NAME ${PROJECT_NAME}_lcm_util)
 SET(LIBRARY_SRC
   decode_image.cpp
   decode_image.hpp
+  util_mesh_t.hpp
   util_pose3_t.hpp)
 
 add_library(${LIBRARY_NAME} SHARED ${LIBRARY_SRC})

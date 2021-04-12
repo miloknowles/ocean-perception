@@ -1,0 +1,7 @@
+package vehicle;
+
+struct mesh_stamped_t
+{
+  header_t header;
+  mesh_t mesh;
+}

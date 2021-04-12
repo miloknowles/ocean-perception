@@ -1,0 +1,12 @@
+package vehicle;
+
+// http://docs.ros.org/en/melodic/api/shape_msgs/html/msg/Mesh.html
+struct mesh_t
+{
+  int32_t num_vertices;
+  vector3_t vertices[num_vertices];
+
+  // Each triangle contains the indices of its 3 vertices.
+  int32_t num_triangles;
+  mesh_triangle_t triangles[num_triangles];
+}
