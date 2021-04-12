@@ -11,7 +11,7 @@ namespace core {
 
 class StereoCamera final {
  public:
-  StereoCamera() = delete;
+  StereoCamera() = default;
 
   StereoCamera(const PinholeCamera& cam_left,
                const PinholeCamera& cam_right,

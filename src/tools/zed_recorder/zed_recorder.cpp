@@ -121,6 +121,33 @@ void ZedRecorder::CaptureLoop()
   std::cout << "Camera Firmware: " << info.camera_configuration.firmware_version << std::endl;
   std::cout << "Sensors Firmware: " << info.sensors_configuration.firmware_version << std::endl;
 
+  std::cout << "\n\n** CAMERA CALIBRATION **" << std::endl;
+
+  std::cout << "LEFT CAMERA:" << std::endl;
+  printf("  fx=%lf  \n  y=%lf  \n  cx=%lf  \n  cy=%lf\n",
+      info.calibration_parameters.left_cam.fx,
+      info.calibration_parameters.left_cam.fy,
+      info.calibration_parameters.left_cam.cx,
+      info.calibration_parameters.left_cam.cy);
+
+  std::cout << "RIGHT CAMERA:" << std::endl;
+  printf("  fx=%lf  \n  y=%lf  \n  cx=%lf  \n  cy=%lf\n",
+      info.calibration_parameters.right_cam.fx,
+      info.calibration_parameters.right_cam.fy,
+      info.calibration_parameters.right_cam.cx,
+      info.calibration_parameters.right_cam.cy);
+
+  const sl::Transform lTr = info.calibration_parameters.stereo_transform;
+  Matrix3d left_R_right;
+  Vector3d left_t_right(lTr.tx, lTr.ty, lTr.tz);
+  left_R_right << lTr.r00, lTr.r01, lTr.r02, lTr.r10, lTr.r11, lTr.r12, lTr.r20, lTr.r21, lTr.r22;
+  std::cout << "left_R_right:" << std::endl;
+  std::cout << left_R_right << std::endl;
+  std::cout << "left_t_right:" << std::endl;
+  std::cout << left_t_right << std::endl;
+
+  std::cout << "\n" << std::endl;
+
   // Display sensors configuration (imu, barometer, magnetometer).
   printSensorConfiguration(info.sensors_configuration.accelerometer_parameters);
   printSensorConfiguration(info.sensors_configuration.gyroscope_parameters);

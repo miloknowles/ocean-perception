@@ -92,6 +92,10 @@ class ObjectMesher final {
     float edge_min_foreground_percent = 0.9;
     double edge_max_depth_change = 1.0;
 
+    StereoCamera stereo_rig;
+    Matrix4d body_T_cam_left = Matrix4d::Identity();
+    Matrix4d body_T_cam_right = Matrix4d::Identity();
+
    private:
     void LoadParams(const YamlParser& parser) override
     {
@@ -102,22 +106,22 @@ class ObjectMesher final {
       parser.GetYamlParam("foreground_min_gradient", &foreground_min_gradient);
       parser.GetYamlParam("edge_min_foreground_percent", &edge_min_foreground_percent);
       parser.GetYamlParam("edge_max_depth_change", &edge_max_depth_change);
+
+      YamlToStereoRig(parser.GetYamlNode("/shared/stereo0"), stereo_rig, body_T_cam_left, body_T_cam_right);
     }
   };
 
   MACRO_DELETE_COPY_CONSTRUCTORS(ObjectMesher);
 
-  ObjectMesher(const Params& params, const StereoCamera& stereo_rig)
+  ObjectMesher(const Params& params)
       : params_(params),
-        stereo_rig_(stereo_rig),
-        tracker_(params.tracker_params, stereo_rig),
+        tracker_(params.tracker_params, params.stereo_rig),
         lmk_grid_(params_.lmk_grid_rows, params_.lmk_grid_cols) {}
 
   void ProcessStereo(const StereoImage1b& stereo_pair);
 
  private:
   Params params_;
-  StereoCamera stereo_rig_;
   StereoTracker tracker_;
   GridLookup<uid_t> lmk_grid_;
 };

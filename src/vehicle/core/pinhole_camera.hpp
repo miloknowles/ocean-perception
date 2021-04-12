@@ -8,8 +8,11 @@ namespace core {
 
 class PinholeCamera final {
  public:
+  PinholeCamera() = default;
+
   PinholeCamera(double fx, double fy, double cx, double cy, double h, double w)
-      : fx_(fx), fy_(fy), cx_(cx), cy_(cy), height_(h), width_(w) {
+      : fx_(fx), fy_(fy), cx_(cx), cy_(cy), height_(h), width_(w)
+  {
     // Set up intrinsics matrices for later.
     K_ << fx_, 0, cx_, 0, fy_, cy_, 0, 0, 1;
     K_inv_ = K_.inverse();

@@ -63,13 +63,10 @@ int main(int argc, char const *argv[])
   //   gt_manager.Push(gt);
   // }
 
-  const PinholeCamera camera_model(415.876509, 415.876509, 375.5, 239.5, 480, 752);
-  const StereoCamera stereo_rig(camera_model, 0.2);
-
   ObjectMesher::Params mparams(
       Join("/home/milo/bluemeadow/catkin_ws/src/vehicle/src/sandbox/mesher_demo/config", "ObjectMesher_params.yaml"),
       Join("/home/milo/bluemeadow/catkin_ws/src/vehicle/src/sandbox/mesher_demo/config", "shared_params.yaml"));
-  ObjectMesher mesher(mparams, stereo_rig);
+  ObjectMesher mesher(mparams);
 
   dataset::StereoCallback1b stereo_cb = [&](const StereoImage1b& stereo_pair)
   {

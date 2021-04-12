@@ -34,38 +34,39 @@ aps0:
            0.0, 0.0, 1.0, -0.5,
            0.0, 0.0, 0.0, 1.0]
 
-cam0:
-  frame_id: cam0
-  body_T_cam:
-    cols: 4
-    rows: 4
-    data: [1.0, 0.0, 0.0, -0.1,
-           0.0, 1.0, 0.0, 0.0,
-           0.0, 0.0, 1.0, 0.1,
-           0.0, 0.0, 0.0, 1.0]
+stereo0:
+  camera_left:
+    frame_id: camera_left
+    body_T_cam:
+      cols: 4
+      rows: 4
+      data: [1.0, 0.0, 0.0, -0.1,
+            0.0, 1.0, 0.0, 0.0,
+            0.0, 0.0, 1.0, 0.1,
+            0.0, 0.0, 0.0, 1.0]
 
-  # Camera specific definitions.
-  image_height: 480
-  image_width: 752
-  camera_model: pinhole
-  intrinsics: [415.876509, 415.876509, 375.5, 239.5] # fx, fy, cx, cy
-  distortion_model: radial-tangential
-  distortion_coefficients: [0.0, 0.0, 0.0, 0.0] # Zero means already undistorted.
+    # Camera specific definitions.
+    image_height: 480
+    image_width: 752
+    camera_model: pinhole
+    intrinsics: [415.876509, 415.876509, 375.5, 239.5] # fx, fy, cx, cy
+    distortion_model: radial-tangential
+    distortion_coefficients: [0.0, 0.0, 0.0, 0.0] # Zero means already undistorted.
 
-cam1:
-  frame_id: cam1
-  body_T_cam:
-    cols: 4
-    rows: 4
-    data: [1.0, 0.0, 0.0, 0.1,
-           0.0, 1.0, 0.0, 0.0,
-           0.0, 0.0, 1.0, 0.1,
-           0.0, 0.0, 0.0, 1.0]
+  camera_right:
+    frame_id: camera_right
+    body_T_cam:
+      cols: 4
+      rows: 4
+      data: [1.0, 0.0, 0.0, 0.1,
+            0.0, 1.0, 0.0, 0.0,
+            0.0, 0.0, 1.0, 0.1,
+            0.0, 0.0, 0.0, 1.0]
 
-  # Camera specific definitions.
-  image_height: 480
-  image_width: 752
-  camera_model: pinhole
-  intrinsics: [415.876509, 415.876509, 375.5, 239.5] # fx, fy, cx, cy
-  distortion_model: radial-tangential
-  distortion_coefficients: [0.0, 0.0, 0.0, 0.0] # Zero means already undistorted.
+    # Camera specific definitions.
+    image_height: 480
+    image_width: 752
+    camera_model: pinhole
+    intrinsics: [415.876509, 415.876509, 375.5, 239.5] # fx, fy, cx, cy
+    distortion_model: radial-tangential
+    distortion_coefficients: [0.0, 0.0, 0.0, 0.0] # Zero means already undistorted.
