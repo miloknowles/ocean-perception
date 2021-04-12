@@ -13,7 +13,8 @@ StereoTracker:
   stereo_min_depth: 0.2   # m
 
   # Kill off a tracked landmark if it hasn't been seen since "k" frames ago.
-  retrack_frames_k: 3
+  # retrack_frames_k: 3
+  retrack_frames_k: 1
 
   # Trigger a keyframe if there aren't many landmarks. The StereoFrontend will try to create new
   # landmarks for tracking.
@@ -21,13 +22,13 @@ StereoTracker:
 
   # Trigger a keyframe at least every k frames.
   # NOTE(milo): More frequent keyframe triggering results in a much better pose estimate.
-  trigger_keyframe_k: 10
+  trigger_keyframe_k: 5
 
   FeatureDetector:
     max_features_per_frame: 200
     subpixel_corners: 0 # bool
     min_distance_btw_tracked_and_detected_features: 20
-    gftt_quality_level: 0.05
+    gftt_quality_level: 0.01
     gftt_block_size: 9
     gftt_use_harris_corner_detector: 0 # bool
     gftt_k: 0.04

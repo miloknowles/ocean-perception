@@ -72,7 +72,45 @@ aps0:
 #     distortion_model: radial-tangential
 #     distortion_coefficients: [0.0, 0.0, 0.0, 0.0] # Zero means already undistorted.
 
-# ZED MINI CAMERA
+# # ZED MINI CAMERA (720 RESOLUTION)
+# stereo0:
+#   camera_left:
+#     frame_id: camera_left
+#     body_T_cam:
+#       cols: 4
+#       rows: 4
+#       data: [1.0, 0.0, 0.0, 0.0,
+#              0.0, 1.0, 0.0, 0.0,
+#              0.0, 0.0, 1.0, 0.0,
+#              0.0, 0.0, 0.0, 1.0]
+
+#     # Camera specific definitions.
+#     image_height: 720
+#     image_width: 1280
+#     camera_model: pinhole
+#     intrinsics: [677.386963, 677.386963, 603.359863, 342.296387] # fx, fy, cx, cy
+#     distortion_model: radial-tangential
+#     distortion_coefficients: [0.0, 0.0, 0.0, 0.0] # Zero means already undistorted.
+
+#   camera_right:
+#     frame_id: camera_right
+#     body_T_cam:
+#       cols: 4
+#       rows: 4
+#       data: [1.0, 0.0, 0.0, 0.062939,
+#              0.0, 1.0, 0.0, 0.0,
+#              0.0, 0.0, 1.0, 0.0,
+#              0.0, 0.0, 0.0, 1.0]
+
+#     # Camera specific definitions.
+#     image_height: 720
+#     image_width: 1280
+#     camera_model: pinhole
+#     intrinsics: [677.386963, 677.386963, 603.359863, 342.296387] # fx, fy, cx, cy
+#     distortion_model: radial-tangential
+#     distortion_coefficients: [0.0, 0.0, 0.0, 0.0] # Zero means already undistorted.
+
+# ZED MINI CAMERA (VGA RESOLUTION)
 stereo0:
   camera_left:
     frame_id: camera_left
@@ -85,10 +123,10 @@ stereo0:
              0.0, 0.0, 0.0, 1.0]
 
     # Camera specific definitions.
-    image_height: 720
-    image_width: 1280
+    image_height: 376
+    image_width: 672
     camera_model: pinhole
-    intrinsics: [677.386963, 677.386963, 603.359863, 342.296387] # fx, fy, cx, cy
+    intrinsics: [336.135986, 336.135986, 317.032654, 178.710770] # fx, fy, cx, cy
     distortion_model: radial-tangential
     distortion_coefficients: [0.0, 0.0, 0.0, 0.0] # Zero means already undistorted.
 
@@ -103,9 +141,9 @@ stereo0:
              0.0, 0.0, 0.0, 1.0]
 
     # Camera specific definitions.
-    image_height: 720
-    image_width: 1280
+    image_height: 376
+    image_width: 672
     camera_model: pinhole
-    intrinsics: [677.386963, 677.386963, 603.359863, 342.296387] # fx, fy, cx, cy
+    intrinsics: [336.135986, 336.135986, 317.032654, 178.710770] # fx, fy, cx, cy
     distortion_model: radial-tangential
     distortion_coefficients: [0.0, 0.0, 0.0, 0.0] # Zero means already undistorted.

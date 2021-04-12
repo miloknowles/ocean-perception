@@ -102,7 +102,7 @@ void ZedRecorder::CaptureLoop()
   init_parameters.coordinate_system = sl::COORDINATE_SYSTEM::IMAGE; // RDF
   init_parameters.sdk_verbose = true;
   init_parameters.depth_mode = sl::DEPTH_MODE::NONE;
-  init_parameters.camera_resolution = sl::RESOLUTION::HD720;
+  init_parameters.camera_resolution = sl::RESOLUTION::VGA;
 
   sl::ERROR_CODE returned_state = zed.open(init_parameters);
   if (returned_state != sl::ERROR_CODE::SUCCESS) {
