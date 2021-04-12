@@ -1,7 +1,10 @@
 %YAML:1.0
 
 # folder: /home/milo/datasets/Unity3D/farmsim/waypoints1
-folder: /home/milo/datasets/himb/HIMB2_labsite/
 # folder: /home/milo/datasets/caddy/caddy_gestures_v2/
-playback_speed: 2.0
-pause: 1
+# folder: /home/milo/datasets/himb/HIMB2_labsite/
+folder: /home/milo/datasets/zed/milo1
+subfolder: ""
+dataset: 0 # EUROC=0, CADDY=1, HIMB=2
+playback_speed: 1.0
+pause: 0

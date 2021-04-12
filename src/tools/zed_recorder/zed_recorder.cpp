@@ -4,6 +4,7 @@
 #include "core/imu_measurement.hpp"
 #include "core/depth_measurement.hpp"
 #include "core/stereo_image.hpp"
+#include "core/math_util.hpp"
 #include "dataset/euroc_data_writer.hpp"
 
 namespace bm {
@@ -121,30 +122,34 @@ void ZedRecorder::CaptureLoop()
   std::cout << "Camera Firmware: " << info.camera_configuration.firmware_version << std::endl;
   std::cout << "Sensors Firmware: " << info.sensors_configuration.firmware_version << std::endl;
 
-  std::cout << "\n\n** CAMERA CALIBRATION **" << std::endl;
+  std::cout << "\n\n** STEREO CAMERA CALIBRATION **" << std::endl;
 
-  std::cout << "LEFT CAMERA:" << std::endl;
-  printf("  fx=%lf  \n  y=%lf  \n  cx=%lf  \n  cy=%lf\n",
+  std::cout << "Left Intrinsics:" << std::endl;
+  printf("  fx=%lf  \n  fy=%lf  \n  cx=%lf  \n  cy=%lf\n",
       info.calibration_parameters.left_cam.fx,
       info.calibration_parameters.left_cam.fy,
       info.calibration_parameters.left_cam.cx,
       info.calibration_parameters.left_cam.cy);
 
-  std::cout << "RIGHT CAMERA:" << std::endl;
-  printf("  fx=%lf  \n  y=%lf  \n  cx=%lf  \n  cy=%lf\n",
+  std::cout << "Right Intrinsics:" << std::endl;
+  printf("  fx=%lf  \n  fy=%lf  \n  cx=%lf  \n  cy=%lf\n",
       info.calibration_parameters.right_cam.fx,
       info.calibration_parameters.right_cam.fy,
       info.calibration_parameters.right_cam.cx,
       info.calibration_parameters.right_cam.cy);
 
+  printf("Image Resolution:\n  height=%d  \n  width=%d\n", info.camera_resolution.height, info.camera_resolution.width);
+
   const sl::Transform lTr = info.calibration_parameters.stereo_transform;
   Matrix3d left_R_right;
   Vector3d left_t_right(lTr.tx, lTr.ty, lTr.tz);
   left_R_right << lTr.r00, lTr.r01, lTr.r02, lTr.r10, lTr.r11, lTr.r12, lTr.r20, lTr.r21, lTr.r22;
+
+  std::cout << "Stereo Rig Extrinsics:" << std::endl;
   std::cout << "left_R_right:" << std::endl;
   std::cout << left_R_right << std::endl;
   std::cout << "left_t_right:" << std::endl;
-  std::cout << left_t_right << std::endl;
+  std::cout << left_t_right.transpose() << std::endl;
 
   std::cout << "\n" << std::endl;
 
@@ -183,9 +188,9 @@ void ZedRecorder::CaptureLoop()
         const timestamp_t timestamp = sensors_data.imu.timestamp.getNanoseconds();
 
         if (imu_sampler_.ShouldSample(timestamp)) {
-          const Vector3d angular_vel(sensors_data.imu.angular_velocity.x,
-                                    sensors_data.imu.angular_velocity.y,
-                                    sensors_data.imu.angular_velocity.y);
+          const Vector3d angular_vel(DegToRad(sensors_data.imu.angular_velocity.x),
+                                     DegToRad(sensors_data.imu.angular_velocity.y),
+                                     DegToRad(sensors_data.imu.angular_velocity.y));
           const Vector3d linear_accel(sensors_data.imu.linear_acceleration.x,
                                       sensors_data.imu.linear_acceleration.y,
                                       sensors_data.imu.linear_acceleration.z);

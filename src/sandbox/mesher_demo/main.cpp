@@ -13,6 +13,7 @@
 #include "core/params_base.hpp"
 #include "core/pinhole_camera.hpp"
 #include "core/stereo_camera.hpp"
+#include "dataset/data_provider.hpp"
 #include "dataset/euroc_dataset.hpp"
 #include "dataset/himb_dataset.hpp"
 #include "dataset/caddy_dataset.hpp"
@@ -24,23 +25,37 @@ using namespace bm;
 using namespace core;
 using namespace mesher;
 
+
+enum Dataset
+{
+  EUROC = 0,
+  CADDY = 1,
+  HIMB = 2
+};
+
+
 // Allows re-running without recompiling.
 struct MesherDemoParams : public ParamsBase
 {
   MACRO_PARAMS_STRUCT_CONSTRUCTORS(MesherDemoParams);
+
   std::string folder;
+  std::string subfolder;  // e.g "genova-A" for CADDY, "train" for HIMB
+  Dataset dataset = Dataset::EUROC;
   float playback_speed = 4.0;
   bool pause = false;
-  Matrix4d body_T_cam = Matrix4d::Identity();
 
  private:
   void LoadParams(const YamlParser& parser) override
   {
-    cv::String cvfolder;
-    parser.GetYamlParam("folder", &cvfolder);
-    folder = std::string(cvfolder.c_str());
+    folder = YamlToString(parser.GetYamlNode("folder"));
+    subfolder = YamlToString(parser.GetYamlNode("subfolder"));
+
+    int dataset_code = 0;
+    parser.GetYamlParam("dataset", &dataset_code);
+    dataset = static_cast<Dataset>(dataset_code);
+
     parser.GetYamlParam("playback_speed", &playback_speed);
-    YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/cam0/body_T_cam"), body_T_cam);
     parser.GetYamlParam("pause", &pause);
   }
 };
@@ -48,11 +63,26 @@ struct MesherDemoParams : public ParamsBase
 
 int main(int argc, char const *argv[])
 {
-  MesherDemoParams params(Join("/home/milo/bluemeadow/catkin_ws/src/vehicle/src/sandbox/mesher_demo/config", "MesherDemo_params.yaml"),
-                          Join("/home/milo/bluemeadow/catkin_ws/src/vehicle/src/sandbox/mesher_demo/config", "shared_params.yaml"));
-  // dataset::EurocDataset dataset(params.folder);
-  // dataset::CaddyDataset dataset(params.folder, "genova-A");
-  dataset::HimbDataset dataset(params.folder, "train");
+  MesherDemoParams params(
+      Join("/home/milo/bluemeadow/catkin_ws/src/vehicle/src/sandbox/mesher_demo/config", "MesherDemo_params.yaml"),
+      Join("/home/milo/bluemeadow/catkin_ws/src/vehicle/src/sandbox/mesher_demo/config", "shared_params.yaml"));
+
+  dataset::DataProvider dataset;
+
+  switch (params.dataset) {
+    case Dataset::EUROC:
+      dataset = dataset::EurocDataset(params.folder);
+      break;
+    case Dataset::CADDY:
+      dataset = dataset::CaddyDataset(params.folder, params.subfolder);
+      break;
+    case Dataset::HIMB:
+      dataset = dataset::HimbDataset(params.folder, params.subfolder);
+      break;
+    default:
+      LOG(FATAL) << "Unknown dataset type: " << params.dataset << std::endl;
+      break;
+  }
 
   // Make an (ordered) queue of all groundtruth poses.
   // const std::vector<dataset::GroundtruthItem>& groundtruth_poses = dataset.GroundtruthPoses();

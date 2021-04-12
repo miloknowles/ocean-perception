@@ -55,22 +55,18 @@ void EurocDataWriter::WriteStereo(const StereoImage3b& data)
   ofl.open(Join(left_folder_, "data.csv"), std::ios_base::app);
   ofr.open(Join(right_folder_, "data.csv"), std::ios_base::app);
 
-  char buf[100];
-
-  const std::string img_name = std::to_string(data.camera_id) + ".png";
+  const std::string img_name = std::to_string(data.timestamp) + ".png";
   const std::string data_img_name = Join("data", img_name);
-
-  // https://stackoverflow.com/questions/153890/printing-leading-0s-in-c
-  const int sz = std::snprintf(buf, 100, "%zu,%s\n",data.timestamp, img_name);
-  CHECK(sz < 100) << "Buffer overflow! Need to allocate larger char[]" << std::endl;
-
-  ofl << std::string(buf);
-  ofr << std::string(buf);
-  ofl.close();
-  ofr.close();
 
   cv::imwrite(Join(left_folder_, data_img_name), data.left_image);
   cv::imwrite(Join(right_folder_, data_img_name), data.right_image);
+
+  // NOTE(milo): Write metadata after image! That way we don't end up with data.csv pointing
+  // to an image that doesn't exist on disk.
+  ofl << std::to_string(data.timestamp) << "," << img_name << std::endl;
+  ofr << std::to_string(data.timestamp) << "," << img_name << std::endl;
+  ofl.close();
+  ofr.close();
 }
 
 

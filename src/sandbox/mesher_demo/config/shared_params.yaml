@@ -34,22 +34,61 @@ aps0:
            0.0, 0.0, 1.0, -0.5,
            0.0, 0.0, 0.0, 1.0]
 
+# FARMSIM CAMERA
+# stereo0:
+#   camera_left:
+#     frame_id: camera_left
+#     body_T_cam:
+#       cols: 4
+#       rows: 4
+#       data: [1.0, 0.0, 0.0, -0.1,
+#             0.0, 1.0, 0.0, 0.0,
+#             0.0, 0.0, 1.0, 0.1,
+#             0.0, 0.0, 0.0, 1.0]
+
+#     # Camera specific definitions.
+#     image_height: 480
+#     image_width: 752
+#     camera_model: pinhole
+#     intrinsics: [415.876509, 415.876509, 375.5, 239.5] # fx, fy, cx, cy
+#     distortion_model: radial-tangential
+#     distortion_coefficients: [0.0, 0.0, 0.0, 0.0] # Zero means already undistorted.
+
+#   camera_right:
+#     frame_id: camera_right
+#     body_T_cam:
+#       cols: 4
+#       rows: 4
+#       data: [1.0, 0.0, 0.0, 0.1,
+#             0.0, 1.0, 0.0, 0.0,
+#             0.0, 0.0, 1.0, 0.1,
+#             0.0, 0.0, 0.0, 1.0]
+
+#     # Camera specific definitions.
+#     image_height: 480
+#     image_width: 752
+#     camera_model: pinhole
+#     intrinsics: [415.876509, 415.876509, 375.5, 239.5] # fx, fy, cx, cy
+#     distortion_model: radial-tangential
+#     distortion_coefficients: [0.0, 0.0, 0.0, 0.0] # Zero means already undistorted.
+
+# ZED MINI CAMERA
 stereo0:
   camera_left:
     frame_id: camera_left
     body_T_cam:
       cols: 4
       rows: 4
-      data: [1.0, 0.0, 0.0, -0.1,
-            0.0, 1.0, 0.0, 0.0,
-            0.0, 0.0, 1.0, 0.1,
-            0.0, 0.0, 0.0, 1.0]
+      data: [1.0, 0.0, 0.0, 0.0,
+             0.0, 1.0, 0.0, 0.0,
+             0.0, 0.0, 1.0, 0.0,
+             0.0, 0.0, 0.0, 1.0]
 
     # Camera specific definitions.
-    image_height: 480
-    image_width: 752
+    image_height: 720
+    image_width: 1280
     camera_model: pinhole
-    intrinsics: [415.876509, 415.876509, 375.5, 239.5] # fx, fy, cx, cy
+    intrinsics: [677.386963, 677.386963, 603.359863, 342.296387] # fx, fy, cx, cy
     distortion_model: radial-tangential
     distortion_coefficients: [0.0, 0.0, 0.0, 0.0] # Zero means already undistorted.
 
@@ -58,15 +97,15 @@ stereo0:
     body_T_cam:
       cols: 4
       rows: 4
-      data: [1.0, 0.0, 0.0, 0.1,
-            0.0, 1.0, 0.0, 0.0,
-            0.0, 0.0, 1.0, 0.1,
-            0.0, 0.0, 0.0, 1.0]
+      data: [1.0, 0.0, 0.0, 0.062939,
+             0.0, 1.0, 0.0, 0.0,
+             0.0, 0.0, 1.0, 0.0,
+             0.0, 0.0, 0.0, 1.0]
 
     # Camera specific definitions.
-    image_height: 480
-    image_width: 752
+    image_height: 720
+    image_width: 1280
     camera_model: pinhole
-    intrinsics: [415.876509, 415.876509, 375.5, 239.5] # fx, fy, cx, cy
+    intrinsics: [677.386963, 677.386963, 603.359863, 342.296387] # fx, fy, cx, cy
     distortion_model: radial-tangential
     distortion_coefficients: [0.0, 0.0, 0.0, 0.0] # Zero means already undistorted.

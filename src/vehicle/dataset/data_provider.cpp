@@ -9,8 +9,8 @@
 namespace bm {
 namespace dataset {
 
-static const double kMaxAcceleration = 20.0;    // m/s^2
-static const double kMaxAngularVelocity = 5.0;  // [rad / sec]
+static const double kMaxAcceleration = 98.1;    // m/s^2
+static const double kMaxAngularVelocity = 20.0; // [rad / sec]
 static const double kMaxRange = 100.0;          // m
 static const double kMaxDepth = 20.0;           // m
 
