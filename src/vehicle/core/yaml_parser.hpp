@@ -9,6 +9,8 @@
 #include <opencv2/core/persistence.hpp>
 
 #include "core/eigen_types.hpp"
+#include "core/pinhole_camera.hpp"
+#include "core/stereo_camera.hpp"
 
 namespace bm {
 namespace core {
@@ -185,6 +187,74 @@ void YamlToMatrix(const cv::FileNode& node, MatrixType& mout)
       mout(r, c) = data_node[r*cols + c];
     }
   }
+}
+
+
+inline std::string YamlToString(const cv::FileNode& node)
+{
+  CHECK(node.type() != cv::FileNode::NONE);
+  cv::String cvstr;
+  node >> cvstr;
+  return std::string(cvstr.c_str());
+}
+
+
+inline void YamlToCameraModel(const cv::FileNode& node, PinholeCamera& cam)
+{
+  const cv::FileNode& h_node = node["image_height"];
+  const cv::FileNode& w_node = node["image_width"];
+  const cv::FileNode& camera_model_node = node["camera_model"];
+
+  int h, w;
+  h_node >> h;
+  w_node >> w;
+  CHECK_GT(h, 0) << "Height must be > 0" << std::endl;
+  CHECK_GT(w, 0) << "Width must be > 0" << std::endl;
+
+  CHECK(camera_model_node.type() != cv::FileNode::NONE &&
+        YamlToString(camera_model_node) == "pinhole")
+        << "Must contain a field camera_model: pinhole" << std::endl;
+
+  const cv::FileNode& intrinsics_node = node["intrinsics"];
+  CHECK(intrinsics_node.isSeq() && intrinsics_node.size() == 4)
+      << "intrinsics must contain (4) values: fx, fy, cx, cy" << std::endl;
+
+  const double fx = intrinsics_node[0];
+  const double fy = intrinsics_node[1];
+  const double cx = intrinsics_node[2];
+  const double cy = intrinsics_node[3];
+
+  const cv::FileNode& distort_node = node["distortion_coefficients"];
+  CHECK(distort_node.isSeq() && distort_node.size() > 0)
+      << "Expected distortion coefficients" << std::endl;
+
+  LOG_IF(WARNING, (double)distort_node[0] > 0) << "WARNING: distortion_coefficients are nonzero, but we don't handle undistortion yet" << std::endl;
+
+  cam = PinholeCamera(fx, fy, cx, cy, h, w);
+}
+
+
+inline void YamlToStereoRig(const cv::FileNode& node,
+                            StereoCamera& stereo_rig,
+                            Matrix4d& body_T_left,
+                            Matrix4d& body_T_right)
+{
+  const cv::FileNode& cam_left_node = node["camera_left"];
+  const cv::FileNode& cam_right_node = node["camera_right"];
+  CHECK(cam_left_node.type() != cv::FileNode::NONE) << "camera_left node not found" << std::endl;
+  CHECK(cam_right_node.type() != cv::FileNode::NONE) << "camera_right node not found" << std::endl;
+
+  PinholeCamera cam_left, cam_right;
+  YamlToCameraModel(cam_left_node, cam_left);
+  YamlToCameraModel(cam_right_node, cam_right);
+
+  YamlToMatrix<Matrix4d>(cam_left_node["body_T_cam"], body_T_left);
+  YamlToMatrix<Matrix4d>(cam_right_node["body_T_cam"], body_T_right);
+  CHECK(body_T_left(3, 3) == 1.0) << "body_T_left is invalid" << std::endl;
+  CHECK(body_T_right(3, 3) == 1.0) << "body_T_right is invalid" << std::endl;
+
+  const Matrix4d left_T_right = body_T_left.inverse() * body_T_right;
+  stereo_rig = StereoCamera(cam_left, cam_right, Transform3d(left_T_right));
 }
 
 

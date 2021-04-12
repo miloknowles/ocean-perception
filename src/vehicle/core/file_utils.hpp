@@ -38,5 +38,21 @@ inline bool Exists(const std::string& fname)
 }
 
 
+inline bool mkdir(const std::string& folder, bool exist_ok = true)
+{
+  if (!exist_ok && Exists(folder)) {
+    throw std::runtime_error("Trying to make a directory that already exists: " + folder);
+  }
+
+  return fs::create_directory(folder);
+}
+
+
+inline bool rmdir(const std::string& folder)
+{
+  return fs::remove_all(folder);
+}
+
+
 }
 }

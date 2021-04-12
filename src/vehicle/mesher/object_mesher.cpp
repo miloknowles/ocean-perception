@@ -116,7 +116,7 @@ void ObjectMesher::ProcessStereo(const StereoImage1b& stereo_pair)
 
   Timer timer(true);
   tracker_.TrackAndTriangulate(stereo_pair, false);
-  LOG(INFO) << "TrackAndTriangulate: " << timer.Tock().milliseconds() << std::endl;
+  // LOG(INFO) << "TrackAndTriangulate: " << timer.Tock().milliseconds() << std::endl;
 
   const Image3b& viz_tracks = tracker_.VisualizeFeatureTracks();
 
@@ -168,8 +168,8 @@ void ObjectMesher::ProcessStereo(const StereoImage1b& stereo_pair)
       if (i == j) { continue; }
 
       // Only add edge if the vertices are within some 3D distance from each other.
-      const double depth_i = stereo_rig_.DispToDepth(lmk_disps.at(i));
-      const double depth_j = stereo_rig_.DispToDepth(lmk_disps.at(j));
+      const double depth_i = params_.stereo_rig.DispToDepth(lmk_disps.at(i));
+      const double depth_j = params_.stereo_rig.DispToDepth(lmk_disps.at(j));
       if (std::fabs(depth_i - depth_j) > params_.edge_max_depth_change) {
         continue;
       }

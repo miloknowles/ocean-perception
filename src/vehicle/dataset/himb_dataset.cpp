@@ -20,7 +20,7 @@ HimbDataset::HimbDataset(const std::string& toplevel_path, const std::string& sp
   CHECK_EQ(left_imgs.size(), left_imgs.size());
 
   for (size_t i = 0; i < left_imgs.size(); ++i) {
-    const timestamp_t timestamp = 1e9 * i;
+    const timestamp_t timestamp = 1e8 * i;
     stereo_data.emplace_back(timestamp, left_imgs.at(i), right_imgs.at(i));
   }
 

@@ -152,6 +152,7 @@ void EurocDataset::ParseImageFolder(const std::string& cam_folder,
 
   // Read/store list of image names.
   while (std::getline(fin, item)) {
+    // TODO(milo): We use the timestamp to get the image file here, not the image file...
     size_t idx = item.find_first_of(',');
     const timestamp_t timestamp = std::stoll(item.substr(0, idx));
     const std::string image_filename = Join(cam_folder, "data/" + item.substr(0, idx) + ".png");
