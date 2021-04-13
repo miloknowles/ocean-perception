@@ -22,7 +22,7 @@ using namespace vio;
 using namespace core;
 
 
-TEST(VioTest, TestSingleAxisFactorJacobian) {
+TEST(SingleAxisFactor, Jacobian) {
   gtsam::Key poseKey(1);
   gtsam::Pose3 measurement(gtsam::Rot3::RzRyRx(0.15, -0.30, 0.45), gtsam::Point3(-5.0, 8.0, -11.0));
   gtsam::SharedNoiseModel model = gtsam::noiseModel::Isotropic::Sigma(1, 0.25);
@@ -45,7 +45,7 @@ TEST(VioTest, TestSingleAxisFactorJacobian) {
 }
 
 
-TEST(VioTest, TestSingleAxisFactorGraph)
+TEST(SingleAxisFactor, TestGraph)
 {
   gtsam::ISAM2 smoother;
 
@@ -83,8 +83,9 @@ TEST(VioTest, TestSingleAxisFactorGraph)
   new_values.clear();
 
   // POSE 1: Add prior and y-axis measurement.
-  // The initial pose value has y=-20.0, and here we add a measurement at y=-25.0.
-  new_factors.push_back(gtsam::SingleAxisFactor(x1, core::Axis3::Y, -12.0, depth_noise));
+  // The initial pose value has y=-20.0, and here we add a measurement at y=12.0
+  new_factors.push_back(gtsam::SingleAxisFactor(x1, core::Axis3::Y, 12.0, depth_noise));
+  new_factors.push_back(gtsam::PriorFactor<gtsam::Pose3>(x1, pose1, pose_prior_noise));
   new_values.insert(x1, pose1);
   smoother.update(new_factors, new_values);
 
