@@ -18,7 +18,7 @@ inline std::vector<cv::Vec3b> ColormapVector(const std::vector<double>& values,
   cv::Mat3b values_3b;
   cv::Mat1d(values).reshape(0, values.size()).convertTo(
       values_1b, CV_8UC1, 255.0 / vrange, vmin);
-  cv::applyColorMap(values_1b, values_3b, cv::COLORMAP_PARULA);
+  cv::applyColorMap(values_1b, values_3b, cv_colormap);
 
   std::vector<cv::Vec3b> out(values.size());
   for (size_t i = 0; i < values.size(); ++i) {

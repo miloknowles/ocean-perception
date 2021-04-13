@@ -7,3 +7,5 @@ target_link_libraries(mesher_demo
   ${PROJECT_NAME}_dataset
   ${PROJECT_NAME}_mesher
   ${GLOG_LIBRARIES})
+
+target_compile_options(mesher_demo PUBLIC "-std=c++11")

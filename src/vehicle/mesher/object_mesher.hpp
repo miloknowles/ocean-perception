@@ -16,6 +16,7 @@
 #include "core/grid_lookup.hpp"
 #include "core/landmark_observation.hpp"
 #include "feature_tracking/stereo_tracker.hpp"
+#include "mesher/triangle_mesh.hpp"
 
 namespace bm {
 namespace mesher {
@@ -59,8 +60,19 @@ class CoordinateMap final {
   MapType map_;
 };
 
-
 typedef std::unordered_map<int, CoordinateMap<int>> MultiCoordinateMap;
+
+
+// Persist any data about tracked vertices here.
+struct VertexData final
+{
+ public:
+  VertexData(const Vector3d& cam_t_vertex)
+      : cam_t_vertex(cam_t_vertex) {}
+
+ private:
+  Vector3d cam_t_vertex;
+};
 
 
 // Returns a binary mask where "1" indicates foreground and "0" indicates background.
@@ -107,7 +119,7 @@ class ObjectMesher final {
       parser.GetYamlParam("edge_min_foreground_percent", &edge_min_foreground_percent);
       parser.GetYamlParam("edge_max_depth_change", &edge_max_depth_change);
 
-      YamlToStereoRig(parser.GetYamlNode("/shared/stereo0"), stereo_rig, body_T_cam_left, body_T_cam_right);
+      YamlToStereoRig(parser.GetYamlNode("/shared/stereo_forward"), stereo_rig, body_T_cam_left, body_T_cam_right);
     }
   };
 
@@ -118,12 +130,15 @@ class ObjectMesher final {
         tracker_(params.tracker_params, params.stereo_rig),
         lmk_grid_(params_.lmk_grid_rows, params_.lmk_grid_cols) {}
 
-  void ProcessStereo(const StereoImage1b& stereo_pair);
+  TriangleMesh ProcessStereo(const StereoImage1b& stereo_pair);
 
  private:
   Params params_;
   StereoTracker tracker_;
   GridLookup<uid_t> lmk_grid_;
+
+  // Maps each landmark id to some data about it.
+  std::unordered_map<uid_t, VertexData> vertex_data_;
 };
 
 

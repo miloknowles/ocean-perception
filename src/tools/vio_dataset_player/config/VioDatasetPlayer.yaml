@@ -1,7 +1,9 @@
 %YAML:1.0
 
 # folder: "/home/milo/datasets/Unity3D/farmsim/long_C_usv_beacon"
+dataset: 0 # 0=Farmsim, 1=CADDY, 2=HIMB, 3=ACFR, 4=ZEDM
 folder: "/home/milo/datasets/Unity3D/farmsim/pitch1"
+subfolder: "train"
 use_stereo: 1
 use_imu: 1
 use_depth: 1

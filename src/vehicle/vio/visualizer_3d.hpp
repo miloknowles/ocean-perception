@@ -78,6 +78,10 @@ class Visualizer3D final {
     int max_stored_poses = 100;
     int max_stored_landmarks = 1000;
 
+    StereoCamera stereo_rig;
+    Matrix4d body_T_left = Matrix4d::Identity();
+    Matrix4d body_T_right = Matrix4d::Identity();
+
    private:
     // Loads in params using a YAML parser.
     void LoadParams(const YamlParser& parser) override
@@ -86,14 +90,17 @@ class Visualizer3D final {
       parser.GetYamlParam("show_frustums", &show_frustums);
       parser.GetYamlParam("max_stored_poses", &max_stored_poses);
       parser.GetYamlParam("max_stored_landmarks", &max_stored_landmarks);
+
+      YamlToStereoRig(parser.GetYamlNode("/shared/stereo_forward"), stereo_rig, body_T_left, body_T_right);
     }
   };
 
   MACRO_DELETE_COPY_CONSTRUCTORS(Visualizer3D)
   MACRO_DELETE_DEFAULT_CONSTRUCTOR(Visualizer3D)
 
-  explicit Visualizer3D(const Params& params, const StereoCamera& stereo_rig)
-      : params_(params), stereo_rig_(stereo_rig) {}
+  explicit Visualizer3D(const Params& params)
+      : params_(params),
+        stereo_rig_(params.stereo_rig) {}
 
   ~Visualizer3D();
 

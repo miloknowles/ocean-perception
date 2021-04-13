@@ -1,0 +1,7 @@
+%YAML:1.0
+
+allowed_misalignment_sec: 0.05
+max_queue_size: 1000
+
+integration_error_sigma: 0.00001
+use_2nd_order_coriolis: 1

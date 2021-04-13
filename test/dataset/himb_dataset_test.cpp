@@ -10,6 +10,8 @@ using namespace dataset;
 
 TEST(DatasetTest, TestHimbDataset)
 {
+  LOG(WARNING) << "This test has a hardcoded path! May not work." << std::endl;
+
   const std::string toplevel_folder = "/home/milo/datasets/himb/HIMB1_docksite";
   HimbDataset dataset(toplevel_folder, "train");
 

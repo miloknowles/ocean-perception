@@ -2,10 +2,10 @@
 # #include "lcmtypes/vehicle/type_t.hpp"
 include_directories(${PROJECT_BINARY_DIR}/lcmtypes)
 
-add_executable(vio_dataset_player
-  main.cpp)
+add_executable(state_estimator_lcm
+  state_estimator_lcm.cpp)
 
-target_link_libraries(vio_dataset_player
+target_link_libraries(state_estimator_lcm
   ${OpenCV_LIBRARIES}
   ${PROJECT_NAME}_lcm_util
   ${PROJECT_NAME}_core
@@ -16,5 +16,5 @@ target_link_libraries(vio_dataset_player
   lcm
   ${GLOG_LIBRARIES})
 
-target_compile_options(vio_dataset_player
+target_compile_options(state_estimator_lcm
   PUBLIC "-std=c++11")

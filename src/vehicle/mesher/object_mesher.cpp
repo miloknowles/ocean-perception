@@ -64,7 +64,7 @@ void DrawDelaunay(int k,
   const cv::Size size = img.size();
   cv::Rect rect(0,0, size.width, size.height);
 
-  const double disp_range = max_disp - min_disp;
+  // const double disp_range = max_disp - min_disp;
 
   for (size_t i = 0; i < triangle_list.size(); ++i) {
     const cv::Vec6f& t = triangle_list.at(i);
@@ -83,11 +83,65 @@ void DrawDelaunay(int k,
         0.5*vertex_disps.At(k, v2) + 0.5*vertex_disps.At(k, v0)
       };
 
-      const std::vector<cv::Vec3b> colors = ColormapVector(disps, 0.5, 32.0, cv::COLORMAP_PARULA);
+      const std::vector<cv::Vec3b> colors = ColormapVector(
+          disps, min_disp, max_disp, cv::COLORMAP_PARULA);
       cv::line(img, pt[0], pt[1], colors.at(0), 1, CV_AA, 0);
 	    cv::line(img, pt[1], pt[2], colors.at(1), 1, CV_AA, 0);
 	    cv::line(img, pt[2], pt[0], colors.at(2), 1, CV_AA, 0);
     }
+  }
+}
+
+
+static void BuildTriangleMesh(TriangleMesh& mesh,
+                              int k,
+                              cv::Subdiv2D& subdiv,
+                              const CoordinateMap<int>& vertex_lookup,
+                              const CoordinateMap<double>& vertex_disps,
+                              const StereoCamera& stereo_rig,
+                              double scale_factor)
+{
+  const size_t vertices_offset = mesh.vertices.size();
+
+  std::vector<cv::Vec6f> triangle_list;
+  subdiv.getTriangleList(triangle_list);
+
+  cv::Rect rect(0,0, scale_factor * (double)stereo_rig.Width(), scale_factor * (double)stereo_rig.Height());
+
+  size_t num_triangles_added = 0;
+
+  for (size_t i = 0; i < triangle_list.size(); ++i) {
+    const cv::Vec6f& t = triangle_list.at(i);
+
+    std::vector<cv::Point> pt(3);
+    pt[0] = cv::Point(t[0], t[1]);
+    pt[1] = cv::Point(t[2], t[3]);
+    pt[2] = cv::Point(t[4], t[5]);
+
+    if (!rect.contains(pt[0]) || !rect.contains(pt[1]) || !rect.contains(pt[2])) {
+      continue;
+    }
+
+    // Add all 3 vertices.
+    for (size_t j = 0; j < 3; ++j) {
+      const int vidx = vertex_lookup.At((int)t[2*j], (int)t[2*j+1]);
+      const double disp = vertex_disps.At(k, vidx);
+
+      // NOTE(milo): Backproject pixels at the ORIGINAL image resolution, which requires us to
+      // scale pixel locations and disparity.
+      const Vector3d vert = stereo_rig.LeftCamera().Backproject(
+        Vector2d(t[2*j], t[2*j+1]) / scale_factor,
+        stereo_rig.DispToDepth(disp / scale_factor));
+      mesh.vertices.emplace_back(vert);
+    }
+
+    // Create a new triangle in the mesh.
+    mesh.triangles.emplace_back(Vector3i(
+        vertices_offset + 3*num_triangles_added + 0,
+        vertices_offset + 3*num_triangles_added + 1,
+        vertices_offset + 3*num_triangles_added + 2));
+
+    ++num_triangles_added;
   }
 }
 
@@ -110,9 +164,12 @@ static void CountEdgePixels(const cv::Point2f& a,
 }
 
 
-void ObjectMesher::ProcessStereo(const StereoImage1b& stereo_pair)
+TriangleMesh ObjectMesher::ProcessStereo(const StereoImage1b& stereo_pair)
 {
   const Image1b& iml = stereo_pair.left_image;
+  const int img_height = iml.rows;
+
+  const double scale_factor = static_cast<double>(img_height) / static_cast<double>(params_.stereo_rig.Height());
 
   Timer timer(true);
   tracker_.TrackAndTriangulate(stereo_pair, false);
@@ -168,8 +225,8 @@ void ObjectMesher::ProcessStereo(const StereoImage1b& stereo_pair)
       if (i == j) { continue; }
 
       // Only add edge if the vertices are within some 3D distance from each other.
-      const double depth_i = params_.stereo_rig.DispToDepth(lmk_disps.at(i));
-      const double depth_j = params_.stereo_rig.DispToDepth(lmk_disps.at(j));
+      const double depth_i = params_.stereo_rig.DispToDepth(lmk_disps.at(i) / scale_factor);
+      const double depth_j = params_.stereo_rig.DispToDepth(lmk_disps.at(j) / scale_factor);
       if (std::fabs(depth_i - depth_j) > params_.edge_max_depth_change) {
         continue;
       }
@@ -187,23 +244,20 @@ void ObjectMesher::ProcessStereo(const StereoImage1b& stereo_pair)
     }
   }
 
+  TriangleMesh mesh;
+
   if (boost::num_vertices(graph) > 0) {
     std::vector<int> assignments(boost::num_vertices(graph));
 
-    timer.Reset();
     const int num_comp = boost::connected_components(graph, &assignments[0]);
 
     std::vector<int> nmembers(num_comp, 0);
     std::vector<cv::Subdiv2D> subdivs(num_comp, { cv::Rect(0, 0, iml.cols, iml.rows) });
 
-    // std::unordered_map<int, uid_t> vertex_id_to_lmk_id;
-    // std::unordered_map<int, double> vertex_disps;
-
     CoordinateMap<uid_t> vertex_id_to_lmk_id;
     CoordinateMap<double> vertex_disps;
     MultiCoordinateMap vertex_lookup;
 
-    timer.Reset();
     for (size_t i = 0; i < assignments.size(); ++i) {
       const int cmp_id = assignments.at(i);
       const cv::Point2f lmk_pt = lmk_points.at(i);
@@ -211,7 +265,6 @@ void ObjectMesher::ProcessStereo(const StereoImage1b& stereo_pair)
       vertex_lookup[cmp_id].Insert((int)lmk_pt.x, (int)lmk_pt.y, vertex_id);
       vertex_id_to_lmk_id.Insert(cmp_id, vertex_id, lmk_ids.at(i));
       vertex_disps.Insert(cmp_id, vertex_id, lmk_disps.at(i));
-
       ++nmembers.at(cmp_id);
     }
 
@@ -225,12 +278,15 @@ void ObjectMesher::ProcessStereo(const StereoImage1b& stereo_pair)
         continue;
       }
       DrawDelaunay(k, viz_triangles, subdivs.at(k), vertex_lookup.at(k), vertex_disps);
+      BuildTriangleMesh(mesh, k, subdivs.at(k), vertex_lookup.at(k), vertex_disps, params_.stereo_rig, scale_factor);
     }
 
     cv::imshow("delaunay", viz_triangles);
   }
 
   cv::waitKey(1);
+
+  return mesh;
 }
 
 

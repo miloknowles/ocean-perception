@@ -7,6 +7,7 @@ SET(LIBRARY_SRC
   cv_types.hpp
   color_mapping.hpp
   data_manager.hpp
+  data_subsampler.hpp
   image_util.hpp
   grid_lookup.hpp
   pinhole_camera.hpp
@@ -15,6 +16,7 @@ SET(LIBRARY_SRC
   transform_util.cpp
   random.hpp
   file_utils.hpp
+  path_util.hpp
   line_feature.hpp
   line_segment.hpp
   timedelta.hpp
@@ -32,11 +34,6 @@ SET(LIBRARY_SRC
   params_base.hpp
   sliding_buffer.hpp)
 
-# NOTE(milo): This is how to debug the INCLUDE_DIRECTORIES if needed.
-# message("===================================================")
-# get_property(inc_dirs DIRECTORY PROPERTY INCLUDE_DIRECTORIES)
-# message("INCLUDE = ${inc_dirs}")
-
 add_library(${LIBRARY_NAME} SHARED ${LIBRARY_SRC})
 set_target_properties(${LIBRARY_NAME} PROPERTIES LINKER_LANGUAGE CXX)
 target_compile_options(${LIBRARY_NAME} PUBLIC "-std=c++11")
@@ -45,4 +42,4 @@ target_include_directories(${LIBRARY_NAME} PRIVATE
 target_link_libraries(${LIBRARY_NAME}
   ${Boost_LIBRARIES}
   ${OpenCV_LIBRARIES}
-  ${OpenCV_LIBS})
+  ${GLOG_LIBRARIES})

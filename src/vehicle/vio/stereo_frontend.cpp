@@ -14,10 +14,10 @@ namespace bm {
 namespace vio {
 
 
-StereoFrontend::StereoFrontend(const Params& params, const StereoCamera& stereo_rig)
+StereoFrontend::StereoFrontend(const Params& params)
     : params_(params),
-      stereo_rig_(stereo_rig),
-      tracker_(params_.tracker_params, stereo_rig)
+      stereo_rig_(params.stereo_rig),
+      tracker_(params_.tracker_params, stereo_rig_)
 {
   LOG(INFO) << "Constructed StereoFrontend!" << std::endl;
 }

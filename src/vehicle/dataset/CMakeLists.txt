@@ -9,6 +9,8 @@ SET(LIBRARY_SRC
   himb_dataset.hpp
   caddy_dataset.cpp
   caddy_dataset.hpp
+  acfr_dataset.cpp
+  acfr_dataset.hpp
   euroc_data_writer.cpp
   euroc_data_writer.hpp)
 

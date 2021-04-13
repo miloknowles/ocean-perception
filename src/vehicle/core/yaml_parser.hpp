@@ -80,13 +80,17 @@ class YamlParser {
     // Any id request prefixed with /shared/ is directed to the shared params.
     std::string maybe_suffix;
     if (CheckIfSharedId(id, maybe_suffix)) {
-      CHECK(!shared_node_.empty()) << "GetYamlParam: shared_node_ is empty. Was the parser constructed with a shared node?" << std::endl;
+      CHECK(!shared_node_.empty())
+          << "GetYamlParam: shared_node_ is empty. Was the parser constructed with a shared node?"
+          << "\n  id: " << id << std::endl;
       const cv::FileNode& node = GetYamlNodeHelper(shared_node_, maybe_suffix);
       node >> *output;
 
     // Anything else is directed to the root params.
     } else {
-      CHECK(!root_node_.empty()) << "GetYamlParam: root_node_ is empty. Was the parser constructed?" << std::endl;
+      CHECK(!root_node_.empty())
+          << "GetYamlParam: root_node_ is empty. Was the parser constructed?"
+          << "\n  id: " << id << std::endl;
       const cv::FileNode& node = GetYamlNodeHelper(root_node_, id);
       node >> *output;
     }
@@ -97,10 +101,14 @@ class YamlParser {
   {
     std::string maybe_suffix;
     if (CheckIfSharedId(id, maybe_suffix)) {
-      CHECK(!shared_node_.empty()) << "GetYamlParam: shared_node_ is empty. Was the parser constructed with a shared node?" << std::endl;
+      CHECK(!shared_node_.empty())
+          << "GetYamlParam: shared_node_ is empty. Was the parser constructed with a shared node?"
+          << "\n  id: " << id << std::endl;
       return GetYamlNodeHelper(shared_node_, maybe_suffix);
     } else {
-      CHECK(!root_node_.empty()) << "GetYamlParam: root_node_ is empty. Was the parser constructed?" << std::endl;
+      CHECK(!root_node_.empty())
+          << "GetYamlParam: root_node_ is empty. Was the parser constructed?"
+          << "\n  id: " << id << std::endl;
       return GetYamlNodeHelper(root_node_, id);
     }
   }
@@ -196,6 +204,16 @@ inline std::string YamlToString(const cv::FileNode& node)
   cv::String cvstr;
   node >> cvstr;
   return std::string(cvstr.c_str());
+}
+
+
+template <typename EnumT>
+inline EnumT YamlToEnum(const cv::FileNode& node)
+{
+  CHECK(node.type() != cv::FileNode::NONE);
+  int val;
+  node >> val;
+  return static_cast<EnumT>(val);
 }
 
 
