@@ -16,6 +16,7 @@
 #include "core/uid.hpp"
 #include "core/file_utils.hpp"
 #include "core/path_util.hpp"
+#include "core/data_subsampler.hpp"
 
 #include "dataset/dataset_util.hpp"
 
@@ -57,6 +58,9 @@ class StateEstimatorLcm final {
     std::string channel_input_range;
     std::string channel_input_depth;
 
+    std::string channel_output_filter_pose;
+    std::string channel_output_smoother_pose;
+
     bool visualize = true;
     float filter_publish_hz = 50.0;
 
@@ -76,6 +80,9 @@ class StateEstimatorLcm final {
       channel_input_depth = YamlToString(parser.GetYamlNode("channel_input_depth"));
       channel_input_range = YamlToString(parser.GetYamlNode("channel_input_range"));
 
+      channel_output_filter_pose = YamlToString(parser.GetYamlNode("channel_output_filter_pose"));
+      channel_output_smoother_pose = YamlToString(parser.GetYamlNode("channel_output_smoother_pose"));
+
       parser.GetYamlParam("visualize", &visualize);
       parser.GetYamlParam("filter_publish_hz", &filter_publish_hz);
 
@@ -87,7 +94,8 @@ class StateEstimatorLcm final {
   StateEstimatorLcm(const Params& params)
       : params_(params),
         state_estimator_(params.state_estimator_params),
-        viz_(params.visualizer3d_params)
+        viz_(params.visualizer3d_params),
+        filter_subsampler_(params.filter_publish_hz)
   {
     if (!lcm_.good()) {
       LOG(WARNING) << "Failed to initialize LCM" << std::endl;
@@ -111,8 +119,6 @@ class StateEstimatorLcm final {
     lcm_.subscribe(params_.channel_input_imu, &StateEstimatorLcm::HandleImu, this);
     lcm_.subscribe(params_.channel_input_range, &StateEstimatorLcm::HandleRange, this);
     lcm_.subscribe(params_.channel_input_depth, &StateEstimatorLcm::HandleDepth, this);
-
-    filter_publish_timer_.Start();
   }
 
   // Blocks to keep this node alive.
@@ -127,6 +133,7 @@ class StateEstimatorLcm final {
                     const std::string&,
                     const vehicle::stereo_image_t* msg)
   {
+    if (!params_.use_stereo) { return; }
     CHECK_EQ(msg->img_left.encoding, msg->img_right.encoding)
         << "Left and right images have different encodings!" << std::endl;
 
@@ -157,6 +164,7 @@ class StateEstimatorLcm final {
                  const std::string&,
                  const vehicle::imu_measurement_t* msg)
   {
+    if (!params_.use_imu) { return; }
     ImuMeasurement data;
     decode_imu_measurement_t(*msg, data);
     state_estimator_.ReceiveImu(std::move(data));
@@ -166,6 +174,7 @@ class StateEstimatorLcm final {
                    const std::string&,
                    const vehicle::depth_measurement_t* msg)
   {
+    if (!params_.use_depth) { return; }
     DepthMeasurement data(0, 123);
     decode_depth_measurement_t(*msg, data);
     state_estimator_.ReceiveDepth(std::move(data));
@@ -175,6 +184,7 @@ class StateEstimatorLcm final {
                    const std::string&,
                    const vehicle::range_measurement_t* msg)
   {
+    if (!params_.use_range) { return; }
     RangeMeasurement data(0, 0, Vector3d::Zero());
     decode_range_measurement_t(*msg, data);
     state_estimator_.ReceiveRange(std::move(data));
@@ -195,13 +205,13 @@ class StateEstimatorLcm final {
     msg.header.frame_id = "imu0";
     pack_pose3_t(result.world_P_body, msg.pose);
 
-    lcm_.publish("vio/smoother/world_P_body", &msg);
+    lcm_.publish(params_.channel_output_smoother_pose, &msg);
   }
 
   void FilterCallback(const StateStamped& ss)
   {
     // Limit the publishing rate to avoid overwhelming consumers.
-    if (filter_publish_timer_.Elapsed().seconds() < (1.0 / params_.filter_publish_hz)) {
+    if (!filter_subsampler_.ShouldSample(ConvertToNanoseconds(ss.timestamp))) {
       return;
     }
 
@@ -217,8 +227,7 @@ class StateEstimatorLcm final {
     msg.header.frame_id = "imu0";
     pack_pose3_t(ss.state.q, ss.state.t, msg.pose);
 
-    lcm_.publish("vio/filter/world_P_body", &msg);
-    filter_publish_timer_.Reset();
+    lcm_.publish(params_.channel_output_filter_pose, &msg);
   }
 
  private:
@@ -229,7 +238,7 @@ class StateEstimatorLcm final {
   StateEstimator state_estimator_;
   Visualizer3D viz_;
 
-  Timer filter_publish_timer_{false};
+  DataSubsampler filter_subsampler_;
 };
 
 

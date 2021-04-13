@@ -1,16 +1,20 @@
 %YAML:1.0
 
-use_stereo: 1
+# Turn data source ON/OFF
+use_stereo: 0
 use_range: 1
 use_depth: 1
 use_imu: 1
 
+# LCM Channel Config
 channel_input_stereo: sim/auv/stereo
 channel_input_imu: sim/auv/imu
-channel_input_range: /sim/auv/range*
+channel_input_range: sim/auv/range*
 channel_input_depth: sim/auv/depth
+channel_output_filter_pose: vio/filter/world_P_body
+channel_output_smoother_pose: vio/smoother/world_P_body
 
-visualize: 1
+visualize: 0
 filter_publish_hz: 1
 
 #===============================================================================

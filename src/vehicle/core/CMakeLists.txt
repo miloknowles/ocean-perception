@@ -7,6 +7,7 @@ SET(LIBRARY_SRC
   cv_types.hpp
   color_mapping.hpp
   data_manager.hpp
+  data_subsampler.hpp
   image_util.hpp
   grid_lookup.hpp
   pinhole_camera.hpp
