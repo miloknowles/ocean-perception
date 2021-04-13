@@ -199,6 +199,16 @@ inline std::string YamlToString(const cv::FileNode& node)
 }
 
 
+template <typename EnumT>
+inline EnumT YamlToEnum(const cv::FileNode& node)
+{
+  CHECK(node.type() != cv::FileNode::NONE);
+  int val;
+  node >> val;
+  return static_cast<EnumT>(val);
+}
+
+
 inline void YamlToCameraModel(const cv::FileNode& node, PinholeCamera& cam)
 {
   const cv::FileNode& h_node = node["image_height"];

@@ -13,6 +13,7 @@ export BM_HOME=$HOME/bluemeadow
 export BM_CATKIN_WS=${BM_HOME}/catkin_ws
 export BM_FARMSIM_DIR=${BM_HOME}/farmsim
 export BM_VEHICLE_DIR=${BM_CATKIN_WS}/src/vehicle
+export BM_DATASETS_DIR=${HOME}/datasets
 
 alias source_ros="source /opt/ros/melodic/setup.bash"
 alias source_bm="source ${BM_CATKIN_WS}/devel/setup.bash"

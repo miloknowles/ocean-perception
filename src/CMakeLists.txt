@@ -1,7 +1,5 @@
 add_subdirectory(./external/anms)
 add_subdirectory(./vehicle)
-add_subdirectory(./sandbox/zed_tracking_demo)
-# add_subdirectory(./sandbox/flame_demo)
 add_subdirectory(./sandbox/mesher_demo)
 add_subdirectory(./tools/lcm_image_viewer)
 add_subdirectory(./tools/vio_dataset_player)

@@ -38,5 +38,11 @@ inline std::string sandbox_path(const std::string& subdir)
 }
 
 
+inline std::string tools_path(const std::string& subdir)
+{
+  return src_path(Join("tools", subdir));
+}
+
+
 }
 }

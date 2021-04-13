@@ -15,7 +15,8 @@
 #include "core/timer.hpp"
 #include "core/uid.hpp"
 #include "core/file_utils.hpp"
-#include "dataset/euroc_dataset.hpp"
+#include "core/path_util.hpp"
+#include "dataset/dataset_util.hpp"
 #include "vio/state_estimator.hpp"
 #include "vio/visualizer_3d.hpp"
 #include "lcm_util/util_pose3_t.hpp"
@@ -32,7 +33,9 @@ using namespace vio;
 struct VioDatasetPlayerParams : public ParamsBase
 {
   MACRO_PARAMS_STRUCT_CONSTRUCTORS(VioDatasetPlayerParams);
+  dataset::Dataset dataset = dataset::Dataset::FARMSIM;
   std::string folder;
+  std::string subfolder;
   bool use_stereo = true;
   bool use_imu = true;
   bool use_depth = true;
@@ -45,9 +48,9 @@ struct VioDatasetPlayerParams : public ParamsBase
  private:
   void LoadParams(const YamlParser& parser) override
   {
-    cv::String cvfolder;
-    parser.GetYamlParam("folder", &cvfolder);
-    folder = std::string(cvfolder.c_str());
+    dataset = YamlToEnum<dataset::Dataset>(parser.GetYamlNode("dataset"));
+    folder = YamlToString(parser.GetYamlNode("folder"));
+    subfolder = YamlToString(parser.GetYamlNode("subfolder"));
     parser.GetYamlParam("use_stereo", &use_stereo);
     parser.GetYamlParam("use_imu", &use_imu);
     parser.GetYamlParam("use_depth", &use_depth);
@@ -59,7 +62,7 @@ struct VioDatasetPlayerParams : public ParamsBase
 };
 
 
-void Run(const std::string& path_to_config)
+void Run()
 {
   lcm::LCM lcm;
   if (!lcm.good()) {
@@ -67,8 +70,11 @@ void Run(const std::string& path_to_config)
     return;
   }
 
-  VioDatasetPlayerParams app_params(Join(path_to_config, "VioDatasetPlayer_params.yaml"));
-  dataset::EurocDataset dataset(app_params.folder);
+  VioDatasetPlayerParams app_params(tools_path("vio_dataset_player/config/VioDatasetPlayer_params.yaml"));
+
+  std::string shared_params_path;
+  dataset::DataProvider dataset = dataset::GetDatasetByName(
+      app_params.dataset, app_params.folder, app_params.subfolder, shared_params_path);
 
   const std::vector<dataset::GroundtruthItem>& groundtruth_poses = dataset.GroundtruthPoses();
   CHECK(!groundtruth_poses.empty()) << "No groundtruth poses found" << std::endl;
@@ -76,11 +82,11 @@ void Run(const std::string& path_to_config)
   const PinholeCamera camera_model(415.876509, 415.876509, 375.5, 239.5, 480, 752);
   const StereoCamera stereo_rig(camera_model, 0.2);
 
-  StateEstimator::Params params(Join(path_to_config, "StateEstimator_params.yaml"),
-                                Join(path_to_config, "shared_params.yaml"));
+  StateEstimator::Params params(tools_path("vio_dataset_player/config/StateEstimator_params.yaml"),
+                                shared_params_path);
   StateEstimator state_estimator(params, stereo_rig);
 
-  Visualizer3D::Params viz_params(Join(path_to_config, "Visualizer3D_params.yaml"));
+  Visualizer3D::Params viz_params(tools_path("vio_dataset_player/config/Visualizer3D_params.yaml"));
   Visualizer3D viz(viz_params, stereo_rig);
 
   SmootherResult::Callback smoother_callback = [&](const SmootherResult& result)
@@ -170,7 +176,7 @@ int main(int argc, char const *argv[])
     LOG(WARNING) << "Using default path to config folder, should specify" << std::endl;
   }
 
-  Run(path_to_config);
+  Run();
 
   return 0;
 }

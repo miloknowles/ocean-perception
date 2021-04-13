@@ -21,22 +21,13 @@
 #include "dataset/himb_dataset.hpp"
 #include "dataset/caddy_dataset.hpp"
 #include "dataset/acfr_dataset.hpp"
+#include "dataset/dataset_util.hpp"
 #include "mesher/object_mesher.hpp"
 
 
 using namespace bm;
 using namespace core;
 using namespace mesher;
-
-
-enum Dataset
-{
-  FARMSIM = 0,
-  CADDY = 1,
-  HIMB = 2,
-  ACFR = 3,
-  ZEDM = 4
-};
 
 
 // Allows re-running without recompiling.
@@ -46,7 +37,7 @@ struct MesherDemoParams : public ParamsBase
 
   std::string folder;
   std::string subfolder;  // e.g "genova-A" for CADDY, "train" for HIMB
-  Dataset dataset = Dataset::FARMSIM;
+  dataset::Dataset dataset = dataset::Dataset::FARMSIM;
   float playback_speed = 4.0;
   bool pause = false;
   int input_height = 480.0;
@@ -56,10 +47,7 @@ struct MesherDemoParams : public ParamsBase
   {
     folder = YamlToString(parser.GetYamlNode("folder"));
     subfolder = YamlToString(parser.GetYamlNode("subfolder"));
-
-    int dataset_code = 0;
-    parser.GetYamlParam("dataset", &dataset_code);
-    dataset = static_cast<Dataset>(dataset_code);
+    dataset = YamlToEnum<dataset::Dataset>(parser.GetYamlNode("dataset"));
 
     parser.GetYamlParam("playback_speed", &playback_speed);
     parser.GetYamlParam("pause", &pause);
@@ -69,36 +57,15 @@ struct MesherDemoParams : public ParamsBase
 
 int main(int argc, char const *argv[])
 {
+  // Set up glog.
+  google::InitGoogleLogging(argv[0]);
+  FLAGS_logtostderr = 1;
+
   MesherDemoParams params(sandbox_path("mesher_demo/config/MesherDemo_params.yaml"));
 
   std::string shared_params_path;
-  dataset::DataProvider dataset;
-
-  switch (params.dataset) {
-    case Dataset::FARMSIM:
-      dataset = dataset::EurocDataset(params.folder);
-      shared_params_path = config_path("auv_base/Farmsim.yaml");
-      break;
-    case Dataset::CADDY:
-      throw std::runtime_error("No config available for CADDY");
-      dataset = dataset::CaddyDataset(params.folder, params.subfolder);
-      break;
-    case Dataset::HIMB:
-      dataset = dataset::HimbDataset(params.folder, params.subfolder);
-      shared_params_path = config_path("auv_base/HIMB.yaml");
-      break;
-    case Dataset::ACFR:
-      dataset = dataset::AcfrDataset(params.folder);
-      shared_params_path = config_path("auv_base/ACFR.yaml");
-      break;
-    case Dataset::ZEDM:
-      dataset = dataset::EurocDataset(params.folder);
-      shared_params_path = config_path("auv_base/ZEDMini.yaml");
-      break;
-    default:
-      LOG(FATAL) << "Unknown dataset type: " << params.dataset << std::endl;
-      break;
-  }
+  dataset::DataProvider dataset = dataset::GetDatasetByName(
+      params.dataset, params.folder, params.subfolder, shared_params_path);
 
   ObjectMesher::Params mesher_params(
       sandbox_path("mesher_demo/config/ObjectMesher_params.yaml"),
