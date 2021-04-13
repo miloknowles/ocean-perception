@@ -15,4 +15,4 @@ target_link_libraries(${LIBRARY_NAME}
   ${OpenCV_LIBRARIES}
   ${OpenCV_LIBS}
   vehicle_lcmtypes_cpp
-  glog)
+  ${GLOG_LIBRARIES})

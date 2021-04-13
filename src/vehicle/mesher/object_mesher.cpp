@@ -98,14 +98,15 @@ static void BuildTriangleMesh(TriangleMesh& mesh,
                               cv::Subdiv2D& subdiv,
                               const CoordinateMap<int>& vertex_lookup,
                               const CoordinateMap<double>& vertex_disps,
-                              const StereoCamera& stereo_rig)
+                              const StereoCamera& stereo_rig,
+                              double scale_factor)
 {
   const size_t vertices_offset = mesh.vertices.size();
 
   std::vector<cv::Vec6f> triangle_list;
   subdiv.getTriangleList(triangle_list);
 
-  cv::Rect rect(0,0, stereo_rig.Width(), stereo_rig.Height());
+  cv::Rect rect(0,0, scale_factor * (double)stereo_rig.Width(), scale_factor * (double)stereo_rig.Height());
 
   size_t num_triangles_added = 0;
 
@@ -125,8 +126,12 @@ static void BuildTriangleMesh(TriangleMesh& mesh,
     for (size_t j = 0; j < 3; ++j) {
       const int vidx = vertex_lookup.At((int)t[2*j], (int)t[2*j+1]);
       const double disp = vertex_disps.At(k, vidx);
+
+      // NOTE(milo): Backproject pixels at the ORIGINAL image resolution, which requires us to
+      // scale pixel locations and disparity.
       const Vector3d vert = stereo_rig.LeftCamera().Backproject(
-        Vector2d(t[2*j], t[2*j+1]), stereo_rig.DispToDepth(disp));
+        Vector2d(t[2*j], t[2*j+1]) / scale_factor,
+        stereo_rig.DispToDepth(disp / scale_factor));
       mesh.vertices.emplace_back(vert);
     }
 
@@ -162,6 +167,9 @@ static void CountEdgePixels(const cv::Point2f& a,
 TriangleMesh ObjectMesher::ProcessStereo(const StereoImage1b& stereo_pair)
 {
   const Image1b& iml = stereo_pair.left_image;
+  const int img_height = iml.rows;
+
+  const double scale_factor = static_cast<double>(img_height) / static_cast<double>(params_.stereo_rig.Height());
 
   Timer timer(true);
   tracker_.TrackAndTriangulate(stereo_pair, false);
@@ -217,8 +225,8 @@ TriangleMesh ObjectMesher::ProcessStereo(const StereoImage1b& stereo_pair)
       if (i == j) { continue; }
 
       // Only add edge if the vertices are within some 3D distance from each other.
-      const double depth_i = params_.stereo_rig.DispToDepth(lmk_disps.at(i));
-      const double depth_j = params_.stereo_rig.DispToDepth(lmk_disps.at(j));
+      const double depth_i = params_.stereo_rig.DispToDepth(lmk_disps.at(i) / scale_factor);
+      const double depth_j = params_.stereo_rig.DispToDepth(lmk_disps.at(j) / scale_factor);
       if (std::fabs(depth_i - depth_j) > params_.edge_max_depth_change) {
         continue;
       }
@@ -270,7 +278,7 @@ TriangleMesh ObjectMesher::ProcessStereo(const StereoImage1b& stereo_pair)
         continue;
       }
       DrawDelaunay(k, viz_triangles, subdivs.at(k), vertex_lookup.at(k), vertex_disps);
-      BuildTriangleMesh(mesh, k, subdivs.at(k), vertex_lookup.at(k), vertex_disps, params_.stereo_rig);
+      BuildTriangleMesh(mesh, k, subdivs.at(k), vertex_lookup.at(k), vertex_disps, params_.stereo_rig, scale_factor);
     }
 
     cv::imshow("delaunay", viz_triangles);

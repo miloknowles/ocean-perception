@@ -17,6 +17,7 @@
 #include "dataset/euroc_dataset.hpp"
 #include "dataset/himb_dataset.hpp"
 #include "dataset/caddy_dataset.hpp"
+#include "dataset/acfr_dataset.hpp"
 #include "core/data_manager.hpp"
 #include "mesher/object_mesher.hpp"
 
@@ -30,7 +31,8 @@ enum Dataset
 {
   EUROC = 0,
   CADDY = 1,
-  HIMB = 2
+  HIMB = 2,
+  ACFR = 3
 };
 
 
@@ -44,6 +46,7 @@ struct MesherDemoParams : public ParamsBase
   Dataset dataset = Dataset::EUROC;
   float playback_speed = 4.0;
   bool pause = false;
+  int input_height = 480.0;
 
  private:
   void LoadParams(const YamlParser& parser) override
@@ -63,10 +66,9 @@ struct MesherDemoParams : public ParamsBase
 
 int main(int argc, char const *argv[])
 {
-  MesherDemoParams params(
-      Join("/home/milo/bluemeadow/catkin_ws/src/vehicle/src/sandbox/mesher_demo/config", "MesherDemo_params.yaml"),
-      Join("/home/milo/bluemeadow/catkin_ws/src/vehicle/src/sandbox/mesher_demo/config", "shared_params.yaml"));
+  MesherDemoParams params(Join("/home/milo/bluemeadow/catkin_ws/src/vehicle/src/sandbox/mesher_demo/config", "MesherDemo_params.yaml"));
 
+  std::string shared_params_path = Join("/home/milo/bluemeadow/catkin_ws/src/vehicle/src/sandbox/mesher_demo/config", "shared_params.yaml");
   dataset::DataProvider dataset;
 
   switch (params.dataset) {
@@ -78,6 +80,10 @@ int main(int argc, char const *argv[])
       break;
     case Dataset::HIMB:
       dataset = dataset::HimbDataset(params.folder, params.subfolder);
+      break;
+    case Dataset::ACFR:
+      dataset = dataset::AcfrDataset(params.folder);
+      shared_params_path = Join("/home/milo/bluemeadow/catkin_ws/src/vehicle/src/sandbox/mesher_demo/config", "acfr_params.yaml");
       break;
     default:
       LOG(FATAL) << "Unknown dataset type: " << params.dataset << std::endl;
@@ -95,7 +101,7 @@ int main(int argc, char const *argv[])
 
   ObjectMesher::Params mparams(
       Join("/home/milo/bluemeadow/catkin_ws/src/vehicle/src/sandbox/mesher_demo/config", "ObjectMesher_params.yaml"),
-      Join("/home/milo/bluemeadow/catkin_ws/src/vehicle/src/sandbox/mesher_demo/config", "shared_params.yaml"));
+      shared_params_path);
   ObjectMesher mesher(mparams);
 
   dataset::StereoCallback1b stereo_cb = [&](const StereoImage1b& stereo_pair)
@@ -112,7 +118,17 @@ int main(int argc, char const *argv[])
     // Quaternionf q(world_T_cam.block<3, 3>(0, 0).cast<float>());
     // Vector3f t(world_T_cam.block<3, 1>(0, 3).cast<float>());
 
-    mesher.ProcessStereo(stereo_pair);
+    if (stereo_pair.left_image.rows > params.input_height) {
+      StereoImage1b pair_downsized = StereoImage1b(stereo_pair.timestamp, stereo_pair.camera_id, Image1b(), Image1b());
+      const double height = static_cast<double>(stereo_pair.left_image.rows);
+      const double scale_factor = static_cast<double>(params.input_height) / height;
+      const cv::Size input_size(static_cast<int>(scale_factor * stereo_pair.left_image.cols), params.input_height);
+      cv::resize(stereo_pair.left_image, pair_downsized.left_image, input_size, 0, 0, cv::INTER_LINEAR);
+      cv::resize(stereo_pair.right_image, pair_downsized.right_image, input_size, 0, 0, cv::INTER_LINEAR);
+      mesher.ProcessStereo(pair_downsized);
+    } else {
+      mesher.ProcessStereo(stereo_pair);
+    }
   };
 
   dataset.RegisterStereoCallback(stereo_cb);

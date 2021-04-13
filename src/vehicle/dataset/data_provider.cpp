@@ -121,7 +121,8 @@ bool DataProvider::Step(bool verbose)
     // stereo image (use std::move instead to steal the underlying data).
     const cv::Mat iml = cv::imread(path_left, cv::IMREAD_ANYCOLOR);
     const cv::Mat imr = cv::imread(path_right, cv::IMREAD_ANYCOLOR);
-    if (iml.channels() > 1) {
+
+    if (iml.channels() > 1 && imr.channels() > 1) {
       const StereoImage3b stereo3b(timestamp, next_stereo_idx_, Image3b(iml), Image3b(imr));
       for (const StereoCallback3b& f : stereo_callbacks_3b_) {
         f(stereo3b);

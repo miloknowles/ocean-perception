@@ -3,8 +3,9 @@
 # folder: /home/milo/datasets/Unity3D/farmsim/waypoints1
 # folder: /home/milo/datasets/caddy/caddy_gestures_v2/
 # folder: /home/milo/datasets/himb/HIMB2_labsite/
-folder: /home/milo/datasets/zed/milo2
+# folder: /home/milo/datasets/zed/milo2
+folder: /home/milo/datasets/acfr/scott_reef_25/
 subfolder: ""
-dataset: 0 # EUROC=0, CADDY=1, HIMB=2
+dataset: 3 # EUROC=0, CADDY=1, HIMB=2, ACFR=3
 playback_speed: 1.0
 pause: 0

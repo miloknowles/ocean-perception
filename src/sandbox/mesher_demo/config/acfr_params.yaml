@@ -1,0 +1,48 @@
+%YAML:1.0
+
+# Acceleration of gravity in the world frame.
+# For example, in a RDF world, n_gravity = [0, 9.81, 0].
+# NOTE: This is also used to determine the DEPTH axis (same as gravity).
+n_gravity: [0, 9.81, 0]
+
+# ACFR Scott Reef Dataset
+# http://marine.acfr.usyd.edu.au/datasets/
+stereo0:
+  camera_left:
+    frame_id: camera_left
+    body_T_cam:
+      cols: 4
+      rows: 4
+      data: [1.0, 0.0, 0.0, 0.0,
+             0.0, 1.0, 0.0, 0.0,
+             0.0, 0.0, 1.0, 0.0,
+             0.0, 0.0, 0.0, 1.0]
+
+    # Camera specific definitions.
+    image_height: 1024
+    image_width: 1360
+    camera_model: pinhole
+    intrinsics: [1736.49233331, 1733.74525406, 687.23531391, 501.08026641] # fx, fy, cx, cy
+    distortion_model: radial-tangential
+    distortion_coefficients: [0.15808590, 0.76137626, 0.00569993, -0.00067913] # Zero means already undistorted.
+
+  # NOTE(milo): I inverted the transform from the camera_info.calib because it seemed to be right_T_left
+  # instead of left_T_right, which is what we want here.
+  camera_right:
+    frame_id: camera_right
+    body_T_cam:
+      cols: 4
+      rows: 4
+      data: [ 0.99996769, -0.00019401, -0.00803634,  0.06996075,
+              0.000185  ,  0.99999936, -0.00112178,  0.00024924,
+              0.00803654,  0.00112026,  0.99996708,  0.00004145,
+              0.        ,  0.        ,  0.        ,  1.        ]
+
+
+    # Camera specific definitions.
+    image_height: 1024
+    image_width: 1360
+    camera_model: pinhole
+    intrinsics: [1738.62666794, 1736.66673076, 682.48926624, 510.35526868] # fx, fy, cx, cy
+    distortion_model: radial-tangential
+    distortion_coefficients: [0.17427338, 0.66559118, 0.00355058, -0.00255854] # Zero means already undistorted.
