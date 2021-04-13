@@ -1,5 +1,4 @@
 # add_subdirectory(./imaging)
-# add_subdirectory(./ros)
 # add_subdirectory(./stereo_matching)
 # add_subdirectory(./tag_detector)
 add_subdirectory(./core)
