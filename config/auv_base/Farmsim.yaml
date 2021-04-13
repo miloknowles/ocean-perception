@@ -1,0 +1,72 @@
+%YAML:1.0
+
+# Acceleration of gravity in the world frame.
+# For example, in a RDF world, n_gravity = [0, 9.81, 0].
+# NOTE: This is also used to determine the DEPTH axis (same as gravity).
+n_gravity: [0, 9.81, 0]
+
+imu0:
+  frame_id: imu0
+
+  # IMU and body frame are one and the same.
+  body_T_imu:
+    cols: 4
+    rows: 4
+    data: [1.0, 0.0, 0.0, 0.0,
+           0.0, 1.0, 0.0, 0.0,
+           0.0, 0.0, 1.0, 0.0,
+           0.0, 0.0, 0.0, 1.0]
+  noise_model:
+    accel_noise_sigma:    0.0003924
+    gyro_noise_sigma:     0.000205689024915
+    accel_bias_rw_sigma:  0.004905
+    gyro_bias_rw_sigma:   0.000001454441043
+
+# NOTE(milo): Placeholder for acoustic positioning system.
+aps0:
+  frame_id: receiver0
+  body_T_receiver:
+    cols: 4
+    rows: 4
+    data: [1.0, 0.0, 0.0, 0.0,
+           0.0, 1.0, 0.0, 0.0,
+           0.0, 0.0, 1.0, -0.5,
+           0.0, 0.0, 0.0, 1.0]
+
+# FARMSIM CAMERA
+stereo0:
+  camera_left:
+    frame_id: camera_left
+    body_T_cam:
+      cols: 4
+      rows: 4
+      data: [1.0, 0.0, 0.0, -0.1,
+            0.0, 1.0, 0.0, 0.0,
+            0.0, 0.0, 1.0, 0.1,
+            0.0, 0.0, 0.0, 1.0]
+
+    # Camera specific definitions.
+    image_height: 480
+    image_width: 752
+    camera_model: pinhole
+    intrinsics: [415.876509, 415.876509, 375.5, 239.5] # fx, fy, cx, cy
+    distortion_model: radial-tangential
+    distortion_coefficients: [0.0, 0.0, 0.0, 0.0] # Zero means already undistorted.
+
+  camera_right:
+    frame_id: camera_right
+    body_T_cam:
+      cols: 4
+      rows: 4
+      data: [1.0, 0.0, 0.0, 0.1,
+            0.0, 1.0, 0.0, 0.0,
+            0.0, 0.0, 1.0, 0.1,
+            0.0, 0.0, 0.0, 1.0]
+
+    # Camera specific definitions.
+    image_height: 480
+    image_width: 752
+    camera_model: pinhole
+    intrinsics: [415.876509, 415.876509, 375.5, 239.5] # fx, fy, cx, cy
+    distortion_model: radial-tangential
+    distortion_coefficients: [0.0, 0.0, 0.0, 0.0] # Zero means already undistorted.

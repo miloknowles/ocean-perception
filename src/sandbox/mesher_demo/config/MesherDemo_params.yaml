@@ -1,11 +1,11 @@
 %YAML:1.0
 
-# folder: /home/milo/datasets/Unity3D/farmsim/waypoints1
+folder: /home/milo/datasets/Unity3D/farmsim/waypoints1
 # folder: /home/milo/datasets/caddy/caddy_gestures_v2/
 # folder: /home/milo/datasets/himb/HIMB2_labsite/
 # folder: /home/milo/datasets/zed/milo2
-folder: /home/milo/datasets/acfr/scott_reef_25/
-subfolder: ""
-dataset: 3 # EUROC=0, CADDY=1, HIMB=2, ACFR=3
+# folder: /home/milo/datasets/acfr/scott_reef_25/
+subfolder: "train"
+dataset: 0 # FARMSIM=0, CADDY=1, HIMB=2, ACFR=3, ZEDM=4
 playback_speed: 1.0
 pause: 0
