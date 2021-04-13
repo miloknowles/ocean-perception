@@ -10,6 +10,8 @@ using namespace dataset;
 
 TEST(DatasetTest, TestEurocDataset)
 {
+  LOG(WARNING) << "This test has a hardcoded path! May not work." << std::endl;
+
   const std::string toplevel_folder = "/home/milo/datasets/Unity3D/farmsim/euroc_test1";
   EurocDataset dataset(toplevel_folder);
 
