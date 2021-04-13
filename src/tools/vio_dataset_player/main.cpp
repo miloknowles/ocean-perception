@@ -70,7 +70,8 @@ void Run()
     return;
   }
 
-  VioDatasetPlayerParams app_params(tools_path("vio_dataset_player/config/VioDatasetPlayer_params.yaml"));
+  VioDatasetPlayerParams app_params(
+      tools_path("vio_dataset_player/config/VioDatasetPlayer.yaml"));
 
   std::string shared_params_path;
   dataset::DataProvider dataset = dataset::GetDatasetByName(
@@ -79,15 +80,15 @@ void Run()
   const std::vector<dataset::GroundtruthItem>& groundtruth_poses = dataset.GroundtruthPoses();
   CHECK(!groundtruth_poses.empty()) << "No groundtruth poses found" << std::endl;
 
-  const PinholeCamera camera_model(415.876509, 415.876509, 375.5, 239.5, 480, 752);
-  const StereoCamera stereo_rig(camera_model, 0.2);
+  StateEstimator::Params params(
+      tools_path("vio_dataset_player/config/StateEstimator.yaml"),
+      shared_params_path);
+  StateEstimator state_estimator(params);
 
-  StateEstimator::Params params(tools_path("vio_dataset_player/config/StateEstimator_params.yaml"),
-                                shared_params_path);
-  StateEstimator state_estimator(params, stereo_rig);
-
-  Visualizer3D::Params viz_params(tools_path("vio_dataset_player/config/Visualizer3D_params.yaml"));
-  Visualizer3D viz(viz_params, stereo_rig);
+  Visualizer3D::Params viz_params(tools_path(
+      "vio_dataset_player/config/Visualizer3D.yaml"),
+      shared_params_path);
+  Visualizer3D viz(viz_params);
 
   SmootherResult::Callback smoother_callback = [&](const SmootherResult& result)
   {

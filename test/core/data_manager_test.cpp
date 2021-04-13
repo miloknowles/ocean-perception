@@ -2,6 +2,7 @@
 
 #include "core/depth_measurement.hpp"
 #include "core/data_manager.hpp"
+#include "core/path_util.hpp"
 #include "vio/imu_manager.hpp"
 
 using namespace bm;
@@ -9,7 +10,7 @@ using namespace core;
 using namespace vio;
 
 
-TEST(VioTest, TestDataManager_01)
+TEST(DataManager, TestAll)
 {
   // Queue holds 3 items, drop oldest.
   DataManager<DepthMeasurement> m(3, true);
@@ -90,10 +91,10 @@ TEST(VioTest, TestDataManager_01)
 }
 
 
-TEST(VioTest, TestImuManager_01)
+TEST(ImuManager, TestAll)
 {
-  const std::string filepath_params = "./resources/config/auv_base/ImuManager_params.yaml";
-  const std::string filepath_shared = "./resources/config/auv_base/shared_params.yaml";
+  const std::string filepath_params = "./resources/config/ImuManager.yaml";
+  const std::string filepath_shared = config_path("shared/Farmsim.yaml");
   ImuManager::Params params(filepath_params, filepath_shared);
 
   ImuManager m(params);

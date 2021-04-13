@@ -79,9 +79,9 @@ class ZedRecorder final {
   void CaptureLoop();
 
  private:
-  std::atomic_bool shutdown_;
   std::thread thread_;
   std::string output_folder_;
+  std::atomic_bool shutdown_;
 
   uid_t camera_id_ = 0;
 

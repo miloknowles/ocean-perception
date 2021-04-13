@@ -7,7 +7,7 @@ n_gravity: [0, 9.81, 0]
 
 # ACFR Scott Reef Dataset
 # http://marine.acfr.usyd.edu.au/datasets/
-stereo0:
+stereo_forward:
   camera_left:
     frame_id: camera_left
     body_T_cam:

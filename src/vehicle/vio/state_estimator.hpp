@@ -84,6 +84,8 @@ class StateEstimator final {
     gtsam::Pose3 body_P_cam = gtsam::Pose3::identity();
     Vector3d n_gravity = Vector3d(0, 9.81, 0);
 
+    StereoCamera stereo_rig;
+
    private:
     void LoadParams(const YamlParser& parser) override
     {
@@ -109,20 +111,21 @@ class StateEstimator final {
       parser.GetYamlParam("body_nG_tol", &body_nG_tol);
 
       YamlToVector<Vector3d>(parser.GetYamlNode("/shared/n_gravity"), n_gravity);
-      Matrix4d body_T_imu, body_T_cam;
+      Matrix4d body_T_imu, body_T_left, body_T_right;
       YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/imu0/body_T_imu"), body_T_imu);
-      YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/cam0/body_T_cam"), body_T_cam);
+      YamlToStereoRig(parser.GetYamlNode("/shared/stereo_forward"), stereo_rig, body_T_left, body_T_right);
+
       body_P_imu = gtsam::Pose3(body_T_imu);
-      body_P_cam = gtsam::Pose3(body_T_cam);
+      body_P_cam = gtsam::Pose3(body_T_left);
       CHECK(body_T_imu(3, 3) == 1.0) << "body_T_imu is invalid" << std::endl;
-      CHECK(body_T_cam(3, 3) == 1.0) << "body_T_cam is invalid" << std::endl;
+      CHECK(body_T_left(3, 3) == 1.0) << "body_T_cam is invalid" << std::endl;
     }
   };
 
   MACRO_DELETE_COPY_CONSTRUCTORS(StateEstimator)
   MACRO_DELETE_DEFAULT_CONSTRUCTOR(StateEstimator)
 
-  StateEstimator(const Params& params, const StereoCamera& stereo_rig);
+  StateEstimator(const Params& params);
 
   void ReceiveStereo(const StereoImage1b& stereo_pair);
   void ReceiveImu(const ImuMeasurement& imu_data);

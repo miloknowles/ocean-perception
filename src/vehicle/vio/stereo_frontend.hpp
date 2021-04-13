@@ -39,6 +39,10 @@ class StereoFrontend final {
     double lm_max_error_stdevs = 3.0;
     bool kill_nonrigid_lmks = true;
 
+    StereoCamera stereo_rig;
+    Matrix4d body_T_left;
+    Matrix4d body_T_right;
+
    private:
     void LoadParams(const YamlParser& parser) override
     {
@@ -49,6 +53,8 @@ class StereoFrontend final {
       parser.GetYamlParam("lm_max_iters", &lm_max_iters);
       parser.GetYamlParam("lm_max_error_stdevs", &lm_max_error_stdevs);
       parser.GetYamlParam("kill_nonrigid_lmks", &kill_nonrigid_lmks);
+
+      YamlToStereoRig(parser.GetYamlNode("/shared/stereo_forward"), stereo_rig, body_T_left, body_T_right);
 
       CHECK_GE(sigma_tracked_point, 1.0);
       CHECK_GE(lm_max_iters, 5);
@@ -69,7 +75,7 @@ class StereoFrontend final {
   MACRO_DELETE_DEFAULT_CONSTRUCTOR(StereoFrontend);
 
   // Construct with params.
-  explicit StereoFrontend(const Params& params, const StereoCamera& stereo_rig);
+  explicit StereoFrontend(const Params& params);
 
   // Track and estimate odometry for a new stereo pair.
   VoResult Track(const StereoImage1b& stereo_pair,

@@ -21,10 +21,9 @@ typedef gtsam::noiseModel::mEstimator::Tukey mTukey;
 typedef gtsam::noiseModel::mEstimator::Cauchy mCauchy;
 
 
-Smoother::Smoother(const Params& params,
-                   const StereoCamera& stereo_rig)
+Smoother::Smoother(const Params& params)
     : params_(params),
-      stereo_rig_(stereo_rig)
+      stereo_rig_(params.stereo_rig)
 {
   ResetISAM2();
 

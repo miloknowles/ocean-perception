@@ -10,3 +10,5 @@ target_link_libraries(lcm_image_viewer
   vehicle_lcmtypes_cpp
   lcm
   ${GLOG_LIBRARIES})
+
+target_compile_options(lcm_image_viewer PUBLIC "-std=c++11")

@@ -2,11 +2,11 @@
 # #include "lcmtypes/vehicle/type_t.hpp"
 include_directories(${PROJECT_BINARY_DIR}/lcmtypes)
 
-add_executable(vio_dataset_player main.cpp)
+add_executable(vio_dataset_player
+  main.cpp)
 
 target_link_libraries(vio_dataset_player
   ${OpenCV_LIBRARIES}
-  ${OpenCV_LIBS}
   ${PROJECT_NAME}_lcm_util
   ${PROJECT_NAME}_core
   ${PROJECT_NAME}_dataset
@@ -14,4 +14,7 @@ target_link_libraries(vio_dataset_player
   ${PROJECT_NAME}_vio
   vehicle_lcmtypes_cpp
   lcm
-  glog)
+  ${GLOG_LIBRARIES})
+
+target_compile_options(vio_dataset_player
+  PUBLIC "-std=c++11")

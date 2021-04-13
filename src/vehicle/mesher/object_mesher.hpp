@@ -119,7 +119,7 @@ class ObjectMesher final {
       parser.GetYamlParam("edge_min_foreground_percent", &edge_min_foreground_percent);
       parser.GetYamlParam("edge_max_depth_change", &edge_max_depth_change);
 
-      YamlToStereoRig(parser.GetYamlNode("/shared/stereo0"), stereo_rig, body_T_cam_left, body_T_cam_right);
+      YamlToStereoRig(parser.GetYamlNode("/shared/stereo_forward"), stereo_rig, body_T_cam_left, body_T_cam_right);
     }
   };
 

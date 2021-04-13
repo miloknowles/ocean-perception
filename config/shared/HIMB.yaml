@@ -6,7 +6,7 @@
 n_gravity: [0, 9.81, 0]
 
 # https://github.com/kskin/data
-stereo0:
+stereo_forward:
   camera_left:
     frame_id: camera_left
     body_T_cam:

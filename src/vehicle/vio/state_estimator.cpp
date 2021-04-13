@@ -10,11 +10,11 @@ namespace bm {
 namespace vio {
 
 
-StateEstimator::StateEstimator(const Params& params, const StereoCamera& stereo_rig)
+StateEstimator::StateEstimator(const Params& params)
     : params_(params),
-      stereo_rig_(stereo_rig),
+      stereo_rig_(params.stereo_rig),
       is_shutdown_(false),
-      stereo_frontend_(params_.stereo_frontend_params, stereo_rig),
+      stereo_frontend_(params_.stereo_frontend_params),
       raw_stereo_queue_(params_.max_size_raw_stereo_queue, true),
       smoother_imu_manager_(params_.imu_manager_params),
       smoother_vo_queue_(params_.max_size_smoother_vo_queue, true),
@@ -230,7 +230,7 @@ void StateEstimator::UpdateSmootherMode(SmootherMode mode)
 
 void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_body)
 {
-  Smoother smoother(params_.smoother_params, stereo_rig_);
+  Smoother smoother(params_.smoother_params);
 
   //====================================== INITIALIZATION ==========================================
   bool initialized = false;

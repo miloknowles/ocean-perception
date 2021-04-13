@@ -138,7 +138,7 @@ void ZedRecorder::CaptureLoop()
       info.calibration_parameters.right_cam.cx,
       info.calibration_parameters.right_cam.cy);
 
-  printf("Image Resolution:\n  height=%d  \n  width=%d\n", info.camera_resolution.height, info.camera_resolution.width);
+  printf("Image Resolution:\n  height=%zu  \n  width=%zu\n", info.camera_resolution.height, info.camera_resolution.width);
 
   const sl::Transform lTr = info.calibration_parameters.stereo_transform;
   Matrix3d left_R_right;

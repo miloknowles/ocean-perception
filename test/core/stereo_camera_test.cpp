@@ -7,7 +7,7 @@
 using namespace bm::core;
 
 
-TEST(StereoCameraTest, TestConstruct)
+TEST(StereoCamera, TestConstruct)
 {
   const PinholeCamera cam(415.876509, 415.876509, 376.0, 240.0, 480, 752);
   StereoCamera stereo_cam(cam, cam, 0.2);
@@ -22,7 +22,7 @@ TEST(StereoCameraTest, TestConstruct)
   ASSERT_EQ(0.2, stereo_cam.Extrinsics().translation().x());
 }
 
-TEST(StereoCameraTest, TestProject)
+TEST(StereoCamera, TestProject)
 {
   const PinholeCamera cam(415.876509, 415.876509, 376.0, 240.0, 480, 752);
   StereoCamera stereo_cam(cam, cam, 0.2);

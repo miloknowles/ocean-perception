@@ -115,6 +115,8 @@ class Smoother final {
     gtsam::Pose3 body_P_receiver = gtsam::Pose3::identity();
     Vector3d n_gravity = Vector3d(0, 9.81, 0);
 
+    StereoCamera stereo_rig;
+
   private:
     void LoadParams(const YamlParser& parser) override
     {
@@ -164,24 +166,26 @@ class Smoother final {
       parser.GetYamlParam("beacon_noise_model_sigma", &beacon_noise_model_sigma);
       beacon_noise_model = IsotropicModel::Sigma(3, beacon_noise_model_sigma);
 
-      Matrix4d body_T_imu, body_T_cam, body_T_receiver;
+      Matrix4d body_T_imu, body_T_left, body_T_right, body_T_receiver;
+      YamlToStereoRig(parser.GetYamlNode("/shared/stereo_forward"), stereo_rig, body_T_left, body_T_right);
+
       YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/imu0/body_T_imu"), body_T_imu);
-      YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/cam0/body_T_cam"), body_T_cam);
       YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/aps0/body_T_receiver"), body_T_receiver);
       body_P_imu = gtsam::Pose3(body_T_imu);
-      body_P_cam = gtsam::Pose3(body_T_cam);
+      body_P_cam = gtsam::Pose3(body_T_left);
       body_P_receiver = gtsam::Pose3(body_T_receiver);
 
       YamlToVector<Vector3d>(parser.GetYamlNode("/shared/n_gravity"), n_gravity);
 
       CHECK(body_T_imu(3, 3) == 1.0);
-      CHECK(body_T_cam(3, 3) == 1.0);
+      CHECK(body_T_left(3, 3) == 1.0);
+      CHECK(body_T_right(3, 3) == 1.0);
       CHECK(body_T_receiver(3, 3) == 1.0);
     }
   };
 
   // Construct with parameters.
-  Smoother(const Params& params, const StereoCamera& stereo_rig);
+  Smoother(const Params& params);
 
   MACRO_DELETE_COPY_CONSTRUCTORS(Smoother)
   MACRO_DELETE_DEFAULT_CONSTRUCTOR(Smoother)

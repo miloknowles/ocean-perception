@@ -29,7 +29,7 @@ enum Dataset
 // Convenience function for returning a dataset based on the enum type specified.
 // Pass in the top level dataset folder, and optionally a subfolder if required (e.g HIMB "train").
 // Returns the dataset and sets shared_params_path to the relevant dataset params in
-// vehicle/config/auv_base/*.
+// vehicle/config/shared/*.
 inline DataProvider GetDatasetByName(Dataset code,
                                      const std::string& folder,
                                      const std::string& subfolder,
@@ -40,7 +40,7 @@ inline DataProvider GetDatasetByName(Dataset code,
   switch (code) {
     case Dataset::FARMSIM:
       dataset = dataset::EurocDataset(folder);
-      shared_params_path = config_path("auv_base/Farmsim.yaml");
+      shared_params_path = config_path("shared/Farmsim.yaml");
       break;
     case Dataset::CADDY:
       throw std::runtime_error("No config available for CADDY");
@@ -48,15 +48,15 @@ inline DataProvider GetDatasetByName(Dataset code,
       break;
     case Dataset::HIMB:
       dataset = dataset::HimbDataset(folder, subfolder);
-      shared_params_path = config_path("auv_base/HIMB.yaml");
+      shared_params_path = config_path("shared/HIMB.yaml");
       break;
     case Dataset::ACFR:
       dataset = dataset::AcfrDataset(folder);
-      shared_params_path = config_path("auv_base/ACFR.yaml");
+      shared_params_path = config_path("shared/ACFR.yaml");
       break;
     case Dataset::ZEDM:
       dataset = dataset::EurocDataset(folder);
-      shared_params_path = config_path("auv_base/ZEDMini.yaml");
+      shared_params_path = config_path("shared/ZEDMini.yaml");
       break;
     default:
       LOG(FATAL) << "Unknown dataset type: " << code << std::endl;
