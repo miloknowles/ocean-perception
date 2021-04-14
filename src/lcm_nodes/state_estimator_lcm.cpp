@@ -115,18 +115,21 @@ class StateEstimatorLcm final {
     state_estimator_.RegisterSmootherResultCallback(std::bind(&StateEstimatorLcm::SmootherCallback, this, std::placeholders::_1));
     state_estimator_.RegisterFilterResultCallback(std::bind(&StateEstimatorLcm::FilterCallback, this, std::placeholders::_1));
 
-    lcm_.subscribe(params_.channel_input_stereo, &StateEstimatorLcm::HandleStereo, this);
-    lcm_.subscribe(params_.channel_input_imu, &StateEstimatorLcm::HandleImu, this);
-    lcm_.subscribe(params_.channel_input_range, &StateEstimatorLcm::HandleRange, this);
-    lcm_.subscribe(params_.channel_input_depth, &StateEstimatorLcm::HandleDepth, this);
+    lcm_.subscribe(params_.channel_input_stereo.c_str(), &StateEstimatorLcm::HandleStereo, this);
+    lcm_.subscribe(params_.channel_input_imu.c_str(), &StateEstimatorLcm::HandleImu, this);
+    lcm_.subscribe(params_.channel_input_range.c_str(), &StateEstimatorLcm::HandleRange, this);
+    lcm_.subscribe(params_.channel_input_depth.c_str(), &StateEstimatorLcm::HandleDepth, this);
+    LOG(INFO) << "Subscribed to " << params_.channel_input_stereo << std::endl;
+    LOG(INFO) << "Subscribed to " << params_.channel_input_imu << std::endl;
+    LOG(INFO) << "Subscribed to " << params_.channel_input_range << std::endl;
+    LOG(INFO) << "Subscribed to " << params_.channel_input_depth << std::endl;
   }
 
   // Blocks to keep this node alive.
+  // NOTE(milo): Need to call lcm_.handle() in order to receive LCM messages. Not sure why.
   void Spin()
   {
-    while (!is_shutdown_) {
-      std::this_thread::sleep_for(std::chrono::seconds(1));
-    }
+    while (0 == lcm_.handle() && !is_shutdown_);
   }
 
   void HandleStereo(const lcm::ReceiveBuffer*,
