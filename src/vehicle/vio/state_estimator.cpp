@@ -15,14 +15,14 @@ StateEstimator::StateEstimator(const Params& params)
       stereo_rig_(params.stereo_rig),
       is_shutdown_(false),
       stereo_frontend_(params_.stereo_frontend_params),
-      raw_stereo_queue_(params_.max_size_raw_stereo_queue, true),
-      smoother_imu_manager_(params_.imu_manager_params),
-      smoother_vo_queue_(params_.max_size_smoother_vo_queue, true),
-      smoother_depth_manager_(params_.max_size_smoother_depth_queue, true),
-      smoother_range_manager_(params_.max_size_smoother_range_queue, true),
-      filter_imu_manager_(params.imu_manager_params),
-      filter_depth_manager_(params_.max_size_filter_depth_queue, true),
-      filter_range_manager_(params_.max_size_filter_range_queue, true)
+      raw_stereo_queue_(params_.max_size_raw_stereo_queue, true, "raw_stereo_queue"),
+      smoother_imu_manager_(params_.imu_manager_params, "smoother_imu_manager"),
+      smoother_vo_queue_(params_.max_size_smoother_vo_queue, true, "smoother_vo_queue"),
+      smoother_depth_manager_(params_.max_size_smoother_depth_queue, true, "smoother_depth_manager"),
+      smoother_range_manager_(params_.max_size_smoother_range_queue, true, "smoother_range_manager"),
+      filter_imu_manager_(params.imu_manager_params, "filter_imu_manager"),
+      filter_depth_manager_(params_.max_size_filter_depth_queue, true, "filter_depth_manager"),
+      filter_range_manager_(params_.max_size_filter_range_queue, true, "filter_range_manager")
 {
   LOG(INFO) << "Constructed StateEstimator!" << std::endl;
 

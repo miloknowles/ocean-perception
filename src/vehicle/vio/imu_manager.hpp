@@ -105,7 +105,7 @@ class ImuManager final : public DataManager<ImuMeasurement> {
   MACRO_DELETE_DEFAULT_CONSTRUCTOR(ImuManager)
 
   // Construct with options that control the noise model.
-  explicit ImuManager(const Params& params);
+  explicit ImuManager(const Params& params, const std::string& queue_name = "");
 
   // Preintegrate queued IMU measurements, optionally within a time range [from_time, to_time].
   // If not time range is given, all available result are integrated. Integration is reset inside

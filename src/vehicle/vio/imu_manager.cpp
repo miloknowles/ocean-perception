@@ -4,8 +4,8 @@ namespace bm {
 namespace vio {
 
 
-ImuManager::ImuManager(const Params& params)
-    : DataManager<ImuMeasurement>(params.max_queue_size, true),
+ImuManager::ImuManager(const Params& params, const std::string& queue_name)
+    : DataManager<ImuMeasurement>(params.max_queue_size, true, queue_name),
       params_(params)
 {
   // https://github.com/haidai/gtsam/blob/master/examples/ImuFactorsExample.cpp

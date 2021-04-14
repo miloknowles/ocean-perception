@@ -1,7 +1,5 @@
 #pragma once
 
-#include <glog/logging.h>
-
 #include "core/eigen_types.hpp"
 #include "core/pinhole_camera.hpp"
 
@@ -15,40 +13,14 @@ class StereoCamera final {
 
   StereoCamera(const PinholeCamera& cam_left,
                const PinholeCamera& cam_right,
-               const Transform3d& T_right_left)
-      : cam_left_(cam_left),
-        cam_right_(cam_right),
-        T_left_right_(T_right_left)
-  {
-    baseline_ = T_left_right_.translation().norm();
-    assert(cam_left_.Height() == cam_right_.Height() &&
-           cam_left_.Width() == cam_right_.Width());
-  }
+               const Transform3d& T_right_left);
 
   StereoCamera(const PinholeCamera& cam_left,
                const PinholeCamera& cam_right,
-               double baseline)
-      : cam_left_(cam_left),
-        cam_right_(cam_right),
-        baseline_(baseline)
-  {
-    T_left_right_ = Transform3d::Identity();
-    T_left_right_.translation() = Vector3d(baseline_, 0, 0);
-    assert(cam_left_.Height() == cam_right_.Height() &&
-           cam_left_.Width() == cam_right_.Width());
-  }
+               double baseline);
 
   StereoCamera(const PinholeCamera& cam_leftright,
-               double baseline)
-      : cam_left_(cam_leftright),
-        cam_right_(cam_leftright),
-        baseline_(baseline)
-  {
-    T_left_right_ = Transform3d::Identity();
-    T_left_right_.translation() = Vector3d(baseline_, 0, 0);
-    assert(cam_left_.Height() == cam_right_.Height() &&
-           cam_left_.Width() == cam_right_.Width());
-  }
+               double baseline);
 
   const PinholeCamera& LeftCamera() const { return cam_left_; }
   const PinholeCamera& RightCamera() const { return cam_right_; }
@@ -61,17 +33,8 @@ class StereoCamera final {
   double cy() const { return cam_left_.cy(); }
   Transform3d Extrinsics() const { return T_left_right_; }
 
-  double DispToDepth(double disp) const
-  {
-    CHECK_GT(disp, 0) << "Cannot convert zero disparity to depth (inf)!" << std::endl;
-    return fx() * Baseline() / disp;
-  }
-
-  double DepthToDisp(double depth) const
-  {
-    CHECK_GT(depth, 0) << "Cannot convert zero depth to disp (inf)!" << std::endl;
-    return fx() * Baseline() / depth;
-  }
+  double DispToDepth(double disp) const;
+  double DepthToDisp(double depth) const;
 
  private:
   PinholeCamera cam_left_;

@@ -17,52 +17,20 @@ using Milliseconds = std::chrono::duration<double, std::ratio<1000, 1>>;
 class Timer {
  public:
   // Initialize the timer, and start it if 'immediate' is set.
-  Timer(bool immediate = true) : init_(immediate)
-  {
-    if (immediate) { Start(); }
-  }
-
-  void Start()
-  {
-    running_ = true;
-    init_ = true;
-    t0_ = std::chrono::steady_clock::now();
-  }
-
-  void Stop()
-  {
-    running_ = false;
-    t1_ = std::chrono::steady_clock::now();
-  }
+  Timer(bool immediate = true);
+  void Start();
+  void Stop();
 
   /**
    * @brief Reset the Timer, such that no time has elapsed.
    * If the Timer is already running, it will continue to run.
    */
-  void Reset()
-  {
-    t0_ = std::chrono::steady_clock::now();
-    t1_ = t0_;
-  }
+  void Reset();
 
-  Timedelta Elapsed()
-  {
-    if (!init_) {
-      return Timedelta(0.0);
-    }
-    if (running_) {
-      t1_ = std::chrono::steady_clock::now();
-    }
-    return Timedelta(Seconds(t1_-t0_).count());
-  }
+  Timedelta Elapsed();
 
   // Return elapsed time and reset the timer.
-  Timedelta Tock()
-  {
-    Timedelta dt = Elapsed();
-    Reset();
-    return dt;
-  }
+  Timedelta Tock();
 
  private:
   bool running_ = false;
