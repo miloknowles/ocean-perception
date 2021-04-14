@@ -1,7 +1,7 @@
 %YAML:1.0
 
 # Turn data source ON/OFF
-use_stereo: 0
+use_stereo: 1
 use_range: 1
 use_depth: 1
 use_imu: 1
@@ -11,6 +11,7 @@ channel_input_stereo: sim/auv/stereo
 channel_input_imu: sim/auv/imu
 channel_input_range: sim/auv/range
 channel_input_depth: sim/auv/depth
+channel_initial_pose: sim/auv/pose/world_P_body_initial
 channel_output_filter_pose: vio/filter/world_P_body
 channel_output_smoother_pose: vio/smoother/world_P_body
 

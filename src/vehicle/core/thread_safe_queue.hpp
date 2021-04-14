@@ -30,7 +30,7 @@ class ThreadsafeQueue {
     lock_.lock();
     if (q_.size() >= max_queue_size_ && max_queue_size_ != 0) {
       if (drop_oldest_if_full_) {
-        LOG(WARNING) << "Dropping item from ThreadSafeQueue!" << std::endl;
+        LOG(WARNING) << "Dropping item from ThreadSafeQueue! Item=" << typeid(Item).name() << std::endl;
         q_.pop();
         q_.push(std::move(item));
         did_push = true;
@@ -50,7 +50,7 @@ class ThreadsafeQueue {
   Item Pop()
   {
     lock_.lock();
-    CHECK_GT(q_.size(), 0) << "Tried to pop from empty ThreadSafeQueue!" << std::endl;
+    CHECK_GT(q_.size(), 0) << "Tried to pop from empty ThreadSafeQueue! Item=" << typeid(Item).name() << std::endl;
     Item item = std::move(q_.front());
     q_.pop();
     lock_.unlock();
@@ -85,7 +85,7 @@ class ThreadsafeQueue {
   const Item& PeekFront()
   {
     lock_.lock();
-    CHECK_GT(q_.size(), 0) << "Tried to PeekFront() from empty ThreadSafeQueue!" << std::endl;
+    CHECK_GT(q_.size(), 0) << "Tried to PeekFront() from empty ThreadSafeQueue! Item=" << typeid(Item).name() << std::endl;
     const Item& item = q_.front();
     lock_.unlock();
     return item;
@@ -94,7 +94,7 @@ class ThreadsafeQueue {
   const Item& PeekBack()
   {
     lock_.lock();
-    CHECK_GT(q_.size(), 0) << "Tried to PeekBack() from empty ThreadSafeQueue!" << std::endl;
+    CHECK_GT(q_.size(), 0) << "Tried to PeekBack() from empty ThreadSafeQueue! Item=" << typeid(Item).name() << std::endl;
     const Item& item = q_.back();
     lock_.unlock();
     return item;
