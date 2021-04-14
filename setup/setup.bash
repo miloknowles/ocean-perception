@@ -36,7 +36,7 @@ export BM_LCMTYPES_PACKAGE="vehicle"
 alias lcm-gen-cs="${BM_CATKIN_WS}/src/vehicle/setup/lcm-gen-cs.sh"
 
 # Tell lcm-spy where to find lcmtypes.jar so that it can decode our custom messages.
-CLASSPATH="${CATKIN_WS}/build/vehicle/lcmtypes/vehicle_lcmtypes.jar"
+CLASSPATH="${BM_CATKIN_WS}/build/vehicle/lcmtypes/vehicle_lcmtypes.jar"
 export CLASSPATH
 
 source_ros
