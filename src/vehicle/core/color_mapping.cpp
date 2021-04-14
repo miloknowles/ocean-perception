@@ -6,9 +6,9 @@ namespace bm {
 namespace core {
 
 
-inline std::vector<cv::Vec3b> ColormapVector(const std::vector<double>& values,
-                                            double vmin, double vmax,
-                                            int cv_colormap)
+std::vector<cv::Vec3b> ColormapVector(const std::vector<double>& values,
+                                      double vmin, double vmax,
+                                      int cv_colormap)
 {
   assert(vmax > vmin);
 

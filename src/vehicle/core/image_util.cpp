@@ -49,7 +49,7 @@ Image1b ReadAndConvertToGrayScale(const std::string& img_path) {
 }
 
 
-inline Image1b MaybeConvertToGray(const cv::Mat& im)
+Image1b MaybeConvertToGray(const cv::Mat& im)
 {
   if (im.channels() == 1) {
     return im;
