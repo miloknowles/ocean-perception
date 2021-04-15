@@ -7,6 +7,15 @@ namespace bm {
 namespace ft {
 
 
+void FeatureTracker::Params::LoadParams(const YamlParser& parser)
+{
+  parser.GetYamlParam("klt_maxiters", &klt_maxiters);
+  parser.GetYamlParam("klt_epsilon", &klt_epsilon);
+  parser.GetYamlParam("klt_winsize", &klt_winsize);
+  parser.GetYamlParam("klt_max_level", &klt_max_level);
+}
+
+
 void FeatureTracker::Track(const Image1b& ref_img,
                            const Image1b& cur_img,
                            const VecPoint2f& px_ref,

@@ -26,15 +26,7 @@ class StereoMatcher final {
     bool subpixel_refinement = false;
 
    private:
-    void LoadParams(const YamlParser& parser) override
-    {
-      parser.GetYamlParam("templ_cols", &templ_cols);
-      parser.GetYamlParam("templ_rows", &templ_rows);
-      parser.GetYamlParam("max_disp", &max_disp);
-      parser.GetYamlParam("max_matching_cost", &max_matching_cost);
-      parser.GetYamlParam("bidirectional", &bidirectional);
-      parser.GetYamlParam("subpixel_refinement", &subpixel_refinement);
-    }
+    void LoadParams(const YamlParser& parser) override;
   };
 
   MACRO_DELETE_COPY_CONSTRUCTORS(StereoMatcher)

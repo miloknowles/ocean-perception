@@ -24,13 +24,7 @@ class FeatureTracker final {
     int klt_max_level = 4;
 
    private:
-    void LoadParams(const YamlParser& parser) override
-    {
-      parser.GetYamlParam("klt_maxiters", &klt_maxiters);
-      parser.GetYamlParam("klt_epsilon", &klt_epsilon);
-      parser.GetYamlParam("klt_winsize", &klt_winsize);
-      parser.GetYamlParam("klt_max_level", &klt_max_level);
-    }
+    void LoadParams(const YamlParser& parser) override;
   };
 
   MACRO_DELETE_COPY_CONSTRUCTORS(FeatureTracker);

@@ -9,29 +9,12 @@ namespace core {
 class PinholeCamera final {
  public:
   PinholeCamera() = default;
-
-  PinholeCamera(double fx, double fy, double cx, double cy, double h, double w)
-      : fx_(fx), fy_(fy), cx_(cx), cy_(cy), height_(h), width_(w)
-  {
-    // Set up intrinsics matrices for later.
-    K_ << fx_, 0, cx_, 0, fy_, cy_, 0, 0, 1;
-    K_inv_ = K_.inverse();
-  }
+  PinholeCamera(double fx, double fy, double cx, double cy, double h, double w);
 
   // Returns a PinholeCamera with intrinsics scaled based on a new image resolution.
   // NOTE(milo): This only applies when an image is resized! Cropping will not change the focal
   // length, but resizing will.
-  PinholeCamera Rescale(int new_height, int new_width) const
-  {
-    const double height_sf = new_height / static_cast<double>(height_);
-    const double width_sf = new_width / static_cast<double>(width_);
-    return PinholeCamera(fx_ * width_sf,
-                         fy_ * height_sf,
-                         cx_ * width_sf,
-                         cy_ * height_sf,
-                         new_height,
-                         new_width);
-  }
+  PinholeCamera Rescale(int new_height, int new_width) const;
 
   double fx() const { return fx_; }
   double fy() const { return fy_; }
@@ -43,18 +26,10 @@ class PinholeCamera final {
   Matrix3d Kinv() const { return K_inv_; }
 
   // Project 3D point in the camera's RDF frame.
-  Vector2d Project(const Vector3d& p_cam) const
-  {
-    const Vector3d xy_h = K_ * p_cam;
-    return xy_h.head<2>() / xy_h(2);
-  }
+  Vector2d Project(const Vector3d& p_cam) const;
 
   // Backproject a pixel location to a 3D point in the camera's RDF frame.
-  Vector3d Backproject(const Vector2d& xy, double depth) const
-  {
-    const Vector3d xy_h(xy.x(), xy.y(), 1);
-    return depth * K_inv_ * xy_h;
-  }
+  Vector3d Backproject(const Vector2d& xy, double depth) const;
 
  private:
   double fx_, fy_, cx_, cy_;

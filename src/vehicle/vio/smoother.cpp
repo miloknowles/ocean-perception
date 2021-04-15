@@ -21,6 +21,72 @@ typedef gtsam::noiseModel::mEstimator::Tukey mTukey;
 typedef gtsam::noiseModel::mEstimator::Cauchy mCauchy;
 
 
+void Smoother::Params::LoadParams(const YamlParser& parser)
+{
+  parser.GetYamlParam("extra_smoothing_iters", &extra_smoothing_iters);
+  parser.GetYamlParam("use_smart_stereo_factors", &use_smart_stereo_factors);
+
+  cv::FileNode node;
+  gtsam::Vector6 tmp6;
+
+  node = parser.GetYamlNode("pose_prior_noise_model");
+  YamlToVector<gtsam::Vector6>(node, tmp6);
+  pose_prior_noise_model = DiagonalModel::Sigmas(tmp6);
+
+  node = parser.GetYamlNode("frontend_vo_noise_model");
+  YamlToVector<gtsam::Vector6>(node, tmp6);
+  frontend_vo_noise_model = DiagonalModel::Sigmas(tmp6);
+
+  double lmk_mono_reproj_err_sigma, lmk_stereo_reproj_err_sigma;
+  parser.GetYamlParam("lmk_mono_reproj_err_sigma", &lmk_mono_reproj_err_sigma);
+  parser.GetYamlParam("lmk_stereo_reproj_err_sigma", &lmk_stereo_reproj_err_sigma);
+  lmk_mono_factor_noise_model = IsotropicModel::Sigma(2, lmk_mono_reproj_err_sigma);
+  lmk_stereo_factor_noise_model = IsotropicModel::Sigma(3, lmk_stereo_reproj_err_sigma);
+
+  double velocity_sigma;
+  parser.GetYamlParam("velocity_sigma", &velocity_sigma);
+  velocity_noise_model = IsotropicModel::Sigma(3, velocity_sigma);
+
+  double bias_prior_noise_model_sigma, bias_drift_noise_model_sigma;
+  parser.GetYamlParam("bias_prior_noise_model_sigma", &bias_prior_noise_model_sigma);
+  parser.GetYamlParam("bias_drift_noise_model_sigma", &bias_drift_noise_model_sigma);
+  bias_prior_noise_model = IsotropicModel::Sigma(6, bias_prior_noise_model_sigma);
+  bias_drift_noise_model = IsotropicModel::Sigma(6, bias_drift_noise_model_sigma);
+
+  double depth_sensor_noise_model_sigma;
+  parser.GetYamlParam("depth_sensor_noise_model_sigma", &depth_sensor_noise_model_sigma);
+  depth_sensor_noise_model = IsotropicModel::Sigma(1, depth_sensor_noise_model_sigma);
+
+  double atti_noise_model_sigma;
+  parser.GetYamlParam("attitude_noise_model_sigma", &atti_noise_model_sigma);
+  attitude_noise_model = IsotropicModel::Sigma(2, atti_noise_model_sigma);
+
+  double range_noise_model_sigma;
+  parser.GetYamlParam("range_noise_model_sigma", &range_noise_model_sigma);
+  range_noise_model = IsotropicModel::Sigma(1, range_noise_model_sigma);
+
+  double beacon_noise_model_sigma;
+  parser.GetYamlParam("beacon_noise_model_sigma", &beacon_noise_model_sigma);
+  beacon_noise_model = IsotropicModel::Sigma(3, beacon_noise_model_sigma);
+
+  Matrix4d body_T_imu, body_T_left, body_T_right, body_T_receiver;
+  YamlToStereoRig(parser.GetYamlNode("/shared/stereo_forward"), stereo_rig, body_T_left, body_T_right);
+
+  YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/imu0/body_T_imu"), body_T_imu);
+  YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/aps0/body_T_receiver"), body_T_receiver);
+  body_P_imu = gtsam::Pose3(body_T_imu);
+  body_P_cam = gtsam::Pose3(body_T_left);
+  body_P_receiver = gtsam::Pose3(body_T_receiver);
+
+  YamlToVector<Vector3d>(parser.GetYamlNode("/shared/n_gravity"), n_gravity);
+
+  CHECK(body_T_imu(3, 3) == 1.0);
+  CHECK(body_T_left(3, 3) == 1.0);
+  CHECK(body_T_right(3, 3) == 1.0);
+  CHECK(body_T_receiver(3, 3) == 1.0);
+}
+
+
 Smoother::Smoother(const Params& params)
     : params_(params),
       stereo_rig_(params.stereo_rig)
@@ -233,8 +299,8 @@ SmootherResult Smoother::UpdateGraphNoVision(const PimResult& pim_result,
 
   //========================================= RANGE FACTOR =========================================
   if (!maybe_ranges.empty()) {
-    const std::vector<char> beacon_chars = { 'f', 'g' };
-    CHECK_LE(maybe_ranges.size(), 2ul) << "Only support 2 beacons!" << std::endl;
+    const std::vector<char> beacon_chars = { 'f', 'g', 'h' };
+    CHECK_LE(maybe_ranges.size(), 3ul) << "Only support 3 beacons!" << std::endl;
 
     for (size_t i = 0; i < maybe_ranges.size(); ++i) {
       const gtsam::Symbol beacon_sym(beacon_chars.at(i), keypose_id);

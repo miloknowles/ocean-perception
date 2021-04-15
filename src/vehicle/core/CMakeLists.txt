@@ -5,21 +5,31 @@ SET(LIBRARY_SRC
   eigen_types.hpp
   macros.hpp
   cv_types.hpp
+  color_mapping.cpp
   color_mapping.hpp
   data_manager.hpp
+  data_subsampler.cpp
   data_subsampler.hpp
+  image_util.cpp
   image_util.hpp
   grid_lookup.hpp
+  pinhole_camera.cpp
   pinhole_camera.hpp
+  stereo_camera.cpp
   stereo_camera.hpp
   math_util.cpp
+  math_util.hpp
   transform_util.cpp
+  transform_util.hpp
+  random.cpp
   random.hpp
+  file_utils.cpp
   file_utils.hpp
   path_util.hpp
-  line_feature.hpp
-  line_segment.hpp
+  # line_feature.hpp
+  # line_segment.hpp
   timedelta.hpp
+  timer.cpp
   timer.hpp
   timestamp.hpp
   imu_measurement.hpp
@@ -30,7 +40,9 @@ SET(LIBRARY_SRC
   make_unique.hpp
   fixed_queue.hpp
   thread_safe_queue.hpp
+  yaml_parser.cpp
   yaml_parser.hpp
+  params_base.cpp
   params_base.hpp
   sliding_buffer.hpp)
 

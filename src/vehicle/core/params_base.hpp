@@ -1,6 +1,6 @@
 #pragma once
 
-#include <opencv2/core/cvstd.hpp>
+// #include <opencv2/core/cvstd.hpp>
 #include <opencv2/core/persistence.hpp>
 
 #include "core/yaml_parser.hpp"
@@ -16,23 +16,14 @@ class ParamsBase {
 
   // Construct from root YAML node(s).
   void Parse(const cv::FileNode& root_node,
-             const cv::FileNode& shared_node = cv::FileNode())
-  {
-    LoadParams(YamlParser(root_node, shared_node));
-  }
+             const cv::FileNode& shared_node = cv::FileNode());
 
   // Construct from a path to YAML file(s).
   void Parse(const std::string& filepath,
-             const std::string& shared_filepath = "")
-  {
-    LoadParams(YamlParser(filepath, shared_filepath));
-  }
+             const std::string& shared_filepath = "");
 
   // Construct from an existing parser.
-  void Parse(const YamlParser& parser)
-  {
-    LoadParams(parser);
-  }
+  void Parse(const YamlParser& parser);
 
  protected:
   // This should be implemented in the derived params struct! It gets used when we call Parse()

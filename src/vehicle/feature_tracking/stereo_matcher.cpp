@@ -8,6 +8,17 @@ namespace bm {
 namespace ft {
 
 
+void StereoMatcher::Params::LoadParams(const YamlParser& parser)
+{
+  parser.GetYamlParam("templ_cols", &templ_cols);
+  parser.GetYamlParam("templ_rows", &templ_rows);
+  parser.GetYamlParam("max_disp", &max_disp);
+  parser.GetYamlParam("max_matching_cost", &max_matching_cost);
+  parser.GetYamlParam("bidirectional", &bidirectional);
+  parser.GetYamlParam("subpixel_refinement", &subpixel_refinement);
+}
+
+
 double StereoMatcher::MatchRectified(const Image1b& left_rectified,
                                      const Image1b& right_rectified,
                                      const cv::Point2f& left_keypoint)

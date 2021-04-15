@@ -9,7 +9,8 @@ typedef Eigen::Matrix<double, 1, 1> Vector1d;
 static bool DiagonalNonnegative(const Eigen::MatrixXd& m)
 {
   for (int i = 0; i < m.rows(); ++i) {
-    if (m(i, i) < 0) { return false; }
+    CHECK_GT(m(i, i), 0.0f) << "entry: " << i << " value: " << m(i, i) << "\n" << m << std::endl;
+    if (m(i, i) <= 0.0f) { return false; }
   }
 
   return true;
@@ -21,6 +22,36 @@ static bool DiagonalNonnegative(const Eigen::MatrixXd& m)
 static void Symmetrize(Matrix15d& m)
 {
   m.triangularView<Eigen::StrictlyLower>() = m.transpose();
+}
+
+static void Symmetrize(Matrix6d& m)
+{
+  m.triangularView<Eigen::StrictlyLower>() = m.transpose();
+}
+
+static void Symmetrize(Matrix3d& m)
+{
+  m.triangularView<Eigen::StrictlyLower>() = m.transpose();
+}
+
+
+void StateEkf::Params::LoadParams(const YamlParser& parser)
+{
+  parser.GetYamlParam("sigma_Q_t", &sigma_Q_t);
+  parser.GetYamlParam("sigma_Q_v", &sigma_Q_v);
+  parser.GetYamlParam("sigma_Q_a", &sigma_Q_a);
+  parser.GetYamlParam("sigma_Q_uq", &sigma_Q_uq);
+  parser.GetYamlParam("sigma_Q_w", &sigma_Q_w);
+
+  parser.GetYamlParam("sigma_R_imu_a", &sigma_R_imu_a);
+  parser.GetYamlParam("sigma_R_imu_w", &sigma_R_imu_w);
+
+  parser.GetYamlParam("sigma_R_depth", &sigma_R_depth);
+
+  YamlToVector<Vector3d>(parser.GetYamlNode("/shared/n_gravity"), n_gravity);
+  YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/imu0/body_T_imu"), body_T_imu);
+  YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/stereo_forward/camera_left/body_T_cam"), body_T_cam);
+  YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/aps0/body_T_receiver"), body_T_receiver);
 }
 
 
@@ -220,7 +251,7 @@ static State UpdatePose(const State& x,
   const Matrix15d P_update = A*P*A.transpose() + K*R_pose*K.transpose();
   xu.S = P_update;
 
-  CHECK(DiagonalNonnegative(xu.S)) << "New covariance matrix is not PSD!\n" << x.S << std::endl;
+  CHECK(DiagonalNonnegative(xu.S)) << "New covariance matrix is not PSD!\n" << xu.S << std::endl;
 
   return xu;
 }
@@ -228,9 +259,14 @@ static State UpdatePose(const State& x,
 
 void StateEkf::Initialize(const StateStamped& state, const ImuBias& imu_bias)
 {
+  LOG(INFO) << "Initializing StateEkf at t=" << state.timestamp << std::endl;
+
   ThreadsafeSetState(state.timestamp, state.state);
   is_initialized_ = true;
   imu_bias_ = imu_bias;
+
+  imu_history_->DiscardBefore(state.timestamp);
+  state_history_.DiscardBefore(state.timestamp);
 }
 
 
@@ -290,7 +326,10 @@ StateStamped StateEkf::PredictAndUpdate(seconds_t timestamp,
 
   Vector15d mask = Vector15d::Zero();
   mask.block<3, 1>(v_row, 0) = Vector3d::Ones();
-  const State xu = GenericKalmanUpdate(x, H, y, R_velocity, mask);
+
+  Matrix3d R_velocity_safe = R_velocity;
+  Symmetrize(R_velocity_safe);
+  const State xu = GenericKalmanUpdate(x, H, y, R_velocity_safe, mask);
 
   return ThreadsafeSetState(timestamp, xu);
 }
@@ -305,7 +344,9 @@ StateStamped StateEkf::PredictAndUpdate(seconds_t timestamp,
   const State& xp = PredictIfTimeElapsed(timestamp);
 
   // UPDATE STEP: Compute redidual errors, Kalman gain, and apply update.
-  const State& xu = UpdatePose(xp, q_world_body, world_T_body, R_pose);
+  Matrix6d R_pose_safe = R_pose;
+  Symmetrize(R_pose_safe);
+  const State& xu = UpdatePose(xp, q_world_body, world_T_body, R_pose_safe);
 
   return ThreadsafeSetState(timestamp, xu);
 }

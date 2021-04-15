@@ -1,5 +1,6 @@
 #include <thread>
 #include <glog/logging.h>
+#include <opencv2/highgui.hpp>
 
 #include "dataset/data_provider.hpp"
 

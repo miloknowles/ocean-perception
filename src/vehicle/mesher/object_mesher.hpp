@@ -109,18 +109,7 @@ class ObjectMesher final {
     Matrix4d body_T_cam_right = Matrix4d::Identity();
 
    private:
-    void LoadParams(const YamlParser& parser) override
-    {
-      // Each sub-module has a subtree in the params.yaml.
-      tracker_params = StereoTracker::Params(parser.GetYamlNode("StereoTracker"));
-
-      parser.GetYamlParam("foreground_ksize", &foreground_ksize);
-      parser.GetYamlParam("foreground_min_gradient", &foreground_min_gradient);
-      parser.GetYamlParam("edge_min_foreground_percent", &edge_min_foreground_percent);
-      parser.GetYamlParam("edge_max_depth_change", &edge_max_depth_change);
-
-      YamlToStereoRig(parser.GetYamlNode("/shared/stereo_forward"), stereo_rig, body_T_cam_left, body_T_cam_right);
-    }
+    void LoadParams(const YamlParser& parser) override;
   };
 
   MACRO_DELETE_COPY_CONSTRUCTORS(ObjectMesher);
@@ -130,7 +119,7 @@ class ObjectMesher final {
         tracker_(params.tracker_params, params.stereo_rig),
         lmk_grid_(params_.lmk_grid_rows, params_.lmk_grid_cols) {}
 
-  TriangleMesh ProcessStereo(const StereoImage1b& stereo_pair);
+  TriangleMesh ProcessStereo(const StereoImage1b& stereo_pair, bool visualize = true);
 
  private:
   Params params_;

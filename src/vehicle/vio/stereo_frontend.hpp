@@ -44,22 +44,7 @@ class StereoFrontend final {
     Matrix4d body_T_right;
 
    private:
-    void LoadParams(const YamlParser& parser) override
-    {
-      // Each sub-module has a subtree in the params.yaml.
-      tracker_params = StereoTracker::Params(parser.GetYamlNode("StereoTracker"));
-      parser.GetYamlParam("max_avg_reprojection_error", &max_avg_reprojection_error);
-      parser.GetYamlParam("sigma_tracked_point", &sigma_tracked_point);
-      parser.GetYamlParam("lm_max_iters", &lm_max_iters);
-      parser.GetYamlParam("lm_max_error_stdevs", &lm_max_error_stdevs);
-      parser.GetYamlParam("kill_nonrigid_lmks", &kill_nonrigid_lmks);
-
-      YamlToStereoRig(parser.GetYamlNode("/shared/stereo_forward"), stereo_rig, body_T_left, body_T_right);
-
-      CHECK_GE(sigma_tracked_point, 1.0);
-      CHECK_GE(lm_max_iters, 5);
-      CHECK_GE(lm_max_error_stdevs, 1.0);
-    }
+    void LoadParams(const YamlParser& parser) override;
   };
 
   // https://stackoverflow.com/questions/3643681/how-do-flags-work-in-c

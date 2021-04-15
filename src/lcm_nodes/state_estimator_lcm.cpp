@@ -16,6 +16,7 @@
 #include "core/uid.hpp"
 #include "core/file_utils.hpp"
 #include "core/path_util.hpp"
+#include "core/image_util.hpp"
 #include "core/data_subsampler.hpp"
 
 #include "dataset/dataset_util.hpp"
@@ -57,6 +58,7 @@ class StateEstimatorLcm final {
     std::string channel_input_imu;
     std::string channel_input_range;
     std::string channel_input_depth;
+    std::string channel_initial_pose;
 
     std::string channel_output_filter_pose;
     std::string channel_output_smoother_pose;
@@ -79,6 +81,7 @@ class StateEstimatorLcm final {
       channel_input_imu = YamlToString(parser.GetYamlNode("channel_input_imu"));
       channel_input_depth = YamlToString(parser.GetYamlNode("channel_input_depth"));
       channel_input_range = YamlToString(parser.GetYamlNode("channel_input_range"));
+      channel_initial_pose = YamlToString(parser.GetYamlNode("channel_initial_pose"));
 
       channel_output_filter_pose = YamlToString(parser.GetYamlNode("channel_output_filter_pose"));
       channel_output_smoother_pose = YamlToString(parser.GetYamlNode("channel_output_smoother_pose"));
@@ -102,31 +105,64 @@ class StateEstimatorLcm final {
       return;
     }
 
-    // TODO(milo): Where should this come from? External function call?
-    gtsam::Pose3 P0_world_body = gtsam::Pose3::identity();
-    state_estimator_.Initialize(0, P0_world_body);
-
-    if (params_.visualize) {
-      viz_.Start();
-      viz_.UpdateBodyPose("T0_world_body", P0_world_body.matrix());
-      viz_.SetViewerPose(P0_world_body.matrix());
-    }
-
     state_estimator_.RegisterSmootherResultCallback(std::bind(&StateEstimatorLcm::SmootherCallback, this, std::placeholders::_1));
     state_estimator_.RegisterFilterResultCallback(std::bind(&StateEstimatorLcm::FilterCallback, this, std::placeholders::_1));
 
-    lcm_.subscribe(params_.channel_input_stereo, &StateEstimatorLcm::HandleStereo, this);
-    lcm_.subscribe(params_.channel_input_imu, &StateEstimatorLcm::HandleImu, this);
-    lcm_.subscribe(params_.channel_input_range, &StateEstimatorLcm::HandleRange, this);
-    lcm_.subscribe(params_.channel_input_depth, &StateEstimatorLcm::HandleDepth, this);
+    lcm_.subscribe(params_.channel_initial_pose.c_str(), &StateEstimatorLcm::InitializeLcm, this);
+    LOG(INFO) << "Listening for initial pose on channel: " << params_.channel_initial_pose << std::endl;
+
+    while (!initialized_ && 0 == lcm_.handle());
+  }
+
+  void InitializeLcm(const lcm::ReceiveBuffer*,
+                     const std::string&,
+                     const vehicle::pose3_stamped_t* msg)
+  {
+    if (initialized_) {
+      return;
+    }
+
+    const timestamp_t t0 = msg->header.timestamp;
+    const std::string frame_id = msg->header.frame_id;
+
+    if (frame_id != "imu" && frame_id != "body") {
+      LOG(WARNING) << "Received initial pose in wrong frame: " << frame_id << std::endl;
+      return;
+    }
+
+    initialized_.store(true);
+
+    gtsam::Pose3 world_P_body = gtsam::Pose3::identity();
+    decode_pose3_t(msg->pose, world_P_body);
+
+    LOG(INFO) << "Received initial pose at t=" << t0 << "\n" << world_P_body << std::endl;
+
+    state_estimator_.Initialize(ConvertToSeconds(t0), world_P_body);
+
+    if (params_.visualize) {
+      LOG(INFO) << "Visualization is ON, setting viewer pose" << std::endl;
+      viz_.Start();
+      viz_.UpdateBodyPose("T0_world_body", world_P_body.matrix());
+      viz_.SetViewerPose(world_P_body.matrix());
+    }
+
+    LOG(INFO) << "Setting up sensor data subscriptions" << std::endl;
+    lcm_.subscribe(params_.channel_input_stereo.c_str(), &StateEstimatorLcm::HandleStereo, this);
+    lcm_.subscribe(params_.channel_input_imu.c_str(), &StateEstimatorLcm::HandleImu, this);
+    lcm_.subscribe(params_.channel_input_range.c_str(), &StateEstimatorLcm::HandleRange, this);
+    lcm_.subscribe(params_.channel_input_depth.c_str(), &StateEstimatorLcm::HandleDepth, this);
+    LOG(INFO) << "Subscribed to " << params_.channel_input_stereo << std::endl;
+    LOG(INFO) << "Subscribed to " << params_.channel_input_imu << std::endl;
+    LOG(INFO) << "Subscribed to " << params_.channel_input_range << std::endl;
+    LOG(INFO) << "Subscribed to " << params_.channel_input_depth << std::endl;
   }
 
   // Blocks to keep this node alive.
+  // NOTE(milo): Need to call lcm_.handle() in order to receive LCM messages. Not sure why.
   void Spin()
   {
-    while (!is_shutdown_) {
-      std::this_thread::sleep_for(std::chrono::seconds(1));
-    }
+    CHECK(initialized_) << "StateEstimatorLcm should be initialized before Spin()" << std::endl;
+    while (0 == lcm_.handle() && !is_shutdown_);
   }
 
   void HandleStereo(const lcm::ReceiveBuffer*,
@@ -142,8 +178,12 @@ class StateEstimatorLcm final {
     StereoImage1b stereo_pair(msg->header.timestamp, msg->header.seq, Image1b(), Image1b());
 
     if (encoding == "jpg") {
-      bm::DecodeJPG(msg->img_left, stereo_pair.left_image);
-      bm::DecodeJPG(msg->img_right, stereo_pair.right_image);
+      cv::Mat left, right;
+      bm::DecodeJPG(msg->img_left, left);
+      bm::DecodeJPG(msg->img_right, right);
+
+      stereo_pair.left_image = MaybeConvertToGray(left);
+      stereo_pair.right_image = MaybeConvertToGray(right);
 
       if (stereo_pair.left_image.rows == 0 || stereo_pair.left_image.cols == 0) {
         LOG(WARNING) << "Problem decoding left image" << std::endl;
@@ -153,11 +193,12 @@ class StateEstimatorLcm final {
         LOG(WARNING) << "Problem decoding right image" << std::endl;
         return;
       }
-    } else {
-      LOG(WARNING) << "Unsupported encoding: " << encoding << std::endl;
-    }
 
-    state_estimator_.ReceiveStereo(std::move(stereo_pair));
+      state_estimator_.ReceiveStereo(std::move(stereo_pair));
+
+    } else {
+      LOG(FATAL) << "Unsupported encoding: " << encoding << std::endl;
+    }
   }
 
   void HandleImu(const lcm::ReceiveBuffer*,
@@ -196,13 +237,16 @@ class StateEstimatorLcm final {
     const Matrix3d body_cov_pose = result.cov_pose.block<3, 3>(3, 3);
     const Matrix3d world_R_body = result.world_P_body.rotation().matrix();
     const Matrix3d world_cov_pose = world_R_body * body_cov_pose * world_R_body.transpose();
-    viz_.AddCameraPose(cam_id, Image1b(), result.world_P_body.matrix(), true, std::make_shared<Matrix3d>(world_cov_pose));
+
+    if (params_.visualize) {
+      viz_.AddCameraPose(cam_id, Image1b(), result.world_P_body.matrix(), true, std::make_shared<Matrix3d>(world_cov_pose));
+    }
 
     // Publish pose estimate to LCM.
     vehicle::pose3_stamped_t msg;
     msg.header.timestamp = ConvertToNanoseconds(result.timestamp);
     msg.header.seq = -1;
-    msg.header.frame_id = "imu0";
+    msg.header.frame_id = "body";
     pack_pose3_t(result.world_P_body, msg.pose);
 
     lcm_.publish(params_.channel_output_smoother_pose, &msg);
@@ -215,16 +259,18 @@ class StateEstimatorLcm final {
       return;
     }
 
-    Matrix4d world_T_body = Matrix4d::Identity();
-    world_T_body.block<3, 3>(0, 0) = ss.state.q.toRotationMatrix();
-    world_T_body.block<3, 1>(0, 3) = ss.state.t;
-    viz_.UpdateBodyPose("imu0", world_T_body);
+    if (params_.visualize) {
+      Matrix4d world_T_body = Matrix4d::Identity();
+      world_T_body.block<3, 3>(0, 0) = ss.state.q.toRotationMatrix();
+      world_T_body.block<3, 1>(0, 3) = ss.state.t;
+      viz_.UpdateBodyPose("body", world_T_body);
+    }
 
     // Publish pose estimate to LCM.
     vehicle::pose3_stamped_t msg;
     msg.header.timestamp = ConvertToNanoseconds(ss.timestamp);
     msg.header.seq = -1;
-    msg.header.frame_id = "imu0";
+    msg.header.frame_id = "body";
     pack_pose3_t(ss.state.q, ss.state.t, msg.pose);
 
     lcm_.publish(params_.channel_output_filter_pose, &msg);
@@ -232,6 +278,7 @@ class StateEstimatorLcm final {
 
  private:
   std::atomic_bool is_shutdown_{false};
+  std::atomic_bool initialized_{false};
 
   Params params_;
   lcm::LCM lcm_;

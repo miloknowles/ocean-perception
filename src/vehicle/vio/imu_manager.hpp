@@ -80,32 +80,14 @@ class ImuManager final : public DataManager<ImuMeasurement> {
 
    private:
     // Loads in params using a YAML parser.
-    void LoadParams(const YamlParser& parser) override
-    {
-      parser.GetYamlParam("allowed_misalignment_sec", &allowed_misalignment_sec);
-      parser.GetYamlParam("max_queue_size", &max_queue_size);
-      parser.GetYamlParam("integration_error_sigma", &integration_error_sigma);
-      parser.GetYamlParam("use_2nd_order_coriolis", &use_2nd_order_coriolis);
-
-      parser.GetYamlParam("/shared/imu0/noise_model/accel_noise_sigma", &accel_noise_sigma);
-      parser.GetYamlParam("/shared/imu0/noise_model/gyro_noise_sigma", &gyro_noise_sigma);
-      parser.GetYamlParam("/shared/imu0/noise_model/accel_bias_rw_sigma", &accel_bias_rw_sigma);
-      parser.GetYamlParam("/shared/imu0/noise_model/gyro_bias_rw_sigma", &gyro_bias_rw_sigma);
-
-      YamlToVector<gtsam::Vector3>(parser.GetYamlNode("/shared/n_gravity"), n_gravity);
-
-      Matrix4d body_T_imu;
-      YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/imu0/body_T_imu"), body_T_imu);
-      body_P_imu = gtsam::Pose3(body_T_imu);
-      CHECK(body_T_imu(3, 3) == 1.0) << "body_T_imu is invalid" << std::endl;
-    }
+    void LoadParams(const YamlParser& parser) override;
   };
 
   MACRO_DELETE_COPY_CONSTRUCTORS(ImuManager)
   MACRO_DELETE_DEFAULT_CONSTRUCTOR(ImuManager)
 
   // Construct with options that control the noise model.
-  explicit ImuManager(const Params& params);
+  explicit ImuManager(const Params& params, const std::string& queue_name = "");
 
   // Preintegrate queued IMU measurements, optionally within a time range [from_time, to_time].
   // If not time range is given, all available result are integrated. Integration is reset inside

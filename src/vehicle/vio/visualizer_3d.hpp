@@ -84,15 +84,7 @@ class Visualizer3D final {
 
    private:
     // Loads in params using a YAML parser.
-    void LoadParams(const YamlParser& parser) override
-    {
-      parser.GetYamlParam("show_uncertainty", &show_uncertainty);
-      parser.GetYamlParam("show_frustums", &show_frustums);
-      parser.GetYamlParam("max_stored_poses", &max_stored_poses);
-      parser.GetYamlParam("max_stored_landmarks", &max_stored_landmarks);
-
-      YamlToStereoRig(parser.GetYamlNode("/shared/stereo_forward"), stereo_rig, body_T_left, body_T_right);
-    }
+    void LoadParams(const YamlParser& parser) override;
   };
 
   MACRO_DELETE_COPY_CONSTRUCTORS(Visualizer3D)
