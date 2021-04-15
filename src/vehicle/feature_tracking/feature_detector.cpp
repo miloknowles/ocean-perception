@@ -31,6 +31,15 @@ static VecPoint2f CvKeyPointToPoint(const std::vector<cv::KeyPoint>& input)
 //   return out;
 // }
 
+void FeatureDetector::Params::LoadParams(const YamlParser& parser)
+{
+  parser.GetYamlParam("max_features_per_frame", &max_features_per_frame);
+  parser.GetYamlParam("min_distance_btw_tracked_and_detected_features", &min_distance_btw_tracked_and_detected_features);
+  parser.GetYamlParam("gftt_quality_level", &gftt_quality_level);
+  parser.GetYamlParam("gftt_block_size", &gftt_block_size);
+  parser.GetYamlParam("gftt_use_harris_corner_detector", &gftt_use_harris_corner_detector);
+}
+
 
 FeatureDetector::FeatureDetector(const Params& params) : params_(params)
 {

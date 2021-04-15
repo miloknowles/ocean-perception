@@ -45,6 +45,17 @@ static cv::Affine3d EigenMatrix4dToCvAffine3d(const Matrix4d& world_T_cam)
 }
 
 
+void Visualizer3D::Params::LoadParams(const YamlParser& parser)
+{
+  parser.GetYamlParam("show_uncertainty", &show_uncertainty);
+  parser.GetYamlParam("show_frustums", &show_frustums);
+  parser.GetYamlParam("max_stored_poses", &max_stored_poses);
+  parser.GetYamlParam("max_stored_landmarks", &max_stored_landmarks);
+
+  YamlToStereoRig(parser.GetYamlNode("/shared/stereo_forward"), stereo_rig, body_T_left, body_T_right);
+}
+
+
 void Visualizer3D::AddCameraPose(uid_t cam_id,
                                  const Image1b& left_image,
                                  const Matrix4d& world_T_cam,

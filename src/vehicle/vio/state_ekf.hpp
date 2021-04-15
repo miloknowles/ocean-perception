@@ -154,24 +154,7 @@ class StateEkf final {
 
 
    private:
-    void LoadParams(const YamlParser& parser) override
-    {
-      parser.GetYamlParam("sigma_Q_t", &sigma_Q_t);
-      parser.GetYamlParam("sigma_Q_v", &sigma_Q_v);
-      parser.GetYamlParam("sigma_Q_a", &sigma_Q_a);
-      parser.GetYamlParam("sigma_Q_uq", &sigma_Q_uq);
-      parser.GetYamlParam("sigma_Q_w", &sigma_Q_w);
-
-      parser.GetYamlParam("sigma_R_imu_a", &sigma_R_imu_a);
-      parser.GetYamlParam("sigma_R_imu_w", &sigma_R_imu_w);
-
-      parser.GetYamlParam("sigma_R_depth", &sigma_R_depth);
-
-      YamlToVector<Vector3d>(parser.GetYamlNode("/shared/n_gravity"), n_gravity);
-      YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/imu0/body_T_imu"), body_T_imu);
-      YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/stereo_forward/camera_left/body_T_cam"), body_T_cam);
-      YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/aps0/body_T_receiver"), body_T_receiver);
-    }
+    void LoadParams(const YamlParser& parser) override;
   };
 
   // Construct with parameters.

@@ -10,6 +10,46 @@ namespace bm {
 namespace vio {
 
 
+void StateEstimator::Params::LoadParams(const YamlParser& parser)
+{
+  stereo_frontend_params = StereoFrontend::Params(parser.Subtree("StereoFrontend"));
+  imu_manager_params = ImuManager::Params(parser.Subtree("ImuManager"));
+  smoother_params = Smoother::Params(parser.Subtree("SmootherParams"));
+  filter_params = StateEkf::Params(parser.Subtree("StateEkfParams"));
+
+  parser.GetYamlParam("max_size_raw_stereo_queue", &max_size_raw_stereo_queue);
+  parser.GetYamlParam("max_size_smoother_vo_queue", &max_size_smoother_vo_queue);
+  parser.GetYamlParam("max_size_smoother_imu_queue", &max_size_smoother_imu_queue);
+  parser.GetYamlParam("max_size_smoother_depth_queue", &max_size_smoother_depth_queue);
+  parser.GetYamlParam("max_size_smoother_range_queue", &max_size_smoother_range_queue);
+  parser.GetYamlParam("max_size_filter_vo_queue", &max_size_filter_vo_queue);
+  parser.GetYamlParam("max_size_filter_imu_queue", &max_size_filter_imu_queue);
+  parser.GetYamlParam("max_size_filter_depth_queue", &max_size_filter_depth_queue);
+  parser.GetYamlParam("max_size_filter_range_queue", &max_size_smoother_range_queue);
+  parser.GetYamlParam("reliable_vision_min_lmks", &reliable_vision_min_lmks);
+  parser.GetYamlParam("max_sec_btw_keyposes", &max_sec_btw_keyposes);
+  parser.GetYamlParam("min_sec_btw_keyposes", &min_sec_btw_keyposes);
+  parser.GetYamlParam("smoother_init_wait_vision_sec", &smoother_init_wait_vision_sec);
+  parser.GetYamlParam("allowed_misalignment_depth", &allowed_misalignment_depth);
+  parser.GetYamlParam("allowed_misalignment_imu", &allowed_misalignment_imu);
+  parser.GetYamlParam("allowed_misalignment_range", &allowed_misalignment_range);
+  parser.GetYamlParam("max_filter_divergence_position", &max_filter_divergence_position);
+  parser.GetYamlParam("max_filter_divergence_rotation", &max_filter_divergence_rotation);
+  parser.GetYamlParam("show_feature_tracks", &show_feature_tracks);
+  parser.GetYamlParam("body_nG_tol", &body_nG_tol);
+
+  YamlToVector<Vector3d>(parser.GetYamlNode("/shared/n_gravity"), n_gravity);
+  Matrix4d body_T_imu, body_T_left, body_T_right;
+  YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/imu0/body_T_imu"), body_T_imu);
+  YamlToStereoRig(parser.GetYamlNode("/shared/stereo_forward"), stereo_rig, body_T_left, body_T_right);
+
+  body_P_imu = gtsam::Pose3(body_T_imu);
+  body_P_cam = gtsam::Pose3(body_T_left);
+  CHECK(body_T_imu(3, 3) == 1.0) << "body_T_imu is invalid" << std::endl;
+  CHECK(body_T_left(3, 3) == 1.0) << "body_T_cam is invalid" << std::endl;
+}
+
+
 StateEstimator::StateEstimator(const Params& params)
     : params_(params),
       stereo_rig_(params.stereo_rig),
@@ -324,7 +364,6 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
             maybe_attitude_ptr,
             maybe_ranges));
       }
-
     // VO AVAILABLE ==> Add a keyframe and smooth.
     } else {
       const VoResult frontend_result = smoother_vo_queue_.Pop();
@@ -361,7 +400,7 @@ void StateEstimator::FilterLoop(seconds_t t0, const gtsam::Pose3& P0_world_body)
 {
   StateEkf filter(params_.filter_params);
 
-  StateCovariance S0 = 0.1 * StateCovariance::Identity();
+  StateCovariance S0 = 0.1*StateCovariance::Identity();
   S0.block<3, 3>(t_row, t_row) = 0.03 * Matrix3d::Identity();
 
   filter.Initialize(StateStamped(t0, State(
@@ -415,7 +454,7 @@ void StateEstimator::FilterLoop(seconds_t t0, const gtsam::Pose3& P0_world_body)
       }
     }
 
-    //================================== SYNCHRONIZE WITH SMOOTHER =================================
+    //================================ SYNCHRONIZE WITH SMOOTHER ===================================
     const bool do_sync_with_smoother = smoother_update_flag_.exchange(false);
 
     if (do_sync_with_smoother) {
@@ -426,13 +465,42 @@ void StateEstimator::FilterLoop(seconds_t t0, const gtsam::Pose3& P0_world_body)
 
       filter.Rewind(result.timestamp);
       filter.UpdateImuBias(result.imu_bias);
-      filter.PredictAndUpdate(result.timestamp,
-                              result.world_P_body.rotation().toQuaternion().normalized(),
-                              result.world_P_body.translation(),
-                              result.cov_pose);
-      filter.PredictAndUpdate(result.timestamp,
-                              result.v_world_body,
-                              result.cov_vel);
+
+      const Matrix3d world_R_body = result.world_P_body.rotation().matrix();
+      const double position_err = (result.world_P_body.translation() - filter.GetState().state.t).norm();
+      const double rotation_err = (result.world_P_body.rotation().toQuaternion().angularDistance(filter.GetState().state.q));
+
+      // If the filter has diverged, do a hard reset to the smoother pose.
+      if (position_err > params_.max_filter_divergence_position ||
+          rotation_err > params_.max_filter_divergence_rotation) {
+
+        LOG(INFO) << "Filter has diverged from smoother, doing a hard reset" << std::endl;
+
+        StateCovariance S = 1.0*StateCovariance::Identity();
+        S.block<3, 3>(t_row, t_row) = result.cov_pose.block<3, 3>(3, 3);
+        S.block<3, 3>(uq_row, uq_row) = result.cov_pose.block<3, 3>(0, 0);
+        S.block<3, 3>(v_row, v_row) = result.cov_vel;
+
+        filter.Initialize(StateStamped(result.timestamp, State(
+            result.world_P_body.translation(),
+            result.v_world_body,
+            Vector3d::Zero(),
+            result.world_P_body.rotation().toQuaternion().normalized(),
+            Vector3d::Zero(),
+            S0)),
+            result.imu_bias);
+
+      // Otherwise, do a "soft" reset by treating the smoother pose as a measurement.
+      } else {
+        filter.PredictAndUpdate(result.timestamp,
+                                result.world_P_body.rotation().toQuaternion().normalized(),
+                                result.world_P_body.translation(),
+                                result.cov_pose);
+        filter.PredictAndUpdate(result.timestamp,
+                                result.v_world_body,
+                                result.cov_vel);
+      }
+
       filter.ReapplyImu();
 
       const StateStamped state = filter.GetState();

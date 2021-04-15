@@ -46,6 +46,9 @@ StateEstimator:
   allowed_misalignment_imu: 0.05
   allowed_misalignment_range: 0.15
 
+  max_filter_divergence_position: 0.2   # m
+  max_filter_divergence_rotation: 0.2   # rad
+
   show_feature_tracks: 1              # 0=OFF, 1=ON
 
   body_nG_tol: 0.01                  # If a measured acceleration vector is this close to 9.81 m/s^2, assume that the vehicle is at rest.

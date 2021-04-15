@@ -80,6 +80,9 @@ class StateEstimator final {
     // range measurement at any given time.
     double allowed_misalignment_range = 0.15;
 
+    double max_filter_divergence_position = 0.5;  // m
+    double max_filter_divergence_rotation = 0.2;  // rad
+
     int show_feature_tracks = 0;
 
     double body_nG_tol = 0.01;  // Treat accelerometer measurements as attitude measurements if they are this close to 1G.
@@ -91,42 +94,7 @@ class StateEstimator final {
     StereoCamera stereo_rig;
 
    private:
-    void LoadParams(const YamlParser& parser) override
-    {
-      stereo_frontend_params = StereoFrontend::Params(parser.Subtree("StereoFrontend"));
-      imu_manager_params = ImuManager::Params(parser.Subtree("ImuManager"));
-      smoother_params = Smoother::Params(parser.Subtree("SmootherParams"));
-      filter_params = StateEkf::Params(parser.Subtree("StateEkfParams"));
-
-      parser.GetYamlParam("max_size_raw_stereo_queue", &max_size_raw_stereo_queue);
-      parser.GetYamlParam("max_size_smoother_vo_queue", &max_size_smoother_vo_queue);
-      parser.GetYamlParam("max_size_smoother_imu_queue", &max_size_smoother_imu_queue);
-      parser.GetYamlParam("max_size_smoother_depth_queue", &max_size_smoother_depth_queue);
-      parser.GetYamlParam("max_size_smoother_range_queue", &max_size_smoother_range_queue);
-      parser.GetYamlParam("max_size_filter_vo_queue", &max_size_filter_vo_queue);
-      parser.GetYamlParam("max_size_filter_imu_queue", &max_size_filter_imu_queue);
-      parser.GetYamlParam("max_size_filter_depth_queue", &max_size_filter_depth_queue);
-      parser.GetYamlParam("max_size_filter_range_queue", &max_size_smoother_range_queue);
-      parser.GetYamlParam("reliable_vision_min_lmks", &reliable_vision_min_lmks);
-      parser.GetYamlParam("max_sec_btw_keyposes", &max_sec_btw_keyposes);
-      parser.GetYamlParam("min_sec_btw_keyposes", &min_sec_btw_keyposes);
-      parser.GetYamlParam("smoother_init_wait_vision_sec", &smoother_init_wait_vision_sec);
-      parser.GetYamlParam("allowed_misalignment_depth", &allowed_misalignment_depth);
-      parser.GetYamlParam("allowed_misalignment_imu", &allowed_misalignment_imu);
-      parser.GetYamlParam("allowed_misalignment_range", &allowed_misalignment_range);
-      parser.GetYamlParam("show_feature_tracks", &show_feature_tracks);
-      parser.GetYamlParam("body_nG_tol", &body_nG_tol);
-
-      YamlToVector<Vector3d>(parser.GetYamlNode("/shared/n_gravity"), n_gravity);
-      Matrix4d body_T_imu, body_T_left, body_T_right;
-      YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/imu0/body_T_imu"), body_T_imu);
-      YamlToStereoRig(parser.GetYamlNode("/shared/stereo_forward"), stereo_rig, body_T_left, body_T_right);
-
-      body_P_imu = gtsam::Pose3(body_T_imu);
-      body_P_cam = gtsam::Pose3(body_T_left);
-      CHECK(body_T_imu(3, 3) == 1.0) << "body_T_imu is invalid" << std::endl;
-      CHECK(body_T_left(3, 3) == 1.0) << "body_T_cam is invalid" << std::endl;
-    }
+    void LoadParams(const YamlParser& parser) override;
   };
 
   MACRO_DELETE_COPY_CONSTRUCTORS(StateEstimator)

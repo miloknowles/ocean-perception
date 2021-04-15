@@ -50,21 +50,7 @@ class StereoTracker final {
     int trigger_keyframe_k = 10;
 
    private:
-    void LoadParams(const YamlParser& parser) override
-    {
-      // Each sub-module has a subtree in the params.yaml.
-      detector_params = FeatureDetector::Params(parser.GetYamlNode("FeatureDetector"));
-      tracker_params = FeatureTracker::Params(parser.GetYamlNode("FeatureTracker"));
-      matcher_params = StereoMatcher::Params(parser.GetYamlNode("StereoMatcher"));
-
-      parser.GetYamlParam("stereo_max_depth", &stereo_max_depth);
-      parser.GetYamlParam("stereo_min_depth", &stereo_min_depth);
-      parser.GetYamlParam("retrack_frames_k", &retrack_frames_k);
-      parser.GetYamlParam("trigger_keyframe_min_lmks", &trigger_keyframe_min_lmks);
-      parser.GetYamlParam("trigger_keyframe_k", &trigger_keyframe_k);
-
-      CHECK(retrack_frames_k >= 1 && retrack_frames_k < 8);
-    }
+    void LoadParams(const YamlParser& parser) override;
   };
 
   MACRO_DELETE_COPY_CONSTRUCTORS(StereoTracker);
