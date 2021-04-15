@@ -99,9 +99,9 @@ class ObjectMesherLcm final {
         const cv::Size input_size(static_cast<int>(scale_factor * stereo_pair.left_image.cols), params_.mesher_input_height);
         cv::resize(stereo_pair.left_image, pair_downsized.left_image, input_size, 0, 0, cv::INTER_LINEAR);
         cv::resize(stereo_pair.right_image, pair_downsized.right_image, input_size, 0, 0, cv::INTER_LINEAR);
-        mesh = mesher_.ProcessStereo(std::move(pair_downsized));
+        mesh = mesher_.ProcessStereo(std::move(pair_downsized), params_.visualize);
       } else {
-        mesh = mesher_.ProcessStereo(std::move(stereo_pair));
+        mesh = mesher_.ProcessStereo(std::move(stereo_pair), params_.visualize);
       }
 
       vehicle::mesh_stamped_t out;

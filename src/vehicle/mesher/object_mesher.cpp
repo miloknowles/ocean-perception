@@ -178,7 +178,7 @@ static void CountEdgePixels(const cv::Point2f& a,
 }
 
 
-TriangleMesh ObjectMesher::ProcessStereo(const StereoImage1b& stereo_pair)
+TriangleMesh ObjectMesher::ProcessStereo(const StereoImage1b& stereo_pair, bool visualize)
 {
   const Image1b& iml = stereo_pair.left_image;
   const int img_height = iml.rows;
@@ -189,14 +189,15 @@ TriangleMesh ObjectMesher::ProcessStereo(const StereoImage1b& stereo_pair)
   tracker_.TrackAndTriangulate(stereo_pair, false);
   // LOG(INFO) << "TrackAndTriangulate: " << timer.Tock().milliseconds() << std::endl;
 
-  const Image3b& viz_tracks = tracker_.VisualizeFeatureTracks();
-
-  cv::imshow("Feature Tracks", viz_tracks);
+  if (visualize) {
+    const Image3b& viz_tracks = tracker_.VisualizeFeatureTracks();
+    cv::imshow("Feature Tracks", viz_tracks);
+  }
 
   Image1b foreground_mask;
   EstimateForegroundMask(iml, foreground_mask, params_.foreground_ksize, params_.foreground_min_gradient, 4);
 
-  cv::imshow("Foreground Mask", foreground_mask);
+  if (visualize) cv::imshow("Foreground Mask", foreground_mask);
 
   // Build a keypoint graph.
   std::vector<uid_t> lmk_ids;
@@ -284,21 +285,24 @@ TriangleMesh ObjectMesher::ProcessStereo(const StereoImage1b& stereo_pair)
 
     // Draw the output triangles.
     cv::Mat3b viz_triangles;
-    cv::cvtColor(iml, viz_triangles, cv::COLOR_GRAY2BGR);
+
+    if (visualize) cv::cvtColor(iml, viz_triangles, cv::COLOR_GRAY2BGR);
 
     for (size_t k = 0; k < subdivs.size(); ++k) {
       // Ignore meshes without at least one triangle.
       if (nmembers.at(k) < 3) {
         continue;
       }
-      DrawDelaunay(k, viz_triangles, subdivs.at(k), vertex_lookup.at(k), vertex_disps);
+      if (visualize) DrawDelaunay(k, viz_triangles, subdivs.at(k), vertex_lookup.at(k), vertex_disps);
       BuildTriangleMesh(mesh, k, subdivs.at(k), vertex_lookup.at(k), vertex_disps, params_.stereo_rig, scale_factor);
     }
 
-    cv::imshow("delaunay", viz_triangles);
+    if (visualize) {
+      cv::imshow("delaunay", viz_triangles);
+    }
   }
 
-  cv::waitKey(1);
+  if (visualize) cv::waitKey(1);
 
   return mesh;
 }

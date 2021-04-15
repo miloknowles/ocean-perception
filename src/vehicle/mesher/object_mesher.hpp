@@ -119,7 +119,7 @@ class ObjectMesher final {
         tracker_(params.tracker_params, params.stereo_rig),
         lmk_grid_(params_.lmk_grid_rows, params_.lmk_grid_cols) {}
 
-  TriangleMesh ProcessStereo(const StereoImage1b& stereo_pair);
+  TriangleMesh ProcessStereo(const StereoImage1b& stereo_pair, bool visualize = true);
 
  private:
   Params params_;
