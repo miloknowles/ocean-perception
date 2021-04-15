@@ -73,8 +73,12 @@ class StateEstimator final {
     double min_sec_btw_keyposes = 0.5;        // Don't trigger a keypose if it hasn't been long since the last one.
 
     double smoother_init_wait_vision_sec = 3.0;   // Wait this long for VO to arrive during initialization.
-    double allowed_misalignment_depth = 0.01;     // 10 ms for depth
-    double allowed_misalignment_range = 0.10;     // 100 ms for range, since this measurements comes in slowly.
+    double allowed_misalignment_depth = 0.05;     // 50 ms for depth
+    double allowed_misalignment_imu = 0.05;       // 50 ms for IMU
+
+    // Range arrives at about 3 Hz. This means we can expect to be at most 0.15 sec away from a
+    // range measurement at any given time.
+    double allowed_misalignment_range = 0.15;
 
     int show_feature_tracks = 0;
 
@@ -107,6 +111,9 @@ class StateEstimator final {
       parser.GetYamlParam("max_sec_btw_keyposes", &max_sec_btw_keyposes);
       parser.GetYamlParam("min_sec_btw_keyposes", &min_sec_btw_keyposes);
       parser.GetYamlParam("smoother_init_wait_vision_sec", &smoother_init_wait_vision_sec);
+      parser.GetYamlParam("allowed_misalignment_depth", &allowed_misalignment_depth);
+      parser.GetYamlParam("allowed_misalignment_imu", &allowed_misalignment_imu);
+      parser.GetYamlParam("allowed_misalignment_range", &allowed_misalignment_range);
       parser.GetYamlParam("show_feature_tracks", &show_feature_tracks);
       parser.GetYamlParam("body_nG_tol", &body_nG_tol);
 

@@ -291,15 +291,19 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
       smoother_range_manager_.DiscardBefore(from_time);
       const bool range_is_available = !smoother_range_manager_.Empty();
 
-      // const seconds_t time_offset_range = std::fabs(smoother_imu_manager_.Newest() - smoother_range_manager_.Newest());
-      const bool add_range_keypose = range_is_available &&
-          (smoother_imu_manager_.Newest() > (smoother_range_manager_.Newest() - 0.01));
-      const bool add_imu_keypose = (imu_is_available && (smoother_imu_manager_.Newest() - from_time) > params_.min_sec_btw_keyposes);
-
       // Can't add a new keypose until IMU is available (fully constraint 6DOF motion).
-      if (add_range_keypose || add_imu_keypose) {
+      // We make sure that there are IMU measurements up until the range measurement.
+      const bool can_add_range_keypose = range_is_available &&
+          (smoother_imu_manager_.Newest() > (smoother_range_manager_.Newest() - params_.allowed_misalignment_imu));
+      const bool can_add_imu_keypose = imu_is_available &&
+          (smoother_imu_manager_.Newest() - from_time) > params_.min_sec_btw_keyposes;
+
+      if (can_add_range_keypose || can_add_imu_keypose) {
         // Decide when to trigger the next keypose: if range is available prefer that. Otherwise IMU.
-        const seconds_t to_time = add_range_keypose ? smoother_range_manager_.Newest() : smoother_imu_manager_.Newest();
+        const seconds_t to_time = can_add_range_keypose ? smoother_range_manager_.Newest() : smoother_imu_manager_.Newest();
+
+        LOG_IF(INFO, can_add_range_keypose) << "Adding range keypose" << std::endl;
+        LOG_IF(INFO, !can_add_range_keypose) << "Adding IMU keypose" << std::endl;
 
         PimResult::Ptr maybe_pim_ptr;
         DepthMeasurement::Ptr maybe_depth_ptr;

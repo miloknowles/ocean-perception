@@ -246,7 +246,7 @@ class StateEstimatorLcm final {
     vehicle::pose3_stamped_t msg;
     msg.header.timestamp = ConvertToNanoseconds(result.timestamp);
     msg.header.seq = -1;
-    msg.header.frame_id = "imu0";
+    msg.header.frame_id = "body";
     pack_pose3_t(result.world_P_body, msg.pose);
 
     lcm_.publish(params_.channel_output_smoother_pose, &msg);
@@ -263,14 +263,14 @@ class StateEstimatorLcm final {
       Matrix4d world_T_body = Matrix4d::Identity();
       world_T_body.block<3, 3>(0, 0) = ss.state.q.toRotationMatrix();
       world_T_body.block<3, 1>(0, 3) = ss.state.t;
-      viz_.UpdateBodyPose("imu0", world_T_body);
+      viz_.UpdateBodyPose("body", world_T_body);
     }
 
     // Publish pose estimate to LCM.
     vehicle::pose3_stamped_t msg;
     msg.header.timestamp = ConvertToNanoseconds(ss.timestamp);
     msg.header.seq = -1;
-    msg.header.frame_id = "imu0";
+    msg.header.frame_id = "body";
     pack_pose3_t(ss.state.q, ss.state.t, msg.pose);
 
     lcm_.publish(params_.channel_output_filter_pose, &msg);
