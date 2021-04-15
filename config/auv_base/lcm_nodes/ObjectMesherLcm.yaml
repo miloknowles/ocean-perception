@@ -1,0 +1,54 @@
+%YAML:1.0
+
+channel_input_stereo: sim/auv/stereo
+channel_output_mesh: object_mesher/mesh
+visualize: 1
+mesher_input_height: 320
+
+#===============================================================================
+ObjectMesher:
+  foreground_ksize: 15
+  foreground_min_gradient: 10.0
+
+  edge_min_foreground_percent: 0.8
+  edge_max_depth_change: 1.5
+
+  #===============================================================================
+  StereoTracker:
+    stereo_max_depth: 20.0 # m
+    stereo_min_depth: 0.2   # m
+
+    # Kill off a tracked landmark if it hasn't been seen since "k" frames ago.
+    # retrack_frames_k: 3
+    retrack_frames_k: 1
+
+    # Trigger a keyframe if there aren't many landmarks. The StereoFrontend will try to create new
+    # landmarks for tracking.
+    trigger_keyframe_min_lmks: 10
+
+    # Trigger a keyframe at least every k frames.
+    # NOTE(milo): More frequent keyframe triggering results in a much better pose estimate.
+    trigger_keyframe_k: 5
+
+    FeatureDetector:
+      max_features_per_frame: 200
+      subpixel_corners: 0 # bool
+      min_distance_btw_tracked_and_detected_features: 20
+      gftt_quality_level: 0.01
+      gftt_block_size: 9
+      gftt_use_harris_corner_detector: 0 # bool
+      gftt_k: 0.04
+
+    FeatureTracker:
+      klt_maxiters: 5
+      klt_epsilon: 0.01
+      klt_winsize: 21
+      klt_max_level: 4
+
+    StereoMatcher:
+      templ_cols: 21
+      templ_rows: 21
+      max_disp: 64
+      max_matching_cost: 0.15
+      bidirectional: 0 # bool
+      subpixel_refinement: 0 # bool
