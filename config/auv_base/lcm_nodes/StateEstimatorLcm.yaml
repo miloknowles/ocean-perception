@@ -16,7 +16,7 @@ channel_output_filter_pose: vio/filter/world_P_body
 channel_output_smoother_pose: vio/smoother/world_P_body
 
 visualize: 0
-filter_publish_hz: 1
+filter_publish_hz: 20
 
 #===============================================================================
 Visualizer3D:
@@ -59,9 +59,9 @@ StateEstimator:
     frontend_vo_noise_model: [0.1, 0.1, 0.1, 0.4, 0.4, 1.0]      # rad, rad, rad, m, m, m
     lmk_mono_reproj_err_sigma: 3.0        # px in u and v
     lmk_stereo_reproj_err_sigma: 10.0      # px in u and v
-    depth_sensor_noise_model_sigma: 0.5   # m
-    range_noise_model_sigma: 0.7          # m
-    beacon_noise_model_sigma: 0.01        # m
+    depth_sensor_noise_model_sigma: 0.3   # m
+    range_noise_model_sigma: 0.5          # m
+    beacon_noise_model_sigma: 0.1        # m
     attitude_noise_model_sigma: 0.5       # rad
     velocity_sigma: 0.3                   # m/s
 

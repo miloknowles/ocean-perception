@@ -342,8 +342,8 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
         // Decide when to trigger the next keypose: if range is available prefer that. Otherwise IMU.
         const seconds_t to_time = can_add_range_keypose ? smoother_range_manager_.Newest() : smoother_imu_manager_.Newest();
 
-        LOG_IF(INFO, can_add_range_keypose) << "Adding range keypose" << std::endl;
-        LOG_IF(INFO, !can_add_range_keypose) << "Adding IMU keypose" << std::endl;
+        // LOG_IF(INFO, can_add_range_keypose) << "Adding range keypose" << std::endl;
+        // LOG_IF(INFO, !can_add_range_keypose) << "Adding IMU keypose" << std::endl;
 
         PimResult::Ptr maybe_pim_ptr;
         DepthMeasurement::Ptr maybe_depth_ptr;
