@@ -71,12 +71,12 @@ static void LinearizeRange(const MultiRange& ranges,
 
 
 
-double EstimatePosition(const MultiRange& ranges,
-                        const std::vector<double>& sigmas,
-                        Vector3d& world_t_body,
-                        Matrix3d& solution_cov,
-                        int max_iters,
-                        double min_error)
+double TrilateratePosition(const MultiRange& ranges,
+                          const std::vector<double>& sigmas,
+                          Vector3d& world_t_body,
+                          Matrix3d& solution_cov,
+                          int max_iters,
+                          double min_error)
 {
   CHECK_GE(ranges.size(), 3ul) << "Need at least 3 range measurements for trilateration" << std::endl;
   CHECK_EQ(ranges.size(), sigmas.size()) << "Must pass in a measurement noise for each range" << std::endl;

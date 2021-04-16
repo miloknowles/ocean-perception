@@ -31,7 +31,7 @@ TEST(Trilateration, NoNoise)
   const std::vector<double> sigmas(3, 0.2); // 1m stdev on range measurements for now.
 
   Matrix3d solution_cov;
-  const double err = EstimatePosition(ranges, sigmas, world_t_body, solution_cov, max_iters);
+  const double err = TrilateratePosition(ranges, sigmas, world_t_body, solution_cov, max_iters);
 
   std::cout << "Solution error: " << err << std::endl;
   std::cout << "Optimized world_t_body: " << world_t_body.transpose() << std::endl;
@@ -60,7 +60,7 @@ TEST(Trilateration, Noisy)
   const std::vector<double> sigmas(3, 0.5); // stdev on range measurements
 
   Matrix3d solution_cov;
-  const double err = EstimatePosition(ranges, sigmas, world_t_body, solution_cov, max_iters);
+  const double err = TrilateratePosition(ranges, sigmas, world_t_body, solution_cov, max_iters);
 
   std::cout << "Solution error: " << err << std::endl;
   std::cout << "Optimized world_t_body: " << world_t_body.transpose() << std::endl;

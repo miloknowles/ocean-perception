@@ -9,6 +9,7 @@
 #include "vio/smoother.hpp"
 #include "vio/vo_result.hpp"
 #include "vio/single_axis_factor.hpp"
+#include "vio/trilateration.hpp"
 
 namespace bm {
 namespace vio {
@@ -300,7 +301,7 @@ SmootherResult Smoother::UpdateGraphNoVision(const PimResult& pim_result,
   //========================================= RANGE FACTOR =========================================
   if (!maybe_ranges.empty()) {
     const std::vector<char> beacon_chars = { 'f', 'g', 'h' };
-    CHECK_LE(maybe_ranges.size(), 3ul) << "Only support 3 beacons!" << std::endl;
+    CHECK_LE(maybe_ranges.size(), 3ul) << "Only support up to 3 beacons!" << std::endl;
 
     for (size_t i = 0; i < maybe_ranges.size(); ++i) {
       const gtsam::Symbol beacon_sym(beacon_chars.at(i), keypose_id);

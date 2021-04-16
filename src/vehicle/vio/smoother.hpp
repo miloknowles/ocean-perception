@@ -89,6 +89,7 @@ class Smoother final {
     MACRO_PARAMS_STRUCT_CONSTRUCTORS(Params);
 
     int extra_smoothing_iters = 2;            // More smoothing iters --> better accuracy.
+    int lm_max_iters_range = 20;
     bool use_smart_stereo_factors = true;
 
     DiagonalModel::shared_ptr pose_prior_noise_model = DiagonalModel::Sigmas(

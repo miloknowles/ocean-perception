@@ -37,6 +37,8 @@ void StateEstimator::Params::LoadParams(const YamlParser& parser)
   parser.GetYamlParam("max_filter_divergence_rotation", &max_filter_divergence_rotation);
   parser.GetYamlParam("show_feature_tracks", &show_feature_tracks);
   parser.GetYamlParam("body_nG_tol", &body_nG_tol);
+  parser.GetYamlParam("filter_use_depth", &filter_use_depth);
+  parser.GetYamlParam("filter_use_range", &filter_use_range);
 
   YamlToVector<Vector3d>(parser.GetYamlNode("/shared/n_gravity"), n_gravity);
   Matrix4d body_T_imu, body_T_left, body_T_right;
@@ -92,7 +94,9 @@ void StateEstimator::ReceiveImu(const ImuMeasurement& imu_data)
 void StateEstimator::ReceiveDepth(const DepthMeasurement& depth_data)
 {
   smoother_depth_manager_.Push(depth_data);
-  filter_depth_manager_.Push(depth_data);
+  if (params_.filter_use_depth) {
+    filter_depth_manager_.Push(depth_data);
+  }
 }
 
 
@@ -101,7 +105,9 @@ void StateEstimator::ReceiveRange(const RangeMeasurement& range_data)
   smoother_range_manager_.Push(range_data);
 
   // NOTE(milo): Don't send range data to the filter for now. Results in jumpy state estimates.
-  // filter_range_manager_.Push(range_data);
+  if (params_.filter_use_range) {
+    filter_range_manager_.Push(range_data);
+  }
 }
 
 

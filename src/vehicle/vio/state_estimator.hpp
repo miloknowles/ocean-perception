@@ -87,6 +87,9 @@ class StateEstimator final {
 
     double body_nG_tol = 0.01;  // Treat accelerometer measurements as attitude measurements if they are this close to 1G.
 
+    bool filter_use_range = true;
+    bool filter_use_depth = true;
+
     gtsam::Pose3 body_P_imu = gtsam::Pose3::identity();
     gtsam::Pose3 body_P_cam = gtsam::Pose3::identity();
     Vector3d n_gravity = Vector3d(0, 9.81, 0);
