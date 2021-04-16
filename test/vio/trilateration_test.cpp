@@ -44,9 +44,9 @@ TEST(Trilateration, Noisy)
   const int max_iters = 20;
 
   // Triangle of beacons on the y=0 plane (e.g water surface).
-  const Vector3d p0(10, 0, 0);
-  const Vector3d p1(-10, 0, 0);
-  const Vector3d p2(0, 0, 10);
+  const Vector3d p0(4, 0, 0);
+  const Vector3d p1(-4, 0, 0);
+  const Vector3d p2(0, 0, 4);
 
   Vector3d world_t_body(17, -15, 4);
   std::cout << "Initial world_t_body: " << world_t_body.transpose() << std::endl;
