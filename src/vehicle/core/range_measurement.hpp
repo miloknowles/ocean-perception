@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vector>
+
 #include "core/macros.hpp"
 #include "core/timestamp.hpp"
 #include "core/eigen_types.hpp"

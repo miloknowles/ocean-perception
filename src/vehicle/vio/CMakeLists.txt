@@ -22,7 +22,9 @@ SET(LIBRARY_SRC
   smoother.cpp
   smoother.hpp
   state_estimator.cpp
-  state_estimator.hpp)
+  state_estimator.hpp
+  trilateration.cpp
+  trilateration.hpp)
 
 add_library(${LIBRARY_NAME} SHARED ${LIBRARY_SRC})
 set_target_properties(${LIBRARY_NAME} PROPERTIES LINKER_LANGUAGE CXX)
