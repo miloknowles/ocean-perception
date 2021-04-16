@@ -4,6 +4,7 @@
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/inference/Key.h>
 #include <gtsam/sam/RangeFactor.h>
+#include <gtsam/slam/PoseTranslationPrior.h>
 
 #include "core/transform_util.hpp"
 #include "vio/smoother.hpp"
@@ -300,6 +301,23 @@ SmootherResult Smoother::UpdateGraphNoVision(const PimResult& pim_result,
 
   //========================================= RANGE FACTOR =========================================
   if (!maybe_ranges.empty()) {
+    // if (maybe_ranges.size() >= 3) {
+    //   LOG(INFO) << "Adding trilateral range factor" << std::endl;
+    //   gtsam::Pose3 world_P_body = GetResult().world_P_body;
+
+    //   // Use current pose estimate to get receiver position in world.
+    //   Vector3d world_t_receiver = (world_P_body * params_.body_P_receiver).translation();
+    //   Matrix3d solution_cov = Matrix3d::Identity();
+    //   const std::vector<double> range_sigmas(maybe_ranges.size(), params_.range_noise_model->sigma());
+
+    //   const double lm_error = TrilateratePosition(maybe_ranges, range_sigmas, world_t_receiver, solution_cov, params_.lm_max_iters_range);
+    //   LOG(INFO) << lm_error << std::endl;
+    //   LOG(INFO) << solution_cov << std::endl;
+    //   world_P_body = gtsam::Pose3(world_P_body.rotation(), world_t_receiver - params_.body_P_receiver.translation());
+
+    //   gtsam::SharedNoiseModel model = gtsam::noiseModel::Gaussian::Covariance(solution_cov);
+    //   new_factors.push_back(gtsam::PoseTranslationPrior<gtsam::Pose3>(keypose_sym, world_P_body, model));
+    // } else {
     const size_t max_supported_beacons = 4;
 
     const std::vector<char> beacon_chars = { 'f', 'g', 'h', 'i' };
@@ -310,8 +328,6 @@ SmootherResult Smoother::UpdateGraphNoVision(const PimResult& pim_result,
       const RangeMeasurement& range_meas = maybe_ranges.at(i);
       new_values.insert(beacon_sym, range_meas.point);
       new_factors.addPrior(beacon_sym, range_meas.point, params_.beacon_noise_model);
-
-      // const RobustModel::shared_ptr model = RobustModel::Create(mCauchy::Create(1.0), params_.range_noise_model);
 
       new_factors.push_back(RangeFactor(
           keypose_sym,
