@@ -300,22 +300,24 @@ SmootherResult Smoother::UpdateGraphNoVision(const PimResult& pim_result,
 
   //========================================= RANGE FACTOR =========================================
   if (!maybe_ranges.empty()) {
-    const std::vector<char> beacon_chars = { 'f', 'g', 'h' };
-    CHECK_LE(maybe_ranges.size(), 3ul) << "Only support up to 3 beacons!" << std::endl;
+    const size_t max_supported_beacons = 4;
 
-    for (size_t i = 0; i < maybe_ranges.size(); ++i) {
+    const std::vector<char> beacon_chars = { 'f', 'g', 'h', 'i' };
+    CHECK_LE(maybe_ranges.size(), max_supported_beacons) << "Only support up to 4 beacons!" << std::endl;
+
+    for (size_t i = 0; i < std::min(maybe_ranges.size(), max_supported_beacons); ++i) {
       const gtsam::Symbol beacon_sym(beacon_chars.at(i), keypose_id);
       const RangeMeasurement& range_meas = maybe_ranges.at(i);
       new_values.insert(beacon_sym, range_meas.point);
       new_factors.addPrior(beacon_sym, range_meas.point, params_.beacon_noise_model);
 
-      const RobustModel::shared_ptr model = RobustModel::Create(mCauchy::Create(1.0), params_.range_noise_model);
+      // const RobustModel::shared_ptr model = RobustModel::Create(mCauchy::Create(1.0), params_.range_noise_model);
 
       new_factors.push_back(RangeFactor(
           keypose_sym,
           beacon_sym,
           range_meas.range,
-          model,
+          params_.range_noise_model,
           params_.body_P_receiver));
     }
   }
