@@ -23,7 +23,8 @@ set(VIO_TEST_SOURCES
   # vio/state_ekf_test.cpp
   vio/imu_manager_test.cpp
   vio/attitude_factor_test.cpp
-  vio/ellipsoid_test.cpp)
+  vio/ellipsoid_test.cpp
+  vio/trilateration_test.cpp)
 
 set(LCM_TEST_SOURCES
   lcmtypes/test_publish.cpp)

@@ -53,19 +53,22 @@ StateEstimator:
 
   body_nG_tol: 0.01                  # If a measured acceleration vector is this close to 9.81 m/s^2, assume that the vehicle is at rest.
 
+  filter_use_range: 0
+  filter_use_depth: 0
+
   #===============================================================================
   SmootherParams:
     pose_prior_noise_model: [0.001, 0.001, 0.001, 0.01, 0.01, 0.01]    # rad, rad, rad, m, m, m
     frontend_vo_noise_model: [0.1, 0.1, 0.1, 0.4, 0.4, 1.0]      # rad, rad, rad, m, m, m
     lmk_mono_reproj_err_sigma: 3.0        # px in u and v
     lmk_stereo_reproj_err_sigma: 10.0      # px in u and v
-    depth_sensor_noise_model_sigma: 0.3   # m
-    range_noise_model_sigma: 0.5          # m
-    beacon_noise_model_sigma: 0.1        # m
+    depth_sensor_noise_model_sigma: 0.05   # m
+    range_noise_model_sigma: 0.05          # m
+    beacon_noise_model_sigma: 0.5        # m
     attitude_noise_model_sigma: 0.5       # rad
-    velocity_sigma: 0.3                   # m/s
+    velocity_sigma: 0.1                   # m/s
 
-    extra_smoothing_iters: 3
+    extra_smoothing_iters: 5
     use_smart_stereo_factors: 0           # 1=ON, 0=OFF
 
     # Noise model for the zero-prior on IMU bias.
@@ -78,11 +81,11 @@ StateEstimator:
   StateEkfParams:
     # Process noise standard deviations.
     # NOTE(milo): Set these values really high to make the filter follow the smoother more closely!
-    sigma_Q_t: 0.8     # translation (m/sec)
-    sigma_Q_v: 0.6     # velocity (m/sec/sec)
-    sigma_Q_a: 0.08     # acceleration (m/sec^2/sec)
+    sigma_Q_t: 1.1     # translation (m/sec)
+    sigma_Q_v: 0.8     # velocity (m/sec/sec)
+    sigma_Q_a: 0.1     # acceleration (m/sec^2/sec)
     sigma_Q_uq: 0.3    # orientation (3D tangent space) (rad/sec)
-    sigma_Q_w:  0.08    # angular velocity (rad/sec/sec)
+    sigma_Q_w:  0.1    # angular velocity (rad/sec/sec)
 
     # Sensor noise standard deviations.
     sigma_R_imu_a: 0.003924
