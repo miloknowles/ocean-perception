@@ -3,7 +3,7 @@
 channel_input_stereo: sim/auv/stereo
 channel_output_mesh: object_mesher/mesh
 visualize: 0
-mesher_input_height: 320
+mesher_input_height: 376
 
 #===============================================================================
 ObjectMesher:
