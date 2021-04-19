@@ -1,0 +1,16 @@
+package vehicle;
+
+// Represents an 8-bit image, where the underlying byte array is stored in a memory-mapped file.
+// https://people.csail.mit.edu/albert/pubs/2010-huang-olson-moore-lcm-iros.pdf
+struct mmf_image_t
+{
+  int32_t width;
+  int32_t height;
+  int32_t channels;
+  string format;      // "mono8" or "bgr8"
+  string encoding;    // e.g "jpg" or "raw"
+
+  string mmf_name;      // Global name of the memory mapped file
+  int32_t byte_offset;  // Offset in bytes to the start of the data block
+  int32_t size;         // Number of data bytes
+}
