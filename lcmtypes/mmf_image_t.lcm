@@ -10,7 +10,7 @@ struct mmf_image_t
   string format;      // "mono8" or "bgr8"
   string encoding;    // e.g "jpg" or "raw"
 
-  string mmf_name;      // Global name of the memory mapped file
-  int32_t byte_offset;  // Offset in bytes to the start of the data block
+  string mm_filename;   // Absolute filename of the memory-mapped file.
+  int32_t offset;       // Offset in bytes to the start of the data block
   int32_t size;         // Number of data bytes
 }
