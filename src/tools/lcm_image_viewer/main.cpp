@@ -33,23 +33,23 @@ class LcmImageViewer final {
                        const std::string&,
                        const vehicle::mmf_stereo_image_t* msg)
   {
-    CHECK_EQ(msg->img_left.mmf_name, msg->img_right.mmf_name)
+    CHECK_EQ(msg->img_left.mm_filename, msg->img_right.mm_filename)
         << "Expected same memory-mapped file names for left and right images" << std::endl;
 
-    const std::string mmf_name = msg->img_left.mmf_name;
+    const std::string mm_filename = msg->img_left.mm_filename;
 
-    if (mapped_file_.get_name() != mmf_name) {
-      LOG(INFO) << "Opening memory-mapped file for the first time: " << mmf_name << std::endl;
-      mapped_file_ = ipc::file_mapping(mmf_name.c_str(), ipc::read_only);
+    if (mapped_file_.get_name() != mm_filename) {
+      LOG(INFO) << "Opening memory-mapped file for the first time: " << mm_filename << std::endl;
+      mapped_file_ = ipc::file_mapping(mm_filename.c_str(), ipc::read_only);
       mapped_region_ = ipc::mapped_region(mapped_file_, ipc::read_only);
-      fbuf_.open(mmf_name, std::ios_base::in | std::ios_base::binary);
+      fbuf_.open(mm_filename, std::ios_base::in | std::ios_base::binary);
     }
 
-    CHECK_EQ(mmf_name, mapped_file_.get_name());
+    CHECK_EQ(mm_filename, mapped_file_.get_name());
     CHECK(fbuf_.is_open()) << "File buffer was not open" << std::endl;
 
     // Read raw char buffers for both images.
-    const int offl = msg->img_left.byte_offset;
+    const int offl = msg->img_left.offset;
     const int szl = msg->img_left.size;
 
     if (offl < 0 || szl <= 0) {
@@ -61,7 +61,7 @@ class LcmImageViewer final {
     fbuf_.pubseekpos(offl);
     fbuf_.sgetn(&lbuf_[0], std::streamsize(szl));
 
-    const int offr = msg->img_right.byte_offset;
+    const int offr = msg->img_right.offset;
     const int szr = msg->img_right.size;
 
     if (offr < 0 || szr <= 0) {
