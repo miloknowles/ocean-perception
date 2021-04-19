@@ -1,0 +1,8 @@
+package vehicle;
+
+struct mmf_stereo_image_t
+{
+  header_t header;
+  mmf_image_t img_left;
+  mmf_image_t img_right;
+}

@@ -46,10 +46,11 @@ stereo_forward:
             0.0, 0.0, 0.0, 1.0]
 
     # Camera specific definitions.
-    image_height: 480
-    image_width: 752
+    image_height: 376
+    image_width: 672
     camera_model: pinhole
-    intrinsics: [415.876509, 415.876509, 375.5, 239.5] # fx, fy, cx, cy
+    # intrinsics: [336.135986, 336.135986, 317.032654, 178.710770] # fx, fy, cx, cy
+    intrinsics: [336.135986, 336.135986, 335.5, 187.5] # fx, fy, cx, cy
     distortion_model: radial-tangential
     distortion_coefficients: [0.0, 0.0, 0.0, 0.0] # Zero means already undistorted.
 
@@ -64,9 +65,10 @@ stereo_forward:
             0.0, 0.0, 0.0, 1.0]
 
     # Camera specific definitions.
-    image_height: 480
-    image_width: 752
+    image_height: 376
+    image_width: 672
     camera_model: pinhole
-    intrinsics: [415.876509, 415.876509, 375.5, 239.5] # fx, fy, cx, cy
+    # intrinsics: [336.135986, 336.135986, 317.032654, 178.710770] # fx, fy, cx, cy
+    intrinsics: [336.135986, 336.135986, 335.5, 187.5] # fx, fy, cx, cy
     distortion_model: radial-tangential
     distortion_coefficients: [0.0, 0.0, 0.0, 0.0] # Zero means already undistorted.
