@@ -1,7 +1,5 @@
 #include <glog/logging.h>
 
-#include <boost/graph/connected_components.hpp>
-
 #include <opencv2/imgproc.hpp>
 
 #include "core/timer.hpp"
@@ -26,6 +24,8 @@ void ObjectMesher::Params::LoadParams(const YamlParser& parser)
   parser.GetYamlParam("edge_min_foreground_percent", &edge_min_foreground_percent);
   parser.GetYamlParam("edge_max_depth_change", &edge_max_depth_change);
   parser.GetYamlParam("vertex_min_obs", &vertex_min_obs);
+  parser.GetYamlParam("min_obs_connect_edge", &min_obs_connect_edge);
+  parser.GetYamlParam("min_obs_disconnect_edge", &min_obs_disconnect_edge);
 
   YamlToStereoRig(parser.GetYamlNode("/shared/stereo_forward"), stereo_rig, body_T_cam_left, body_T_cam_right);
 }
@@ -72,6 +72,7 @@ void DrawDelaunay(int k,
                   double min_disp = 0.5,
                   double max_disp = 32.0)
 {
+  LOG(INFO) << "draw delaun" << std::endl;
   std::vector<cv::Vec6f> triangle_list;
   subdiv.getTriangleList(triangle_list);
   std::vector<cv::Point> pt(3);
@@ -116,6 +117,7 @@ static void BuildTriangleMesh(TriangleMesh& mesh,
                               const StereoCamera& stereo_rig,
                               double scale_factor)
 {
+  LOG(INFO) << "build tri mesh" << std::endl;
   const size_t vertices_offset = mesh.vertices.size();
 
   std::vector<cv::Vec6f> triangle_list;
@@ -202,10 +204,23 @@ TriangleMesh ObjectMesher::ProcessStereo(const StereoImage1b& stereo_pair, bool 
 
   // Build a keypoint graph.
   std::vector<uid_t> lmk_ids;
-  std::vector<cv::Point2f> lmk_points;
-  std::vector<double> lmk_disps;
+  std::vector<cv::Point2f> lmk_points_list;
+  // std::vector<double> lmk_disps;
+
+  std::unordered_map<uid_t, cv::Point2f> lmk_points;
+  std::unordered_map<uid_t, double> lmk_disps;
 
   const FeatureTracks& live_tracks = tracker_.GetLiveTracks();
+
+  // Delete any dead landmarks from the graph.
+  LOG(INFO) << "Graph size before cleaning: " << graph_.GraphSize() << " " << graph_.SubgraphSize() << std::endl;
+  const LmkSet graph_lmk_ids = graph_.GetLandmarkIds();
+  for (uid_t lmk_id : graph_lmk_ids) {
+    if (live_tracks.count(lmk_id) == 0) {
+      graph_.RemoveLandmark(lmk_id);
+    }
+  }
+  LOG(INFO) << "Graph size after cleaning: " << graph_.GraphSize() << " " << graph_.SubgraphSize() << std::endl;
 
   for (auto it = live_tracks.begin(); it != live_tracks.end(); ++it) {
     const uid_t lmk_id = it->first;
@@ -218,27 +233,28 @@ TriangleMesh ObjectMesher::ProcessStereo(const StereoImage1b& stereo_pair, bool 
 
     // Only add vertex if it's been tracked for >= vertex_min_obs frames.
     // The initial detection counts as 1 observation.
-    if (it->second.size() < params_.vertex_min_obs) {
+    if ((int)it->second.size() < params_.vertex_min_obs) {
       continue;
     }
 
-    lmk_points.emplace_back(lmk_obs.pixel_location);
-    lmk_disps.emplace_back(lmk_obs.disparity);
+    lmk_points_list.emplace_back(lmk_obs.pixel_location);
+    lmk_points.emplace(lmk_id, lmk_obs.pixel_location);
+    lmk_disps.emplace(lmk_id, lmk_obs.disparity);
     lmk_ids.emplace_back(lmk_id);
   }
 
   // Map all of the features into the coarse grid so that we can find NNs.
   lmk_grid_.Clear();
   const std::vector<Vector2i> lmk_cells = MapToGridCells(
-      lmk_points, iml.rows, iml.cols, lmk_grid_.Rows(), lmk_grid_.Cols());
+      lmk_points_list,
+      iml.rows, iml.cols,
+      lmk_grid_.Rows(), lmk_grid_.Cols());
 
   timer.Reset();
   PopulateGrid(lmk_cells, lmk_grid_);
 
-  LmkGraph graph;
-
   for (size_t i = 0; i < lmk_ids.size(); ++i) {
-    // const uid_t lmk_id = lmk_ids.at(i);
+    const uid_t lmk_i = lmk_ids.at(i);
     const Vector2i lmk_cell = lmk_cells.at(i);
     const core::Box2i roi(lmk_cell - Vector2i(1, 1), lmk_cell + Vector2i(1, 1));
     const std::list<uid_t>& roi_indices = lmk_grid_.GetRoi(roi);
@@ -247,49 +263,86 @@ TriangleMesh ObjectMesher::ProcessStereo(const StereoImage1b& stereo_pair, bool 
     for (uid_t j : roi_indices) {
       if (i == j) { continue; }
 
+      bool add_edge_ij = true;
+
+      const uid_t lmk_j = lmk_ids.at(j);
+
       // Only add edge if the vertices are within some 3D distance from each other.
-      const double depth_i = params_.stereo_rig.DispToDepth(lmk_disps.at(i) / scale_factor);
-      const double depth_j = params_.stereo_rig.DispToDepth(lmk_disps.at(j) / scale_factor);
+      const double depth_i = params_.stereo_rig.DispToDepth(lmk_disps.at(lmk_i) / scale_factor);
+      const double depth_j = params_.stereo_rig.DispToDepth(lmk_disps.at(lmk_j) / scale_factor);
       if (std::fabs(depth_i - depth_j) > params_.edge_max_depth_change) {
-        continue;
+        add_edge_ij = false;
       }
 
-      // Only add an edge to the grab if it has texture (an object) underneath it.
+      // Only add an edge to the graph if it has texture (an object) underneath it.
       int edge_length = 0;
       int edge_sum = 0;
-      CountEdgePixels(lmk_points.at(i), lmk_points.at(j), foreground_mask, edge_sum, edge_length);
+      CountEdgePixels(lmk_points.at(lmk_i), lmk_points.at(lmk_j), foreground_mask, edge_sum, edge_length);
       const float fgd_percent = static_cast<float>(edge_sum) / static_cast<float>(edge_length);
       if (fgd_percent < params_.edge_min_foreground_percent) {
-        continue;
+        add_edge_ij = false;
       }
-
-      boost::add_edge(i, j, graph);
+      // If we keep observing an edge, its observations will saturate at max_weight.
+      // If an edge is observed min_obs_connect_edge times in a row, then it's added to the subgraph.
+      // Then, if we don't observe for min_obs_disconnect_edge, the edge is deleted from the subgraph.
+      const float min_weight = 0.0f;
+      const float max_weight = params_.min_obs_connect_edge + params_.min_obs_disconnect_edge;
+      const float min_subgraph_weight = params_.min_obs_connect_edge;
+      graph_.UpdateEdge(lmk_i, lmk_j, add_edge_ij ? 1.0f : -1.0f, min_weight, max_weight, min_subgraph_weight);
     }
   }
 
   TriangleMesh mesh;
 
-  if (boost::num_vertices(graph) > 0) {
-    std::vector<int> assignments(boost::num_vertices(graph));
+  if (graph_.SubgraphSize() > 0) {
+    const LmkClusters clusters = graph_.GetClusters(params_.min_obs_connect_edge);
+    // const size_t C = clusters.size();
 
-    const int num_comp = boost::connected_components(graph, &assignments[0]);
+    LOG(INFO) << "Made " << clusters.size() << " clusters" << std::endl;
 
-    std::vector<int> nmembers(num_comp, 0);
-    std::vector<cv::Subdiv2D> subdivs(num_comp, { cv::Rect(0, 0, iml.cols, iml.rows) });
+    // std::vector<cv::Subdiv2D> subdivs(clusters.size(), { cv::Rect(0, 0, iml.cols, iml.rows) });
+    std::vector<cv::Subdiv2D> subdivs;
 
     CoordinateMap<uid_t> vertex_id_to_lmk_id;
     CoordinateMap<double> vertex_disps;
     MultiCoordinateMap vertex_lookup;
 
-    for (size_t i = 0; i < assignments.size(); ++i) {
-      const int cmp_id = assignments.at(i);
-      const cv::Point2f lmk_pt = lmk_points.at(i);
-      const int vertex_id = subdivs.at(cmp_id).insert(lmk_pt);
-      vertex_lookup[cmp_id].Insert((int)lmk_pt.x, (int)lmk_pt.y, vertex_id);
-      vertex_id_to_lmk_id.Insert(cmp_id, vertex_id, lmk_ids.at(i));
-      vertex_disps.Insert(cmp_id, vertex_id, lmk_disps.at(i));
-      ++nmembers.at(cmp_id);
+    // for (size_t c = 0; c < clusters.size(); ++c) {
+    size_t c = 0;
+    for (const LmkSet& cluster : clusters) {
+      if (cluster.size() < 3) {
+        continue;
+      }
+
+      subdivs.emplace_back(cv::Rect(0, 0, iml.cols, iml.rows));
+
+      // for (auto it = cluster.begin(); it != cluster.end(); ++it) {
+      for (const uid_t lmk_id : cluster) {
+        // const uid_t lmk_id = *it;
+
+        // There may be landmarks in the graph that we didn't observe in the current frame. In this
+        // case, skip them.
+        if (lmk_points.count(lmk_id) == 0) {
+          continue;
+        }
+
+        const cv::Point2f lmk_pt = lmk_points.at(lmk_id);
+
+        LOG(INFO) << "c: " << c << " lmk_pt: " << lmk_pt << std::endl;
+        // const int vertex_id = subdivs.at(c).insert(lmk_pt);
+        const int vertex_id = subdivs.back().insert(lmk_pt);
+
+        vertex_lookup[(int)c].Insert((int)lmk_pt.x, (int)lmk_pt.y, vertex_id);
+
+        // vertex_lookup.at(c).Insert((int)lmk_pt.x, (int)lmk_pt.y, vertex_id);
+        vertex_id_to_lmk_id.Insert(c, vertex_id, lmk_id);
+        vertex_disps.Insert(c, vertex_id, lmk_disps.at(lmk_id));
+      }
+
+      ++c;
     }
+
+    LOG(INFO) << "Made clusters" << std::endl;
 
     // Draw the output triangles.
     cv::Mat3b viz_triangles;
@@ -297,13 +350,11 @@ TriangleMesh ObjectMesher::ProcessStereo(const StereoImage1b& stereo_pair, bool 
     if (visualize) cv::cvtColor(iml, viz_triangles, cv::COLOR_GRAY2BGR);
 
     for (size_t k = 0; k < subdivs.size(); ++k) {
-      // Ignore meshes without at least one triangle.
-      if (nmembers.at(k) < 3) {
-        continue;
-      }
       if (visualize) DrawDelaunay(k, viz_triangles, subdivs.at(k), vertex_lookup.at(k), vertex_disps);
       BuildTriangleMesh(mesh, k, subdivs.at(k), vertex_lookup.at(k), vertex_disps, params_.stereo_rig, scale_factor);
     }
+
+    LOG(INFO) << "did all subdivs" << std::endl;
 
     if (visualize) {
       cv::imshow("delaunay", viz_triangles);

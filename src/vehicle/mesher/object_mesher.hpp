@@ -2,8 +2,6 @@
 
 #include <unordered_map>
 
-#include <boost/graph/adjacency_list.hpp>
-
 #include <opencv2/imgproc.hpp>
 
 #include "core/macros.hpp"
@@ -17,20 +15,13 @@
 #include "core/landmark_observation.hpp"
 #include "feature_tracking/stereo_tracker.hpp"
 #include "mesher/triangle_mesh.hpp"
+#include "mesher/landmark_graph.hpp"
 
 namespace bm {
 namespace mesher {
 
 using namespace core;
 using namespace ft;
-
-typedef boost::property<boost::edge_weight_t, int> EdgeWeight;
-
-typedef boost::adjacency_list<boost::vecS,
-                              boost::vecS,
-                              boost::undirectedS,
-                              boost::no_property,
-                              EdgeWeight> LmkGraph;
 
 
 template <typename Data>
@@ -108,6 +99,8 @@ class ObjectMesher final {
 
     float edge_min_foreground_percent = 0.9;
     double edge_max_depth_change = 1.0;
+    float min_obs_connect_edge = 3.0;
+    float min_obs_disconnect_edge = 3.0;
     int vertex_min_obs = 1;
 
     StereoCamera stereo_rig;
@@ -135,7 +128,7 @@ class ObjectMesher final {
   // Maps each landmark id to some data about it.
   std::unordered_map<uid_t, VertexData> vertex_data_;
 
-  LmkGraph graph_;
+  LandmarkGraph graph_;
 };
 
 

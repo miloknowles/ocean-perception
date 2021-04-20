@@ -13,9 +13,20 @@ LandmarkGraph::LandmarkGraph() {}
 void LandmarkGraph::AddLandmark(uid_t lmk_id)
 {
   if (lmk_to_vtx_.count(lmk_id) == 0) {
-    const uid_t vtx = boost::add_vertex(VertexName(lmk_id), g_);
-    lmk_to_vtx_.emplace(lmk_id, vtx);
+    const Graph::vertex_descriptor v = boost::add_vertex(VertexIndex(lmk_id), g_);
+    lmk_to_vtx_.emplace(lmk_id, v);
   }
+}
+
+
+size_t LandmarkGraph::GraphSize() const
+{
+  return boost::num_vertices(g_);
+}
+
+
+size_t LandmarkGraph::SubgraphSize() const {
+  return boost::num_vertices(subgraph_);
 }
 
 
@@ -25,16 +36,18 @@ void LandmarkGraph::RemoveLandmark(uid_t lmk_id)
   CHECK_GT(lmk_to_vtx_.count(lmk_id), 0)
       << "Trying to RemoveLandmark() for lmk_id not in g_" << std::endl;
 
-  const uid_t vtx = lmk_to_vtx_.at(lmk_id);
-  boost::clear_vertex(vtx, g_);   // Clears all edges, but not the vertex.
-  boost::remove_vertex(vtx, g_);  // Then remove the vertex.
+  LOG(INFO) << "removing lmk_id " << lmk_id << " from graph" << std::endl;
+  const Graph::vertex_descriptor v = lmk_to_vtx_.at(lmk_id);
+  boost::clear_vertex(v, g_);   // Clears all edges, but not the vertex.
+  boost::remove_vertex(v, g_);  // Then remove the vertex.
   lmk_to_vtx_.erase(lmk_id);
 
   // If the landmark is in the subgraph, remove there also.
   if (subgraph_lmk_to_vtx_.count(lmk_id) > 0) {
-    const uid_t subgraph_vtx = subgraph_lmk_to_vtx_.at(lmk_id);
-    boost::clear_vertex(subgraph_vtx, subgraph_);
-    boost::remove_vertex(subgraph_vtx, subgraph_);
+    LOG(INFO) << "removing from subgraph" << std::endl;
+    const Graph::vertex_descriptor subv = subgraph_lmk_to_vtx_.at(lmk_id);
+    boost::clear_vertex(subv, subgraph_);
+    boost::remove_vertex(subv, subgraph_);
     subgraph_lmk_to_vtx_.erase(lmk_id);
   }
 }
@@ -54,8 +67,8 @@ void LandmarkGraph::UpdateEdge(uid_t lmk1,
     AddLandmark(lmk2);
   }
 
-  const uid_t v1 = lmk_to_vtx_.at(lmk1);
-  const uid_t v2 = lmk_to_vtx_.at(lmk2);
+  const Graph::vertex_descriptor v1 = lmk_to_vtx_.at(lmk1);
+  const Graph::vertex_descriptor v2 = lmk_to_vtx_.at(lmk2);
 
   std::pair<Graph::edge_descriptor, bool> edge = boost::edge(v1, v2, g_);
   const bool edge_exists = edge.second;
@@ -83,14 +96,14 @@ void LandmarkGraph::MaybeAddSubgraphEdge(uid_t lmk1, uid_t lmk2)
 {
   // Make sure vertices exist in subgraph.
   if (subgraph_lmk_to_vtx_.count(lmk1) == 0) {
-    subgraph_lmk_to_vtx_.emplace(lmk1, boost::add_vertex(VertexName(lmk1), subgraph_));
+    subgraph_lmk_to_vtx_.emplace(lmk1, boost::add_vertex(VertexIndex(lmk1), subgraph_));
   }
   if (subgraph_lmk_to_vtx_.count(lmk2) == 0) {
-    subgraph_lmk_to_vtx_.emplace(lmk2, boost::add_vertex(VertexName(lmk2), subgraph_));
+    subgraph_lmk_to_vtx_.emplace(lmk2, boost::add_vertex(VertexIndex(lmk2), subgraph_));
   }
 
-  const uid_t v1 = subgraph_lmk_to_vtx_.at(lmk1);
-  const uid_t v2 = subgraph_lmk_to_vtx_.at(lmk2);
+  const Graph::vertex_descriptor v1 = subgraph_lmk_to_vtx_.at(lmk1);
+  const Graph::vertex_descriptor v2 = subgraph_lmk_to_vtx_.at(lmk2);
 
   std::pair<Graph::edge_descriptor, bool> edge = boost::edge(v1, v2, subgraph_);
   const bool edge_exists = edge.second;
@@ -111,8 +124,8 @@ void LandmarkGraph::MaybeRemoveSubgraphEdge(uid_t lmk1, uid_t lmk2)
     return;
   }
 
-  const uid_t v1 = subgraph_lmk_to_vtx_.at(lmk1);
-  const uid_t v2 = subgraph_lmk_to_vtx_.at(lmk2);
+  const Graph::vertex_descriptor v1 = subgraph_lmk_to_vtx_.at(lmk1);
+  const Graph::vertex_descriptor v2 = subgraph_lmk_to_vtx_.at(lmk2);
 
   std::pair<Graph::edge_descriptor, bool> edge = boost::edge(v1, v2, subgraph_);
 
@@ -121,18 +134,69 @@ void LandmarkGraph::MaybeRemoveSubgraphEdge(uid_t lmk1, uid_t lmk2)
   }
 }
 
-
-LmkClusters LandmarkGraph::GetClusters()
+// https://stackoverflow.com/questions/47909707/find-connected-components-using-boost-graph-library-with-the-vertex-and-edge-ty/47911251#47911251
+LmkClusters LandmarkGraph::GetClusters(float subgraph_min_weight)
 {
-  std::vector<int> cluster_ids(boost::num_vertices(subgraph_));
-  const int C = boost::connected_components(subgraph_, &cluster_ids[0]);
+  Subgraph subgraph;
+  std::unordered_map<uid_t, Subgraph::vertex_descriptor> lmk_id_to_vtx;
 
-  LmkClusters out(C);
+  const auto edge_bounds = boost::edges(g_);
 
-  for (uid_t v = 0; v < cluster_ids.size(); ++v) {
-    const int cluster_id = cluster_ids[v];
-    const uid_t lmk_id = boost::get(vertex_name_t(), subgraph_, v);
-    out[cluster_id].insert(lmk_id);
+  VertexIndexMap lmk_id_map;
+
+  for (auto it = edge_bounds.first; it != edge_bounds.second; ++it) {
+    Graph::vertex_descriptor v1 = boost::source(*it, g_);
+    Graph::vertex_descriptor v2 = boost::target(*it, g_);
+    const uid_t lmk1 = boost::get(vertex_index_t(), g_, v1);
+    const uid_t lmk2 = boost::get(vertex_index_t(), g_, v2);
+
+    std::pair<Graph::edge_descriptor, bool> edge = boost::edge(v1, v2, g_);
+    const float weight = boost::get(edge_weight_t(), g_, edge.first);
+
+    if (weight >= subgraph_min_weight) {
+      if (lmk_id_to_vtx.count(lmk1) == 0) {
+        lmk_id_to_vtx.emplace(lmk1, boost::add_vertex(subgraph));
+      }
+      if (lmk_id_to_vtx.count(lmk2) == 0) {
+        lmk_id_to_vtx.emplace(lmk2, boost::add_vertex(subgraph));
+      }
+
+      const Subgraph::vertex_descriptor sv1 = lmk_id_to_vtx.at(lmk1);
+      const Subgraph::vertex_descriptor sv2 = lmk_id_to_vtx.at(lmk2);
+      boost::add_edge(sv1, sv2, subgraph);
+    }
+  }
+
+  // std::map<Graph::vertex_descriptor, int> cluster_ids;
+  // std::map<uid_t, int> cluster_ids;
+  std::vector<int> cluster_ids(boost::num_vertices(subgraph));
+  // std::vector<int> cluster_ids(boost::num_vertices(subgraph));
+
+  // TODO(milo): incremental_components() is faster.
+  // NOTE(milo): The compiler errors from Boost Graph are just about impossible to understand!
+  // For some reason, boost::connected_components() will only work if the graph has a vertex index
+  // property. If not, the compiler complains about a reference to void.
+  // auto property_map = boost::make_assoc_property_map(cluster_ids);
+  // auto comp_map = boost::make_iterator_property_map(cluster_ids.begin(), boost::get(boost::vertex_index, subgraph_));
+  const int C = boost::connected_components(subgraph, &cluster_ids[0]);
+
+  LmkClusters out(0);
+
+  // for (auto it = cluster_ids.begin(); it != cluster_ids.end(); ++it) {
+  //   const int cluster_id = it->second;
+  //   const uid_t lmk_id = boost::get(vertex_index_t(), subgraph_, it->first);
+  //   out.at(cluster_id).insert(lmk_id);
+  // }
+
+  return out;
+}
+
+
+LmkSet LandmarkGraph::GetLandmarkIds() const
+{
+  LmkSet out;
+  for (auto it = lmk_to_vtx_.begin(); it != lmk_to_vtx_.end(); ++it) {
+    out.insert(it->first);
   }
 
   return out;

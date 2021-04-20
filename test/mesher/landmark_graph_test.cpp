@@ -34,7 +34,7 @@ TEST(LandmarkGraph, All)
   EXPECT_EQ(2ul, g.GraphSize());
   EXPECT_EQ(2ul, g.SubgraphSize());
 
-  LmkClusters clusters = g.GetClusters();
+  LmkClusters clusters = g.GetClusters(2.0);
   EXPECT_EQ(1ul, clusters.size());
   EXPECT_EQ(1ul, clusters.at(0).count(123));
   EXPECT_EQ(1ul, clusters.at(0).count(456));
@@ -44,13 +44,13 @@ TEST(LandmarkGraph, All)
   EXPECT_EQ(2ul, g.GraphSize());
   EXPECT_EQ(2ul, g.SubgraphSize()); // Vertices still exist, but edge is gone.
 
-  LmkClusters clusters2 = g.GetClusters();
+  LmkClusters clusters2 = g.GetClusters(2.0);
   EXPECT_EQ(2ul, clusters2.size());   // Each vertex in own cluster.
 
   // Now if we update the edge again with +4, it should be added to subgraph, since it was clamped at -2.
   g.UpdateEdge(123, 456, 4.0, -2.0, 2.0, 2.0);
 
-  LmkClusters clusters3 = g.GetClusters();
+  LmkClusters clusters3 = g.GetClusters(2.0);
   EXPECT_EQ(1ul, clusters3.size());
   EXPECT_EQ(1ul, clusters3.at(0).count(123));
   EXPECT_EQ(1ul, clusters3.at(0).count(456));

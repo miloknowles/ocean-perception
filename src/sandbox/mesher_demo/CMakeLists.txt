@@ -3,9 +3,10 @@ add_executable(mesher_demo
 
 target_link_libraries(mesher_demo
   ${OpenCV_LIBRARIES}
+  ${Boost_LIBRARIES}
+  ${GLOG_LIBRARIES}
   ${PROJECT_NAME}_core
   ${PROJECT_NAME}_dataset
-  ${PROJECT_NAME}_mesher
-  ${GLOG_LIBRARIES})
+  ${PROJECT_NAME}_mesher)
 
 target_compile_options(mesher_demo PUBLIC "-std=c++11")

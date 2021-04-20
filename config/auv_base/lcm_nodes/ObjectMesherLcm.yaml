@@ -2,7 +2,7 @@
 
 channel_input_stereo: sim/auv/stereo_shm
 channel_output_mesh: object_mesher/mesh
-visualize: 1
+visualize: 0
 expect_shm_images: 1
 mesher_input_height: 376
 
@@ -15,6 +15,9 @@ ObjectMesher:
   edge_max_depth_change: 1.5
 
   vertex_min_obs: 10
+
+  min_obs_connect_edge: 3
+  min_obs_disconnect_edge: 3
 
   #===============================================================================
   StereoTracker:
