@@ -1,6 +1,8 @@
 SET(LIBRARY_NAME ${PROJECT_NAME}_mesher)
 
 SET(LIBRARY_SRC
+  landmark_graph.cpp
+  landmark_graph.hpp
   triangle_mesh.hpp
   neighbor_grid.cpp
   neighbor_grid.hpp

@@ -24,8 +24,13 @@ namespace mesher {
 using namespace core;
 using namespace ft;
 
+typedef boost::property<boost::edge_weight_t, int> EdgeWeight;
 
-typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::undirectedS> LmkGraph;
+typedef boost::adjacency_list<boost::vecS,
+                              boost::vecS,
+                              boost::undirectedS,
+                              boost::no_property,
+                              EdgeWeight> LmkGraph;
 
 
 template <typename Data>
@@ -103,6 +108,7 @@ class ObjectMesher final {
 
     float edge_min_foreground_percent = 0.9;
     double edge_max_depth_change = 1.0;
+    int vertex_min_obs = 1;
 
     StereoCamera stereo_rig;
     Matrix4d body_T_cam_left = Matrix4d::Identity();
@@ -128,6 +134,8 @@ class ObjectMesher final {
 
   // Maps each landmark id to some data about it.
   std::unordered_map<uid_t, VertexData> vertex_data_;
+
+  LmkGraph graph_;
 };
 
 

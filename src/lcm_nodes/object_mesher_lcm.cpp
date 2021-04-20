@@ -9,6 +9,7 @@
 #include "core/path_util.hpp"
 #include "lcm_util/decode_image.hpp"
 #include "lcm_util/util_mesh_t.hpp"
+#include "lcm_util/image_subscriber.hpp"
 #include "mesher/object_mesher.hpp"
 
 #include "vehicle/stereo_image_t.hpp"
@@ -28,6 +29,7 @@ class ObjectMesherLcm final {
     std::string channel_input_stereo;
     std::string channel_output_mesh;
     bool visualize = true;
+    bool expect_shm_images = true;
     int mesher_input_height = 480;    // Downsample images to have this height.
 
     ObjectMesher::Params mesher_params;
@@ -38,6 +40,7 @@ class ObjectMesherLcm final {
       channel_input_stereo = YamlToString(parser.GetYamlNode("channel_input_stereo"));
       channel_output_mesh = YamlToString(parser.GetYamlNode("channel_output_mesh"));
       parser.GetYamlParam("visualize", &visualize);
+      parser.GetYamlParam("expect_shm_images", &expect_shm_images);
       parser.GetYamlParam("mesher_input_height", &mesher_input_height);
       mesher_params = ObjectMesher::Params(parser.Subtree("ObjectMesher"));
     }
@@ -45,15 +48,17 @@ class ObjectMesherLcm final {
 
   ObjectMesherLcm(const Params& params)
       : params_(params),
-        mesher_(params.mesher_params)
+        mesher_(params.mesher_params),
+        sub_(lcm_, params_.channel_input_stereo, params_.expect_shm_images)
   {
     if (!lcm_.good()) {
       LOG(WARNING) << "Failed to initialize LCM" << std::endl;
       return;
     }
 
-    lcm_.subscribe(params_.channel_input_stereo.c_str(), &ObjectMesherLcm::HandleStereo, this);
-    LOG(INFO) << "Listening for stereo images on: " << params_.channel_input_stereo << std::endl;
+    sub_.RegisterCallback(std::bind(&ObjectMesherLcm::HandleStereo, this, std::placeholders::_1));
+
+    LOG(INFO) << "Listening for images on: " << params_.channel_input_stereo << std::endl;
     LOG(INFO) << "Will publish mesh on: " << params_.channel_output_mesh << std::endl;
   }
 
@@ -62,56 +67,28 @@ class ObjectMesherLcm final {
     while (0 == lcm_.handle() && !is_shutdown_);
   }
 
-  void HandleStereo(const lcm::ReceiveBuffer*,
-                    const std::string&,
-                    const vehicle::stereo_image_t* msg)
+  void HandleStereo(const StereoImage1b& stereo_pair)
   {
-    CHECK_EQ(msg->img_left.encoding, msg->img_right.encoding)
-        << "Left and right images have different encodings!" << std::endl;
 
-    const std::string encoding = msg->img_left.encoding;
+    TriangleMesh mesh;
 
-    StereoImage1b stereo_pair(msg->header.timestamp, msg->header.seq, Image1b(), Image1b());
-
-    if (encoding == "jpg") {
-      cv::Mat left, right;
-      bm::DecodeJPG(msg->img_left, left);
-      bm::DecodeJPG(msg->img_right, right);
-
-      stereo_pair.left_image = MaybeConvertToGray(left);
-      stereo_pair.right_image = MaybeConvertToGray(right);
-
-      if (stereo_pair.left_image.rows == 0 || stereo_pair.left_image.cols == 0) {
-        LOG(WARNING) << "Problem decoding left image" << std::endl;
-        return;
-      }
-      if (stereo_pair.right_image.rows == 0 || stereo_pair.right_image.cols == 0) {
-        LOG(WARNING) << "Problem decoding right image" << std::endl;
-        return;
-      }
-
-      TriangleMesh mesh;
-
-      if (stereo_pair.left_image.rows > params_.mesher_input_height) {
-        StereoImage1b pair_downsized = StereoImage1b(stereo_pair.timestamp, stereo_pair.camera_id, Image1b(), Image1b());
-        const double height = static_cast<double>(stereo_pair.left_image.rows);
-        const double scale_factor = static_cast<double>(params_.mesher_input_height) / height;
-        const cv::Size input_size(static_cast<int>(scale_factor * stereo_pair.left_image.cols), params_.mesher_input_height);
-        cv::resize(stereo_pair.left_image, pair_downsized.left_image, input_size, 0, 0, cv::INTER_LINEAR);
-        cv::resize(stereo_pair.right_image, pair_downsized.right_image, input_size, 0, 0, cv::INTER_LINEAR);
-        mesh = mesher_.ProcessStereo(std::move(pair_downsized), params_.visualize);
-      } else {
-        mesh = mesher_.ProcessStereo(std::move(stereo_pair), params_.visualize);
-      }
-
-      vehicle::mesh_stamped_t out;
-      out.header = msg->header;
-      pack_mesh_t(mesh.vertices, mesh.triangles, out.mesh);
-      lcm_.publish(params_.channel_output_mesh.c_str(), &out);
-
+    if (stereo_pair.left_image.rows > params_.mesher_input_height) {
+      StereoImage1b pair_downsized = StereoImage1b(stereo_pair.timestamp, stereo_pair.camera_id, Image1b(), Image1b());
+      const double height = static_cast<double>(stereo_pair.left_image.rows);
+      const double scale_factor = static_cast<double>(params_.mesher_input_height) / height;
+      const cv::Size input_size(static_cast<int>(scale_factor * stereo_pair.left_image.cols), params_.mesher_input_height);
+      cv::resize(stereo_pair.left_image, pair_downsized.left_image, input_size, 0, 0, cv::INTER_LINEAR);
+      cv::resize(stereo_pair.right_image, pair_downsized.right_image, input_size, 0, 0, cv::INTER_LINEAR);
+      mesh = mesher_.ProcessStereo(std::move(pair_downsized), params_.visualize);
     } else {
-      LOG(FATAL) << "Unsupported encoding: " << encoding << std::endl;
+      mesh = mesher_.ProcessStereo(std::move(stereo_pair), params_.visualize);
     }
+
+    vehicle::mesh_stamped_t out;
+    out.header.timestamp = stereo_pair.timestamp;
+    out.header.seq = stereo_pair.camera_id;
+    pack_mesh_t(mesh.vertices, mesh.triangles, out.mesh);
+    lcm_.publish(params_.channel_output_mesh.c_str(), &out);
   }
 
  private:
@@ -119,6 +96,7 @@ class ObjectMesherLcm final {
   Params params_;
   ObjectMesher mesher_;
   lcm::LCM lcm_;
+  ImageSubscriber sub_;
 };
 
 

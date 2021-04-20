@@ -25,6 +25,7 @@ void ObjectMesher::Params::LoadParams(const YamlParser& parser)
   parser.GetYamlParam("foreground_min_gradient", &foreground_min_gradient);
   parser.GetYamlParam("edge_min_foreground_percent", &edge_min_foreground_percent);
   parser.GetYamlParam("edge_max_depth_change", &edge_max_depth_change);
+  parser.GetYamlParam("vertex_min_obs", &vertex_min_obs);
 
   YamlToStereoRig(parser.GetYamlNode("/shared/stereo_forward"), stereo_rig, body_T_cam_left, body_T_cam_right);
 }
@@ -214,6 +215,13 @@ TriangleMesh ObjectMesher::ProcessStereo(const StereoImage1b& stereo_pair, bool 
     if (lmk_obs.camera_id < (stereo_pair.camera_id - params_.tracker_params.retrack_frames_k)) {
       continue;
     }
+
+    // Only add vertex if it's been tracked for >= vertex_min_obs frames.
+    // The initial detection counts as 1 observation.
+    if (it->second.size() < params_.vertex_min_obs) {
+      continue;
+    }
+
     lmk_points.emplace_back(lmk_obs.pixel_location);
     lmk_disps.emplace_back(lmk_obs.disparity);
     lmk_ids.emplace_back(lmk_id);
