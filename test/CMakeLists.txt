@@ -17,6 +17,9 @@ SET(DATASET_TEST_SOURCES
   dataset/euroc_dataset_test.cpp
   dataset/himb_dataset_test.cpp)
 
+set (MESHER_TEST_SOURCES
+  mesher/landmark_graph_test.cpp)
+
 set(VIO_TEST_SOURCES
   vio/single_axis_factor_test.cpp
   # vio/stereo_frontend_test.cpp
@@ -60,6 +63,7 @@ MakeTestExecutable(ft_gtest_all "${FT_TEST_SOURCES}")
 MakeTestExecutable(dataset_gtest_all "${DATASET_TEST_SOURCES}")
 MakeTestExecutable(vio_gtest_all "${VIO_TEST_SOURCES}")
 MakeTestExecutable(lcm_gtest_all "${LCM_TEST_SOURCES}")
+MakeTestExecutable(mesher_gtest_all "${MESHER_TEST_SOURCES}")
 
 # NOTE(milo): Using the "copy" command didn't seem to work...
 # Move resource files to the install location so that tests can use them.

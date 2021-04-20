@@ -8,7 +8,9 @@ SET(LIBRARY_SRC
   util_depth_measurement_t.hpp
   util_range_measurement_t.hpp
   util_mesh_t.hpp
-  util_pose3_t.hpp)
+  util_pose3_t.hpp
+  image_subscriber.cpp
+  image_subscriber.hpp)
 
 add_library(${LIBRARY_NAME} SHARED ${LIBRARY_SRC})
 set_target_properties(${LIBRARY_NAME} PROPERTIES LINKER_LANGUAGE CXX)
@@ -18,5 +20,6 @@ target_include_directories(${LIBRARY_NAME} PRIVATE
 target_link_libraries(${LIBRARY_NAME}
   ${OpenCV_LIBRARIES}
   ${OpenCV_LIBS}
+  ${PROJECT_NAME}_core
   vehicle_lcmtypes_cpp
   ${GLOG_LIBRARIES})
