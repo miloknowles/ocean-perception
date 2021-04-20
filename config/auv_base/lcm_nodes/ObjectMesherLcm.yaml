@@ -2,7 +2,7 @@
 
 channel_input_stereo: sim/auv/stereo_shm
 channel_output_mesh: object_mesher/mesh
-visualize: 0
+visualize: 1
 expect_shm_images: 1
 mesher_input_height: 376
 

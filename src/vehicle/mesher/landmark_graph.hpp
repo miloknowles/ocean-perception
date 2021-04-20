@@ -55,8 +55,7 @@ class LandmarkGraph final {
                   uid_t lmk2,
                   float increment,
                   float clamp_min,
-                  float clamp_max,
-                  float subgraph_min_weight);
+                  float clamp_max);
 
   // Finds connected components in the landmark graph and returns them.
   LmkClusters GetClusters(float subgraph_min_weight);
@@ -65,7 +64,6 @@ class LandmarkGraph final {
   LmkSet GetLandmarkIds() const;
 
   size_t GraphSize() const;
-  size_t SubgraphSize() const;
 
  private:
   void MaybeAddSubgraphEdge(uid_t lmk1, uid_t lmk2);
@@ -73,9 +71,8 @@ class LandmarkGraph final {
 
  private:
   std::unordered_map<uid_t, Graph::vertex_descriptor> lmk_to_vtx_;
-  std::unordered_map<uid_t, Graph::vertex_descriptor> subgraph_lmk_to_vtx_;
 
-  Graph g_, subgraph_;
+  Graph g_;
 };
 
 
