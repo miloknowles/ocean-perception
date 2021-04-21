@@ -1,0 +1,7 @@
+package vehicle;
+
+struct mag_measurement_t
+{
+  header_t header;
+  vector3_t bM;
+}

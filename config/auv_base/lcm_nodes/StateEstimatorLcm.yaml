@@ -1,13 +1,15 @@
 %YAML:1.0
 
 # Turn data source ON/OFF
-use_stereo: 1
+use_stereo: 0
 use_range: 1
 use_depth: 1
 use_imu: 1
 
 # LCM Channel Config
 channel_input_stereo: sim/auv/stereo
+expect_shm_images: 1
+
 channel_input_imu: sim/auv/imu
 channel_input_range: sim/auv/range
 channel_input_depth: sim/auv/depth
