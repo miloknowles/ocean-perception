@@ -12,7 +12,7 @@ int main(int argc, char const *argv[])
   google::InitGoogleLogging(argv[0]);
   FLAGS_logtostderr = 1;
 
-  const char* path = std::getenv("BM_DATASET_DIR");
+  const char* path = std::getenv("BM_DATASETS_DIR");
   CHECK(path != nullptr) << "No environment variable $BM_DATASETS_DIR. Did you source setup.bash?" << std::endl;
 
   const std::string datasets_path(path);
