@@ -7,6 +7,7 @@ SET(LIBRARY_SRC
   util_imu_measurement_t.hpp
   util_depth_measurement_t.hpp
   util_range_measurement_t.hpp
+  util_mag_measurement_t.hpp
   util_mesh_t.hpp
   util_pose3_t.hpp
   image_subscriber.cpp

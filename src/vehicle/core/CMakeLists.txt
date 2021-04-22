@@ -44,7 +44,8 @@ SET(LIBRARY_SRC
   yaml_parser.hpp
   params_base.cpp
   params_base.hpp
-  sliding_buffer.hpp)
+  sliding_buffer.hpp
+  mag_measurement.hpp)
 
 add_library(${LIBRARY_NAME} SHARED ${LIBRARY_SRC})
 set_target_properties(${LIBRARY_NAME} PROPERTIES LINKER_LANGUAGE CXX)

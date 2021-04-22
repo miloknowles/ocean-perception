@@ -1,7 +1,5 @@
 #pragma once
 
-#include <opencv2/core/types.hpp>
-
 #include "core/imu_measurement.hpp"
 #include "lcm_util/util_vector3_t.hpp"
 #include "vehicle/imu_measurement_t.hpp"
