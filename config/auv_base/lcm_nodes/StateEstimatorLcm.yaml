@@ -13,6 +13,7 @@ expect_shm_images: 1
 channel_input_imu: sim/auv/imu
 channel_input_range: sim/auv/range
 channel_input_depth: sim/auv/depth
+channel_input_mag: sim/auv/mag
 channel_initial_pose: sim/auv/pose/world_P_body_initial
 channel_output_filter_pose: vio/filter/world_P_body
 channel_output_smoother_pose: vio/smoother/world_P_body
@@ -48,6 +49,7 @@ StateEstimator:
   allowed_misalignment_depth: 0.05
   allowed_misalignment_imu: 0.05
   allowed_misalignment_range: 0.15
+  allowed_misalignment_mag: 0.05
 
   max_filter_divergence_position: 0.2   # m
   max_filter_divergence_rotation: 0.2   # rad

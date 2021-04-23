@@ -13,6 +13,7 @@
 #include "core/imu_measurement.hpp"
 #include "core/depth_measurement.hpp"
 #include "core/range_measurement.hpp"
+#include "core/mag_measurement.hpp"
 #include "vio/stereo_frontend.hpp"
 #include "core/data_manager.hpp"
 #include "vio/imu_manager.hpp"
@@ -28,6 +29,7 @@ namespace vio {
 
 typedef DataManager<DepthMeasurement> DepthManager;
 typedef DataManager<RangeMeasurement> RangeManager;
+typedef DataManager<MagMeasurement> MagManager;
 
 
 // The smoother changes its behavior depending on whether vision is available/unavailable.
@@ -62,6 +64,7 @@ class StateEstimator final {
     int max_size_smoother_imu_queue = 1000;
     int max_size_smoother_depth_queue = 1000;
     int max_size_smoother_range_queue = 100;
+    int max_size_smoother_mag_queue = 100;
     int max_size_filter_vo_queue = 100;
     int max_size_filter_imu_queue = 1000;
     int max_size_filter_depth_queue = 1000;
@@ -75,6 +78,7 @@ class StateEstimator final {
     double smoother_init_wait_vision_sec = 3.0;   // Wait this long for VO to arrive during initialization.
     double allowed_misalignment_depth = 0.05;     // 50 ms for depth
     double allowed_misalignment_imu = 0.05;       // 50 ms for IMU
+    double allowed_misalignment_mag = 0.05;       // 50 ms for magnetometer
 
     // Range arrives at about 3 Hz. This means we can expect to be at most 0.15 sec away from a
     // range measurement at any given time.
@@ -109,6 +113,7 @@ class StateEstimator final {
   void ReceiveImu(const ImuMeasurement& imu_data);
   void ReceiveDepth(const DepthMeasurement& depth_data);
   void ReceiveRange(const RangeMeasurement& range_data);
+  void ReceiveMag(const MagMeasurement& mag_data);
 
   // Add a function that gets called whenever the smoother finished an update.
   // NOTE(milo): Callbacks will block the smoother thread, so keep them fast!
@@ -134,8 +139,10 @@ class StateEstimator final {
                                      DepthMeasurement::Ptr& maybe_depth_ptr,
                                      AttitudeMeasurement::Ptr& maybe_attitude_ptr,
                                      MultiRange& maybe_range_ptr,
+                                     MagMeasurement::Ptr& maybe_mag_ptr,
                                      seconds_t allowed_misalignment_depth,
-                                     seconds_t allowed_misalignment_range);
+                                     seconds_t allowed_misalignment_range,
+                                     seconds_t allowed_misalignment_mag);
 
   // Smart the backend smoother with an initial timestamp and pose.
   void SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_body);
@@ -173,6 +180,7 @@ class StateEstimator final {
   ThreadsafeQueue<VoResult> smoother_vo_queue_;
   DepthManager smoother_depth_manager_;
   RangeManager smoother_range_manager_;
+  MagManager smoother_mag_manager_;
   std::vector<SmootherResult::Callback> smoother_result_callbacks_;
   //================================================================================================
   ImuManager filter_imu_manager_;

@@ -19,6 +19,8 @@ namespace vio {
 static const double kSetSkewToZero = 0.0;
 
 typedef gtsam::RangeFactorWithTransform<gtsam::Pose3, gtsam::Point3> RangeFactor;
+typedef gtsam::MagPoseFactor<gtsam::Pose3> MagFactor;
+
 typedef gtsam::noiseModel::Robust RobustModel;
 typedef gtsam::noiseModel::mEstimator::Tukey mTukey;
 typedef gtsam::noiseModel::mEstimator::Cauchy mCauchy;
@@ -82,14 +84,16 @@ void Smoother::Params::LoadParams(const YamlParser& parser)
   parser.GetYamlParam("mag_noise_model_sigma", &mag_noise_model_sigma);
   mag_noise_model = IsotropicModel::Sigma(3, mag_noise_model_sigma);
 
-  Matrix4d body_T_imu, body_T_left, body_T_right, body_T_receiver;
+  Matrix4d body_T_imu, body_T_left, body_T_right, body_T_receiver, body_T_mag;
   YamlToStereoRig(parser.GetYamlNode("/shared/stereo_forward"), stereo_rig, body_T_left, body_T_right);
 
   YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/imu0/body_T_imu"), body_T_imu);
   YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/aps0/body_T_receiver"), body_T_receiver);
+  YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/mag0/body_T_sensor"), body_T_mag);
   body_P_imu = gtsam::Pose3(body_T_imu);
   body_P_cam = gtsam::Pose3(body_T_left);
   body_P_receiver = gtsam::Pose3(body_T_receiver);
+  body_P_mag = gtsam::Pose3(body_T_mag);
 
   YamlToVector<Vector3d>(parser.GetYamlNode("/shared/n_gravity"), n_gravity);
 
@@ -97,6 +101,7 @@ void Smoother::Params::LoadParams(const YamlParser& parser)
   CHECK(body_T_left(3, 3) == 1.0);
   CHECK(body_T_right(3, 3) == 1.0);
   CHECK(body_T_receiver(3, 3) == 1.0);
+  CHECK(body_T_mag(3, 3) == 1.0);
 }
 
 
@@ -253,7 +258,8 @@ static void AddImuFactors(uid_t keypose_id,
 SmootherResult Smoother::UpdateGraphNoVision(const PimResult& pim_result,
                                              DepthMeasurement::ConstPtr maybe_depth_ptr,
                                              AttitudeMeasurement::ConstPtr maybe_attitude_ptr,
-                                             const MultiRange& maybe_ranges)
+                                             const MultiRange& maybe_ranges,
+                                             MagMeasurement::ConstPtr maybe_mag_ptr)
 {
   CHECK(pim_result.timestamps_aligned) << "Preintegrated IMU invalid" << std::endl;
 
@@ -312,23 +318,6 @@ SmootherResult Smoother::UpdateGraphNoVision(const PimResult& pim_result,
 
   //========================================= RANGE FACTOR =========================================
   if (!maybe_ranges.empty()) {
-    // if (maybe_ranges.size() >= 3) {
-    //   LOG(INFO) << "Adding trilateral range factor" << std::endl;
-    //   gtsam::Pose3 world_P_body = GetResult().world_P_body;
-
-    //   // Use current pose estimate to get receiver position in world.
-    //   Vector3d world_t_receiver = (world_P_body * params_.body_P_receiver).translation();
-    //   Matrix3d solution_cov = Matrix3d::Identity();
-    //   const std::vector<double> range_sigmas(maybe_ranges.size(), params_.range_noise_model->sigma());
-
-    //   const double lm_error = TrilateratePosition(maybe_ranges, range_sigmas, world_t_receiver, solution_cov, params_.lm_max_iters_range);
-    //   LOG(INFO) << lm_error << std::endl;
-    //   LOG(INFO) << solution_cov << std::endl;
-    //   world_P_body = gtsam::Pose3(world_P_body.rotation(), world_t_receiver - params_.body_P_receiver.translation());
-
-    //   gtsam::SharedNoiseModel model = gtsam::noiseModel::Gaussian::Covariance(solution_cov);
-    //   new_factors.push_back(gtsam::PoseTranslationPrior<gtsam::Pose3>(keypose_sym, world_P_body, model));
-    // } else {
     const size_t max_supported_beacons = 4;
 
     const std::vector<char> beacon_chars = { 'f', 'g', 'h', 'i' };
@@ -347,6 +336,18 @@ SmootherResult Smoother::UpdateGraphNoVision(const PimResult& pim_result,
           params_.range_noise_model,
           params_.body_P_receiver));
     }
+  }
+
+  //==================================== MAGNETOMETER FACTOR =======================================
+  if (maybe_mag_ptr) {
+    new_factors.push_back(MagFactor(
+      keypose_sym,
+      maybe_mag_ptr->field,
+      params_.mag_scale_factor,
+      params_.mag_local_field,
+      params_.mag_sensor_bias,
+      params_.mag_noise_model,
+      params_.body_P_mag));
   }
 
   //==================================== UPDATE FACTOR GRAPH =======================================
