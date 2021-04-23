@@ -4,7 +4,8 @@
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/inference/Key.h>
 #include <gtsam/sam/RangeFactor.h>
-#include <gtsam/slam/PoseTranslationPrior.h>
+// #include <gtsam/slam/PoseTranslationPrior.h>
+#include <gtsam_unstable/slam/MagPoseFactor.h>
 
 #include "core/transform_util.hpp"
 #include "vio/smoother.hpp"
@@ -70,6 +71,16 @@ void Smoother::Params::LoadParams(const YamlParser& parser)
   double beacon_noise_model_sigma;
   parser.GetYamlParam("beacon_noise_model_sigma", &beacon_noise_model_sigma);
   beacon_noise_model = IsotropicModel::Sigma(3, beacon_noise_model_sigma);
+
+  parser.GetYamlParam("/shared/mag0/scale_factor", &mag_scale_factor);
+  YamlToVector<Vector3d>(parser.GetYamlNode("/shared/mag0/sensor_bias"), mag_sensor_bias);
+  YamlToVector<Vector3d>(parser.GetYamlNode("/shared/mag0/local_field"), mag_local_field);
+  CHECK_GT(mag_scale_factor, 0) << "Invalid mag_scale_factor, must be > 0" << std::endl;
+  CHECK_NEAR(1.0, mag_local_field.norm(), 1e-3);
+
+  double mag_noise_model_sigma;
+  parser.GetYamlParam("mag_noise_model_sigma", &mag_noise_model_sigma);
+  mag_noise_model = IsotropicModel::Sigma(3, mag_noise_model_sigma);
 
   Matrix4d body_T_imu, body_T_left, body_T_right, body_T_receiver;
   YamlToStereoRig(parser.GetYamlNode("/shared/stereo_forward"), stereo_rig, body_T_left, body_T_right);

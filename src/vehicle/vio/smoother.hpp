@@ -111,6 +111,11 @@ class Smoother final {
     IsotropicModel::shared_ptr range_noise_model = IsotropicModel::Sigma(1, 0.5);
     IsotropicModel::shared_ptr beacon_noise_model = IsotropicModel::Sigma(3, 0.01);
 
+    double mag_scale_factor = 1.0;                  // Scales a unit field direction into field units (e.g, nT or uT).
+    Vector3d mag_local_field = Vector3d(0, 0, 1);   // Direction (unit vector) of local magnetic field.
+    Vector3d mag_sensor_bias = Vector3d::Zero();    // Additive bias of the magnetometer.
+    IsotropicModel::shared_ptr mag_noise_model = IsotropicModel::Sigma(3, 1.0);
+
     gtsam::Pose3 body_P_imu = gtsam::Pose3::identity();
     gtsam::Pose3 body_P_cam = gtsam::Pose3::identity();
     gtsam::Pose3 body_P_receiver = gtsam::Pose3::identity();
