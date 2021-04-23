@@ -28,7 +28,8 @@
 #include "lcm_util/util_imu_measurement_t.hpp"
 #include "lcm_util/util_depth_measurement_t.hpp"
 #include "lcm_util/util_range_measurement_t.hpp"
-#include "lcm_util/decode_image.hpp"
+#include "lcm_util/util_mag_measurement_t.hpp"
+#include "lcm_util/image_subscriber.hpp"
 
 #include "feature_tracking/visualization_2d.hpp"
 
@@ -37,6 +38,7 @@
 #include "vehicle/imu_measurement_t.hpp"
 #include "vehicle/range_measurement_t.hpp"
 #include "vehicle/depth_measurement_t.hpp"
+#include "vehicle/mag_measurement_t.hpp"
 
 using namespace bm;
 using namespace core;
@@ -53,11 +55,15 @@ class StateEstimatorLcm final {
     bool use_imu = true;
     bool use_depth = true;
     bool use_range = true;
+    bool use_mag = true;
 
     std::string channel_input_stereo;
+    bool expect_shm_images = true;
+
     std::string channel_input_imu;
     std::string channel_input_range;
     std::string channel_input_depth;
+    std::string channel_input_mag;
     std::string channel_initial_pose;
 
     std::string channel_output_filter_pose;
@@ -72,22 +78,26 @@ class StateEstimatorLcm final {
    private:
     void LoadParams(const YamlParser& parser) override
     {
-      parser.GetYamlParam("use_stereo", &use_stereo);
-      parser.GetYamlParam("use_imu", &use_imu);
-      parser.GetYamlParam("use_depth", &use_depth);
-      parser.GetYamlParam("use_range", &use_range);
+      parser.GetParam("use_stereo", &use_stereo);
+      parser.GetParam("use_imu", &use_imu);
+      parser.GetParam("use_depth", &use_depth);
+      parser.GetParam("use_range", &use_range);
+      parser.GetParam("use_mag", &use_mag);
 
-      channel_input_stereo = YamlToString(parser.GetYamlNode("channel_input_stereo"));
-      channel_input_imu = YamlToString(parser.GetYamlNode("channel_input_imu"));
-      channel_input_depth = YamlToString(parser.GetYamlNode("channel_input_depth"));
-      channel_input_range = YamlToString(parser.GetYamlNode("channel_input_range"));
-      channel_initial_pose = YamlToString(parser.GetYamlNode("channel_initial_pose"));
+      channel_input_stereo = YamlToString(parser.GetNode("channel_input_stereo"));
+      parser.GetParam("expect_shm_images", &expect_shm_images);
 
-      channel_output_filter_pose = YamlToString(parser.GetYamlNode("channel_output_filter_pose"));
-      channel_output_smoother_pose = YamlToString(parser.GetYamlNode("channel_output_smoother_pose"));
+      channel_input_imu = YamlToString(parser.GetNode("channel_input_imu"));
+      channel_input_depth = YamlToString(parser.GetNode("channel_input_depth"));
+      channel_input_range = YamlToString(parser.GetNode("channel_input_range"));
+      channel_input_mag = YamlToString(parser.GetNode("channel_input_mag"));
+      channel_initial_pose = YamlToString(parser.GetNode("channel_initial_pose"));
 
-      parser.GetYamlParam("visualize", &visualize);
-      parser.GetYamlParam("filter_publish_hz", &filter_publish_hz);
+      channel_output_filter_pose = YamlToString(parser.GetNode("channel_output_filter_pose"));
+      channel_output_smoother_pose = YamlToString(parser.GetNode("channel_output_smoother_pose"));
+
+      parser.GetParam("visualize", &visualize);
+      parser.GetParam("filter_publish_hz", &filter_publish_hz);
 
       state_estimator_params = StateEstimator::Params(parser.Subtree("StateEstimator"));
       visualizer3d_params = Visualizer3D::Params(parser.Subtree("Visualizer3D"));
@@ -98,7 +108,8 @@ class StateEstimatorLcm final {
       : params_(params),
         state_estimator_(params.state_estimator_params),
         viz_(params.visualizer3d_params),
-        filter_subsampler_(params.filter_publish_hz)
+        filter_subsampler_(params.filter_publish_hz),
+        image_sub_(lcm_, params_.channel_input_stereo, params_.expect_shm_images)
   {
     if (!lcm_.good()) {
       LOG(WARNING) << "Failed to initialize LCM" << std::endl;
@@ -110,6 +121,9 @@ class StateEstimatorLcm final {
 
     lcm_.subscribe(params_.channel_initial_pose.c_str(), &StateEstimatorLcm::InitializeLcm, this);
     LOG(INFO) << "Listening for initial pose on channel: " << params_.channel_initial_pose << std::endl;
+
+    // Bind the image subscriber callback directly to the internal state estimator.
+    image_sub_.RegisterCallback(std::bind(&StateEstimator::ReceiveStereo, &state_estimator_, std::placeholders::_1));
 
     while (!initialized_ && 0 == lcm_.handle());
   }
@@ -147,14 +161,15 @@ class StateEstimatorLcm final {
     }
 
     LOG(INFO) << "Setting up sensor data subscriptions" << std::endl;
-    lcm_.subscribe(params_.channel_input_stereo.c_str(), &StateEstimatorLcm::HandleStereo, this);
     lcm_.subscribe(params_.channel_input_imu.c_str(), &StateEstimatorLcm::HandleImu, this);
     lcm_.subscribe(params_.channel_input_range.c_str(), &StateEstimatorLcm::HandleRange, this);
     lcm_.subscribe(params_.channel_input_depth.c_str(), &StateEstimatorLcm::HandleDepth, this);
+    lcm_.subscribe(params_.channel_input_mag.c_str(), &StateEstimatorLcm::HandleMag, this);
     LOG(INFO) << "Subscribed to " << params_.channel_input_stereo << std::endl;
     LOG(INFO) << "Subscribed to " << params_.channel_input_imu << std::endl;
     LOG(INFO) << "Subscribed to " << params_.channel_input_range << std::endl;
     LOG(INFO) << "Subscribed to " << params_.channel_input_depth << std::endl;
+    LOG(INFO) << "Subscribed to " << params_.channel_input_mag << std::endl;
   }
 
   // Blocks to keep this node alive.
@@ -163,42 +178,6 @@ class StateEstimatorLcm final {
   {
     CHECK(initialized_) << "StateEstimatorLcm should be initialized before Spin()" << std::endl;
     while (0 == lcm_.handle() && !is_shutdown_);
-  }
-
-  void HandleStereo(const lcm::ReceiveBuffer*,
-                    const std::string&,
-                    const vehicle::stereo_image_t* msg)
-  {
-    if (!params_.use_stereo) { return; }
-    CHECK_EQ(msg->img_left.encoding, msg->img_right.encoding)
-        << "Left and right images have different encodings!" << std::endl;
-
-    const std::string encoding = msg->img_left.encoding;
-
-    StereoImage1b stereo_pair(msg->header.timestamp, msg->header.seq, Image1b(), Image1b());
-
-    if (encoding == "jpg") {
-      cv::Mat left, right;
-      bm::DecodeJPG(msg->img_left, left);
-      bm::DecodeJPG(msg->img_right, right);
-
-      stereo_pair.left_image = MaybeConvertToGray(left);
-      stereo_pair.right_image = MaybeConvertToGray(right);
-
-      if (stereo_pair.left_image.rows == 0 || stereo_pair.left_image.cols == 0) {
-        LOG(WARNING) << "Problem decoding left image" << std::endl;
-        return;
-      }
-      if (stereo_pair.right_image.rows == 0 || stereo_pair.right_image.cols == 0) {
-        LOG(WARNING) << "Problem decoding right image" << std::endl;
-        return;
-      }
-
-      state_estimator_.ReceiveStereo(std::move(stereo_pair));
-
-    } else {
-      LOG(FATAL) << "Unsupported encoding: " << encoding << std::endl;
-    }
   }
 
   void HandleImu(const lcm::ReceiveBuffer*,
@@ -229,6 +208,16 @@ class StateEstimatorLcm final {
     RangeMeasurement data(0, 0, Vector3d::Zero());
     decode_range_measurement_t(*msg, data);
     state_estimator_.ReceiveRange(std::move(data));
+  }
+
+  void HandleMag(const lcm::ReceiveBuffer*,
+                 const std::string&,
+                 const vehicle::mag_measurement_t* msg)
+  {
+    if (!params_.use_mag) { return; }
+    MagMeasurement data(0, Vector3d::Zero());
+    decode_mag_measurement_t(*msg, data);
+    state_estimator_.ReceiveMag(std::move(data));
   }
 
   void SmootherCallback(const SmootherResult& result)
@@ -286,6 +275,8 @@ class StateEstimatorLcm final {
   Visualizer3D viz_;
 
   DataSubsampler filter_subsampler_;
+
+  ImageSubscriber image_sub_;
 };
 
 

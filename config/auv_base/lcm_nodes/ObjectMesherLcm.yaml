@@ -9,15 +9,15 @@ mesher_input_height: 376
 #===============================================================================
 ObjectMesher:
   foreground_ksize: 15
-  foreground_min_gradient: 10.0
+  foreground_min_gradient: 20.0
 
-  edge_min_foreground_percent: 0.8
-  edge_max_depth_change: 1.5
+  edge_min_foreground_percent: 0.9
+  edge_max_depth_change: 1.0
 
-  vertex_min_obs: 10
+  vertex_min_obs: 3
 
-  min_obs_connect_edge: 3
-  min_obs_disconnect_edge: 3
+  min_obs_connect_edge: 7
+  min_obs_disconnect_edge: 4
 
   #===============================================================================
   StereoTracker:
@@ -25,7 +25,6 @@ ObjectMesher:
     stereo_min_depth: 0.2   # m
 
     # Kill off a tracked landmark if it hasn't been seen since "k" frames ago.
-    # retrack_frames_k: 3
     retrack_frames_k: 3
 
     # Trigger a keyframe if there aren't many landmarks. The StereoFrontend will try to create new
@@ -51,9 +50,10 @@ ObjectMesher:
       klt_max_level: 4
 
     StereoMatcher:
-      templ_cols: 21
-      templ_rows: 21
-      max_disp: 64
-      max_matching_cost: 0.15
-      bidirectional: 0 # bool
+      templ_cols: 31
+      templ_rows: 31
+      max_disp: 128
+      # max_matching_cost: 0.15
+      max_matching_cost: 0.10
+      bidirectional: 1 # bool
       subpixel_refinement: 0 # bool

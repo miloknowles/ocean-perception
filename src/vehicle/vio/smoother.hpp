@@ -2,19 +2,20 @@
 
 #include <unordered_map>
 
-#include "core/macros.hpp"
-#include "core/eigen_types.hpp"
-#include "core/params_base.hpp"
-#include "core/uid.hpp"
-#include "core/timestamp.hpp"
-#include "core/imu_measurement.hpp"
 #include "core/depth_measurement.hpp"
-#include "core/stereo_camera.hpp"
-#include "vio/attitude_measurement.hpp"
+#include "core/eigen_types.hpp"
+#include "core/imu_measurement.hpp"
+#include "core/macros.hpp"
+#include "core/mag_measurement.hpp"
+#include "core/params_base.hpp"
 #include "core/range_measurement.hpp"
+#include "core/stereo_camera.hpp"
+#include "core/timestamp.hpp"
+#include "core/uid.hpp"
+#include "vio/attitude_measurement.hpp"
 #include "vio/imu_manager.hpp"
-#include "vio/vo_result.hpp"
 #include "vio/noise_model.hpp"
+#include "vio/vo_result.hpp"
 
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/ISAM2.h>
@@ -111,9 +112,15 @@ class Smoother final {
     IsotropicModel::shared_ptr range_noise_model = IsotropicModel::Sigma(1, 0.5);
     IsotropicModel::shared_ptr beacon_noise_model = IsotropicModel::Sigma(3, 0.01);
 
+    double mag_scale_factor = 1.0;                  // Scales a unit field direction into field units (e.g, nT or uT).
+    Vector3d mag_local_field = Vector3d(0, 0, 1);   // Direction (unit vector) of local magnetic field.
+    Vector3d mag_sensor_bias = Vector3d::Zero();    // Additive bias of the magnetometer.
+    IsotropicModel::shared_ptr mag_noise_model = IsotropicModel::Sigma(3, 1.0);
+
     gtsam::Pose3 body_P_imu = gtsam::Pose3::identity();
     gtsam::Pose3 body_P_cam = gtsam::Pose3::identity();
     gtsam::Pose3 body_P_receiver = gtsam::Pose3::identity();
+    gtsam::Pose3 body_P_mag = gtsam::Pose3::identity();
     Vector3d n_gravity = Vector3d(0, 9.81, 0);
 
     StereoCamera stereo_rig;
@@ -142,7 +149,8 @@ class Smoother final {
   SmootherResult UpdateGraphNoVision(const PimResult& pim_result,
                                      DepthMeasurement::ConstPtr maybe_depth_ptr = nullptr,
                                      AttitudeMeasurement::ConstPtr maybe_attitude_ptr = nullptr,
-                                     const MultiRange& maybe_ranges = MultiRange());
+                                     const MultiRange& maybe_ranges = MultiRange(),
+                                     MagMeasurement::ConstPtr maybe_mag_ptr = nullptr);
 
   // Add a new keypose using a keyframe from the stereo frontend. If pim_result_ptr is supplied,
   // a preintegrated IMU factor is added also.

@@ -16,6 +16,7 @@
 #include <gtsam/nonlinear/Marginals.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/base/numericalDerivative.h>
+#include <gtsam_unstable/slam/PartialPriorFactor.h>
 
 using namespace bm;
 using namespace vio;
@@ -42,6 +43,48 @@ TEST(SingleAxisFactor, Jacobian) {
 
   // Verify we get the expected error.
   CHECK(gtsam::assert_equal(expectedH1, actualH1, 1e-5));
+}
+
+
+TEST(SingleAxisFactor, GtsamCompare)
+{
+  gtsam::Key poseKey(1);
+  gtsam::Pose3 measurement(gtsam::Rot3::RzRyRx(0.15, -0.30, 0.45), gtsam::Point3(-5.0, 8.0, -11.0));
+  gtsam::SharedNoiseModel model = gtsam::noiseModel::Isotropic::Sigma(1, 0.25);
+
+  gtsam::SingleAxisFactor factor(poseKey, core::Axis3::Y, measurement.translation().y(), model);
+
+  // Create a linearization point at the zero-error point
+  gtsam::Pose3 pose(gtsam::Rot3::RzRyRx(0.15, -0.30, 0.45), gtsam::Point3(-5.0, 8.0, -11.0));
+
+  // Calculate numerical derivatives.
+  gtsam::Matrix expectedH1 = gtsam::numericalDerivative11<gtsam::Vector, gtsam::Pose3>(
+      boost::bind(&gtsam::SingleAxisFactor::evaluateError, &factor, _1, boost::none), pose);
+
+  // Use the factor to calculate the derivative.
+  gtsam::Matrix actualH1;
+  gtsam::Vector err = factor.evaluateError(pose, actualH1);
+
+  // Verify we get the expected error.
+  gtsam::assert_equal(expectedH1, actualH1, 1e-5);
+
+  //============================================================================
+  gtsam::PartialPriorFactor<gtsam::Pose3> f(poseKey, 4, measurement.translation().y(), model);
+
+  gtsam::Matrix gtsam_expectedH1 = gtsam::numericalDerivative11<gtsam::Vector, gtsam::Pose3>(
+      boost::bind(&gtsam::PartialPriorFactor<gtsam::Pose3>::evaluateError, &f, _1, boost::none), pose);
+
+  gtsam::Matrix gtsam_actualH1;
+  gtsam::Vector gtsam_err = f.evaluateError(pose, gtsam_actualH1);
+
+  LOG(INFO) << "Comparing error with/without GTSAM: " << std::endl;
+  gtsam::assert_equal(err, gtsam_err, 1e-5);
+
+  LOG(INFO) << "Comparing GTSAM expected/actual H1: " << std::endl;
+  gtsam::assert_equal(gtsam_expectedH1, gtsam_actualH1, 1e-5);
+
+  LOG(INFO) << "Comparing H1 with/without GTSAM: " << std::endl;
+  gtsam::assert_equal(expectedH1, gtsam_actualH1, 1e-5);
 }
 
 

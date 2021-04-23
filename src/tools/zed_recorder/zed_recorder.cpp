@@ -48,16 +48,16 @@ cv::Mat slMat2cvMat(sl::Mat& input) {
 
 
 // Function to display sensor parameters.
-void printSensorConfiguration(sl::SensorParameters& sensor_parameters)
+void printSensorConfiguration(sl::SensorParameters& sp)
 {
-  if (sensor_parameters.isAvailable) {
+  if (sp.isAvailable) {
     std::cout << "*****************************" << std::endl;
-    std::cout << "Sensor Type: " << sensor_parameters.type << std::endl;
-    std::cout << "Max Rate: "    << sensor_parameters.sampling_rate << sl::SENSORS_UNIT::HERTZ << std::endl;
-    std::cout << "Range: ["      << sensor_parameters.range << "] " << sensor_parameters.sensor_unit << std::endl;
-    std::cout << "Resolution: "  << sensor_parameters.resolution << " " << sensor_parameters.sensor_unit << std::endl;
-    if (std::isfinite(sensor_parameters.noise_density)) std::cout << "Noise Density: " << sensor_parameters.noise_density <<" "<< sensor_parameters.sensor_unit<<"/√Hz"<<std::endl;
-    if (std::isfinite(sensor_parameters.random_walk)) std::cout << "Random Walk: " << sensor_parameters.random_walk <<" "<< sensor_parameters.sensor_unit<<"/s/√Hz"<<std::endl;
+    std::cout << "Sensor Type: " << sp.type << std::endl;
+    std::cout << "Max Rate: "    << sp.sampling_rate << sl::SENSORS_UNIT::HERTZ << std::endl;
+    std::cout << "Range: ["      << sp.range << "] " << sp.sensor_unit << std::endl;
+    std::cout << "Resolution: "  << sp.resolution << " " << sp.sensor_unit << std::endl;
+    if (std::isfinite(sp.noise_density)) std::cout << "Noise Density: " << sp.noise_density <<" "<< sp.sensor_unit<<"/√Hz"<<std::endl;
+    if (std::isfinite(sp.random_walk)) std::cout << "Random Walk: " << sp.random_walk <<" "<< sp.sensor_unit<<"/s/√Hz"<<std::endl;
   }
 }
 
@@ -97,14 +97,14 @@ void ZedRecorder::CaptureLoop()
   sl::Camera zed;
 
   // Set configuration parameters for the ZED.
-  sl::InitParameters init_parameters;
-  init_parameters.coordinate_units = sl::UNIT::METER;
-  init_parameters.coordinate_system = sl::COORDINATE_SYSTEM::IMAGE; // RDF
-  init_parameters.sdk_verbose = true;
-  init_parameters.depth_mode = sl::DEPTH_MODE::NONE;
-  init_parameters.camera_resolution = sl::RESOLUTION::VGA;
+  sl::InitParameters initp;
+  initp.coordinate_units = sl::UNIT::METER;
+  initp.coordinate_system = sl::COORDINATE_SYSTEM::IMAGE; // RDF
+  initp.sdk_verbose = true;
+  initp.depth_mode = sl::DEPTH_MODE::NONE;
+  initp.camera_resolution = sl::RESOLUTION::VGA;
 
-  sl::ERROR_CODE returned_state = zed.open(init_parameters);
+  sl::ERROR_CODE returned_state = zed.open(initp);
   if (returned_state != sl::ERROR_CODE::SUCCESS) {
     LOG(FATAL) << "Could not open camera, returned status " << returned_state << std::endl;
   }

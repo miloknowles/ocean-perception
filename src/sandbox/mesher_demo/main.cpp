@@ -45,12 +45,12 @@ struct MesherDemoParams : public ParamsBase
  private:
   void LoadParams(const YamlParser& parser) override
   {
-    folder = YamlToString(parser.GetYamlNode("folder"));
-    subfolder = YamlToString(parser.GetYamlNode("subfolder"));
-    dataset = YamlToEnum<dataset::Dataset>(parser.GetYamlNode("dataset"));
+    folder = YamlToString(parser.GetNode("folder"));
+    subfolder = YamlToString(parser.GetNode("subfolder"));
+    dataset = YamlToEnum<dataset::Dataset>(parser.GetNode("dataset"));
 
-    parser.GetYamlParam("playback_speed", &playback_speed);
-    parser.GetYamlParam("pause", &pause);
+    parser.GetParam("playback_speed", &playback_speed);
+    parser.GetParam("pause", &pause);
   }
 };
 

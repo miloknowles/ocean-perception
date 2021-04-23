@@ -48,16 +48,16 @@ struct VioDatasetPlayerParams : public ParamsBase
  private:
   void LoadParams(const YamlParser& parser) override
   {
-    dataset = YamlToEnum<dataset::Dataset>(parser.GetYamlNode("dataset"));
-    folder = YamlToString(parser.GetYamlNode("folder"));
-    subfolder = YamlToString(parser.GetYamlNode("subfolder"));
-    parser.GetYamlParam("use_stereo", &use_stereo);
-    parser.GetYamlParam("use_imu", &use_imu);
-    parser.GetYamlParam("use_depth", &use_depth);
-    parser.GetYamlParam("use_range", &use_range);
-    parser.GetYamlParam("pause", &pause);
-    parser.GetYamlParam("visualize", &visualize);
-    parser.GetYamlParam("playback_speed", &playback_speed);
+    dataset = YamlToEnum<dataset::Dataset>(parser.GetNode("dataset"));
+    folder = YamlToString(parser.GetNode("folder"));
+    subfolder = YamlToString(parser.GetNode("subfolder"));
+    parser.GetParam("use_stereo", &use_stereo);
+    parser.GetParam("use_imu", &use_imu);
+    parser.GetParam("use_depth", &use_depth);
+    parser.GetParam("use_range", &use_range);
+    parser.GetParam("pause", &pause);
+    parser.GetParam("visualize", &visualize);
+    parser.GetParam("playback_speed", &playback_speed);
   }
 };
 

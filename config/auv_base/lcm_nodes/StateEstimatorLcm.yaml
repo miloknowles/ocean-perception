@@ -1,16 +1,20 @@
 %YAML:1.0
 
 # Turn data source ON/OFF
-use_stereo: 1
+use_stereo: 0
 use_range: 1
 use_depth: 1
 use_imu: 1
+use_mag: 1
 
 # LCM Channel Config
 channel_input_stereo: sim/auv/stereo
+expect_shm_images: 1
+
 channel_input_imu: sim/auv/imu
 channel_input_range: sim/auv/range
 channel_input_depth: sim/auv/depth
+channel_input_mag: sim/auv/mag
 channel_initial_pose: sim/auv/pose/world_P_body_initial
 channel_output_filter_pose: vio/filter/world_P_body
 channel_output_smoother_pose: vio/smoother/world_P_body
@@ -30,8 +34,9 @@ StateEstimator:
   max_size_raw_stereo_queue: 100
   max_size_smoother_vo_queue: 100
   max_size_smoother_imu_queue: 1000
-  max_size_smoother_depth_queue: 1000
+  max_size_smoother_depth_queue: 100
   max_size_smoother_range_queue: 100
+  max_size_smoother_mag_queue: 100
   max_size_filter_vo_queue: 100
   max_size_filter_imu_queue: 1000
   max_size_filter_depth_queue: 1000
@@ -45,6 +50,7 @@ StateEstimator:
   allowed_misalignment_depth: 0.05
   allowed_misalignment_imu: 0.05
   allowed_misalignment_range: 0.15
+  allowed_misalignment_mag: 0.05
 
   max_filter_divergence_position: 0.2   # m
   max_filter_divergence_rotation: 0.2   # rad
@@ -60,13 +66,14 @@ StateEstimator:
   SmootherParams:
     pose_prior_noise_model: [0.001, 0.001, 0.001, 0.01, 0.01, 0.01]    # rad, rad, rad, m, m, m
     frontend_vo_noise_model: [0.1, 0.1, 0.1, 0.4, 0.4, 1.0]      # rad, rad, rad, m, m, m
-    lmk_mono_reproj_err_sigma: 3.0        # px in u and v
+    lmk_mono_reproj_err_sigma: 3.0         # px in u and v
     lmk_stereo_reproj_err_sigma: 10.0      # px in u and v
-    depth_sensor_noise_model_sigma: 0.05   # m
+    depth_sensor_noise_model_sigma: 1.0   # m
     range_noise_model_sigma: 0.05          # m
-    beacon_noise_model_sigma: 0.5        # m
-    attitude_noise_model_sigma: 0.5       # rad
-    velocity_sigma: 0.1                   # m/s
+    beacon_noise_model_sigma: 0.5          # m
+    attitude_noise_model_sigma: 0.5        # rad
+    velocity_sigma: 0.1                    # m/s
+    mag_noise_model_sigma: 1.0             # uT
 
     extra_smoothing_iters: 5
     use_smart_stereo_factors: 0           # 1=ON, 0=OFF

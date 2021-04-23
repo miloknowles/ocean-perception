@@ -42,33 +42,33 @@ YamlParser::YamlParser(const cv::FileNode& root_node,
 
 
 // Get a YAML node relative to the root. This is used for constructing params that are a subtree.
-cv::FileNode YamlParser::GetYamlNode(const std::string& id) const
+cv::FileNode YamlParser::GetNode(const std::string& id) const
 {
   std::string maybe_suffix;
   if (CheckIfSharedId(id, maybe_suffix)) {
     CHECK(!shared_node_.empty())
-        << "GetYamlParam: shared_node_ is empty. Was the parser constructed with a shared node?"
+        << "GetParam: shared_node_ is empty. Was the parser constructed with a shared node?"
         << "\n  id: " << id << std::endl;
-    return GetYamlNodeHelper(shared_node_, maybe_suffix);
+    return GetNodeHelper(shared_node_, maybe_suffix);
   } else {
     CHECK(!root_node_.empty())
-        << "GetYamlParam: root_node_ is empty. Was the parser constructed?"
+        << "GetParam: root_node_ is empty. Was the parser constructed?"
         << "\n  id: " << id << std::endl;
-    return GetYamlNodeHelper(root_node_, id);
+    return GetNodeHelper(root_node_, id);
   }
 }
 
 
 YamlParser YamlParser::Subtree(const std::string& id) const
 {
-  return YamlParser(GetYamlNode(id), shared_node_);
+  return YamlParser(GetNode(id), shared_node_);
 }
 
 
 // Recursively finds a node with "id", starting from the "root_node".
-cv::FileNode YamlParser::GetYamlNodeHelper(const cv::FileNode& root_node, const std::string& id) const
+cv::FileNode YamlParser::GetNodeHelper(const cv::FileNode& root_node, const std::string& id) const
 {
-  CHECK(!id.empty()) << "GetYamlParam: empty id given" << std::endl;
+  CHECK(!id.empty()) << "GetParam: empty id given" << std::endl;
   CHECK_NE(id[0], '/') << "Don't use leading slash!" << std::endl;
 
   const size_t slash_idx = id.find_first_of("/");
@@ -76,22 +76,22 @@ cv::FileNode YamlParser::GetYamlNodeHelper(const cv::FileNode& root_node, const 
   // CASE CASE: id is a leaf in the param tree.
   if (slash_idx == std::string::npos) {
     const cv::FileNode& file_handle = root_node[id];
-    CHECK_NE(file_handle.type(), cv::FileNode::NONE) << "GetYamlParam: Missing id: " << id.c_str() << std::endl;
+    CHECK_NE(file_handle.type(), cv::FileNode::NONE) << "GetParam: Missing id: " << id.c_str() << std::endl;
     return file_handle;
 
   // RECURSIVE CASE: id is a map (subtree) with params nested.
   } else {
-    CHECK_GE(slash_idx, 1) << "GetYamlParam: should have nonzero substr before /"
+    CHECK_GE(slash_idx, 1) << "GetParam: should have nonzero substr before /"
         << "id: " << id.c_str() << " slash_idx: " << slash_idx << std::endl;
     const std::string& subtree_root_str = id.substr(0, slash_idx);
     const cv::FileNode& subtree_root = root_node[subtree_root_str];
     CHECK_NE(subtree_root.type(), cv::FileNode::NONE)
-        << "GetYamlParam: Missing (subtree) id: " << subtree_root_str.c_str() << std::endl;
+        << "GetParam: Missing (subtree) id: " << subtree_root_str.c_str() << std::endl;
     const std::string& subtree_relative_id = id.substr(slash_idx + 1, std::string::npos);
     CHECK(!subtree_relative_id.empty())
-        << "GetYamlParam: no recursive id within subtree: " << subtree_root_str
+        << "GetParam: no recursive id within subtree: " << subtree_root_str
         << "Make sure id doesn't have a trailing slash." << std::endl;
-    return GetYamlNodeHelper(subtree_root, subtree_relative_id);
+    return GetNodeHelper(subtree_root, subtree_relative_id);
   }
 }
 

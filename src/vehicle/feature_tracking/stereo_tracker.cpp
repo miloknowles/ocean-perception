@@ -14,15 +14,15 @@ namespace ft {
 void StereoTracker::Params::LoadParams(const YamlParser& parser)
 {
   // Each sub-module has a subtree in the params.yaml.
-  detector_params = FeatureDetector::Params(parser.GetYamlNode("FeatureDetector"));
-  tracker_params = FeatureTracker::Params(parser.GetYamlNode("FeatureTracker"));
-  matcher_params = StereoMatcher::Params(parser.GetYamlNode("StereoMatcher"));
+  detector_params = FeatureDetector::Params(parser.GetNode("FeatureDetector"));
+  tracker_params = FeatureTracker::Params(parser.GetNode("FeatureTracker"));
+  matcher_params = StereoMatcher::Params(parser.GetNode("StereoMatcher"));
 
-  parser.GetYamlParam("stereo_max_depth", &stereo_max_depth);
-  parser.GetYamlParam("stereo_min_depth", &stereo_min_depth);
-  parser.GetYamlParam("retrack_frames_k", &retrack_frames_k);
-  parser.GetYamlParam("trigger_keyframe_min_lmks", &trigger_keyframe_min_lmks);
-  parser.GetYamlParam("trigger_keyframe_k", &trigger_keyframe_k);
+  parser.GetParam("stereo_max_depth", &stereo_max_depth);
+  parser.GetParam("stereo_min_depth", &stereo_min_depth);
+  parser.GetParam("retrack_frames_k", &retrack_frames_k);
+  parser.GetParam("trigger_keyframe_min_lmks", &trigger_keyframe_min_lmks);
+  parser.GetParam("trigger_keyframe_k", &trigger_keyframe_k);
 
   CHECK(retrack_frames_k >= 1 && retrack_frames_k < 8);
 }

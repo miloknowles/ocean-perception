@@ -24,9 +24,9 @@ struct SubtreeStruct final : public ParamsBase
  private:
   void LoadParams(const YamlParser& parser) override
   {
-    parser.GetYamlParam("key1", &key1);
-    parser.GetYamlParam("KEY2", &KEY2);
-    parser.GetYamlParam("subsubtree/c", &c);
+    parser.GetParam("key1", &key1);
+    parser.GetParam("KEY2", &KEY2);
+    parser.GetParam("subsubtree/c", &c);
   }
 };
 
@@ -56,13 +56,13 @@ struct TestStruct final : public ParamsBase
  private:
   void LoadParams(const YamlParser& parser) override
   {
-    parser.GetYamlParam("a", &a);
-    parser.GetYamlParam("b", &b);
+    parser.GetParam("a", &a);
+    parser.GetParam("b", &b);
 
-    const cv::FileNode& vnode = parser.GetYamlNode("v");
+    const cv::FileNode& vnode = parser.GetNode("v");
     YamlToVector<Vector3d>(vnode, v);
 
-    subtree = SubtreeStruct(parser.GetYamlNode("SubtreeStruct"));
+    subtree = SubtreeStruct(parser.GetNode("SubtreeStruct"));
   }
 };
 

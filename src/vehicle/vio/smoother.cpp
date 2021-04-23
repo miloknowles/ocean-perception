@@ -4,7 +4,9 @@
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/inference/Key.h>
 #include <gtsam/sam/RangeFactor.h>
-#include <gtsam/slam/PoseTranslationPrior.h>
+// #include <gtsam/slam/PoseTranslationPrior.h>
+#include <gtsam_unstable/slam/MagPoseFactor.h>
+#include <gtsam_unstable/slam/PartialPriorFactor.h>
 
 #include "core/transform_util.hpp"
 #include "vio/smoother.hpp"
@@ -16,8 +18,12 @@ namespace bm {
 namespace vio {
 
 static const double kSetSkewToZero = 0.0;
+static const int kTranslationStartIndex = 3;
 
 typedef gtsam::RangeFactorWithTransform<gtsam::Pose3, gtsam::Point3> RangeFactor;
+typedef gtsam::MagPoseFactor<gtsam::Pose3> MagFactor;
+typedef gtsam::PartialPriorFactor<gtsam::Pose3> DepthFactor;
+
 typedef gtsam::noiseModel::Robust RobustModel;
 typedef gtsam::noiseModel::mEstimator::Tukey mTukey;
 typedef gtsam::noiseModel::mEstimator::Cauchy mCauchy;
@@ -25,67 +31,80 @@ typedef gtsam::noiseModel::mEstimator::Cauchy mCauchy;
 
 void Smoother::Params::LoadParams(const YamlParser& parser)
 {
-  parser.GetYamlParam("extra_smoothing_iters", &extra_smoothing_iters);
-  parser.GetYamlParam("use_smart_stereo_factors", &use_smart_stereo_factors);
+  parser.GetParam("extra_smoothing_iters", &extra_smoothing_iters);
+  parser.GetParam("use_smart_stereo_factors", &use_smart_stereo_factors);
 
   cv::FileNode node;
   gtsam::Vector6 tmp6;
 
-  node = parser.GetYamlNode("pose_prior_noise_model");
+  node = parser.GetNode("pose_prior_noise_model");
   YamlToVector<gtsam::Vector6>(node, tmp6);
   pose_prior_noise_model = DiagonalModel::Sigmas(tmp6);
 
-  node = parser.GetYamlNode("frontend_vo_noise_model");
+  node = parser.GetNode("frontend_vo_noise_model");
   YamlToVector<gtsam::Vector6>(node, tmp6);
   frontend_vo_noise_model = DiagonalModel::Sigmas(tmp6);
 
   double lmk_mono_reproj_err_sigma, lmk_stereo_reproj_err_sigma;
-  parser.GetYamlParam("lmk_mono_reproj_err_sigma", &lmk_mono_reproj_err_sigma);
-  parser.GetYamlParam("lmk_stereo_reproj_err_sigma", &lmk_stereo_reproj_err_sigma);
+  parser.GetParam("lmk_mono_reproj_err_sigma", &lmk_mono_reproj_err_sigma);
+  parser.GetParam("lmk_stereo_reproj_err_sigma", &lmk_stereo_reproj_err_sigma);
   lmk_mono_factor_noise_model = IsotropicModel::Sigma(2, lmk_mono_reproj_err_sigma);
   lmk_stereo_factor_noise_model = IsotropicModel::Sigma(3, lmk_stereo_reproj_err_sigma);
 
   double velocity_sigma;
-  parser.GetYamlParam("velocity_sigma", &velocity_sigma);
+  parser.GetParam("velocity_sigma", &velocity_sigma);
   velocity_noise_model = IsotropicModel::Sigma(3, velocity_sigma);
 
   double bias_prior_noise_model_sigma, bias_drift_noise_model_sigma;
-  parser.GetYamlParam("bias_prior_noise_model_sigma", &bias_prior_noise_model_sigma);
-  parser.GetYamlParam("bias_drift_noise_model_sigma", &bias_drift_noise_model_sigma);
+  parser.GetParam("bias_prior_noise_model_sigma", &bias_prior_noise_model_sigma);
+  parser.GetParam("bias_drift_noise_model_sigma", &bias_drift_noise_model_sigma);
   bias_prior_noise_model = IsotropicModel::Sigma(6, bias_prior_noise_model_sigma);
   bias_drift_noise_model = IsotropicModel::Sigma(6, bias_drift_noise_model_sigma);
 
   double depth_sensor_noise_model_sigma;
-  parser.GetYamlParam("depth_sensor_noise_model_sigma", &depth_sensor_noise_model_sigma);
+  parser.GetParam("depth_sensor_noise_model_sigma", &depth_sensor_noise_model_sigma);
   depth_sensor_noise_model = IsotropicModel::Sigma(1, depth_sensor_noise_model_sigma);
 
   double atti_noise_model_sigma;
-  parser.GetYamlParam("attitude_noise_model_sigma", &atti_noise_model_sigma);
+  parser.GetParam("attitude_noise_model_sigma", &atti_noise_model_sigma);
   attitude_noise_model = IsotropicModel::Sigma(2, atti_noise_model_sigma);
 
   double range_noise_model_sigma;
-  parser.GetYamlParam("range_noise_model_sigma", &range_noise_model_sigma);
+  parser.GetParam("range_noise_model_sigma", &range_noise_model_sigma);
   range_noise_model = IsotropicModel::Sigma(1, range_noise_model_sigma);
 
   double beacon_noise_model_sigma;
-  parser.GetYamlParam("beacon_noise_model_sigma", &beacon_noise_model_sigma);
+  parser.GetParam("beacon_noise_model_sigma", &beacon_noise_model_sigma);
   beacon_noise_model = IsotropicModel::Sigma(3, beacon_noise_model_sigma);
 
-  Matrix4d body_T_imu, body_T_left, body_T_right, body_T_receiver;
-  YamlToStereoRig(parser.GetYamlNode("/shared/stereo_forward"), stereo_rig, body_T_left, body_T_right);
+  parser.GetParam("/shared/mag0/scale_factor", &mag_scale_factor);
+  YamlToVector<Vector3d>(parser.GetNode("/shared/mag0/sensor_bias"), mag_sensor_bias);
+  YamlToVector<Vector3d>(parser.GetNode("/shared/mag0/local_field"), mag_local_field);
+  CHECK_GT(mag_scale_factor, 0) << "Invalid mag_scale_factor, must be > 0" << std::endl;
+  CHECK_NEAR(1.0, mag_local_field.norm(), 1e-3);
 
-  YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/imu0/body_T_imu"), body_T_imu);
-  YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/aps0/body_T_receiver"), body_T_receiver);
+  double mag_noise_model_sigma;
+  parser.GetParam("mag_noise_model_sigma", &mag_noise_model_sigma);
+  mag_noise_model = IsotropicModel::Sigma(3, mag_noise_model_sigma);
+
+  Matrix4d body_T_imu, body_T_left, body_T_right, body_T_receiver, body_T_mag;
+  YamlToStereoRig(parser.GetNode("/shared/stereo_forward"), stereo_rig, body_T_left, body_T_right);
+
+  YamlToMatrix<Matrix4d>(parser.GetNode("/shared/imu0/body_T_imu"), body_T_imu);
+  YamlToMatrix<Matrix4d>(parser.GetNode("/shared/aps0/body_T_receiver"), body_T_receiver);
+  YamlToMatrix<Matrix4d>(parser.GetNode("/shared/mag0/body_T_sensor"), body_T_mag);
   body_P_imu = gtsam::Pose3(body_T_imu);
   body_P_cam = gtsam::Pose3(body_T_left);
   body_P_receiver = gtsam::Pose3(body_T_receiver);
+  body_P_mag = gtsam::Pose3(body_T_mag);
 
-  YamlToVector<Vector3d>(parser.GetYamlNode("/shared/n_gravity"), n_gravity);
+  YamlToVector<Vector3d>(parser.GetNode("/shared/n_gravity"), n_gravity);
 
   CHECK(body_T_imu(3, 3) == 1.0);
   CHECK(body_T_left(3, 3) == 1.0);
   CHECK(body_T_right(3, 3) == 1.0);
   CHECK(body_T_receiver(3, 3) == 1.0);
+  CHECK(body_T_mag(3, 3) == 1.0);
 }
 
 
@@ -242,7 +261,8 @@ static void AddImuFactors(uid_t keypose_id,
 SmootherResult Smoother::UpdateGraphNoVision(const PimResult& pim_result,
                                              DepthMeasurement::ConstPtr maybe_depth_ptr,
                                              AttitudeMeasurement::ConstPtr maybe_attitude_ptr,
-                                             const MultiRange& maybe_ranges)
+                                             const MultiRange& maybe_ranges,
+                                             MagMeasurement::ConstPtr maybe_mag_ptr)
 {
   CHECK(pim_result.timestamps_aligned) << "Preintegrated IMU invalid" << std::endl;
 
@@ -272,19 +292,19 @@ SmootherResult Smoother::UpdateGraphNoVision(const PimResult& pim_result,
       params_);
 
   //======================================= ATTITUDE FACTOR ========================================
-  if (maybe_attitude_ptr) {
-    const Vector3d body_nG_unit = maybe_attitude_ptr->body_nG.normalized();
-    const Vector3d world_nG_unit = params_.n_gravity.normalized();
+  // if (maybe_attitude_ptr) {
+  //   const Vector3d body_nG_unit = maybe_attitude_ptr->body_nG.normalized();
+  //   const Vector3d world_nG_unit = params_.n_gravity.normalized();
 
-    // NOTE(milo): GTSAM computes error as: nZ_.error(nRb * bRef_).
-    // So if we measure body_nG, we should plug it in for bRef_, and use the world_nG as nZ_.
-    const gtsam::Pose3AttitudeFactor attitude_factor(
-        keypose_sym,
-        gtsam::Unit3(world_nG_unit),
-        params_.attitude_noise_model,
-        gtsam::Unit3(body_nG_unit));
-    new_factors.push_back(attitude_factor);
-  }
+  //   // NOTE(milo): GTSAM computes error as: nZ_.error(nRb * bRef_).
+  //   // So if we measure body_nG, we should plug it in for bRef_, and use the world_nG as nZ_.
+  //   const gtsam::Pose3AttitudeFactor attitude_factor(
+  //       keypose_sym,
+  //       gtsam::Unit3(world_nG_unit),
+  //       params_.attitude_noise_model,
+  //       gtsam::Unit3(body_nG_unit));
+  //   new_factors.push_back(attitude_factor);
+  // }
 
   //========================================= DEPTH FACTOR =========================================
   if (maybe_depth_ptr) {
@@ -297,27 +317,17 @@ SmootherResult Smoother::UpdateGraphNoVision(const PimResult& pim_result,
         depth_axis_,
         measured_depth,
         params_.depth_sensor_noise_model));
+
+    // NOTE(milo): Don't use this factor yet!
+    // new_factors.push_back(DepthFactor(
+    //     keypose_sym,
+    //     kTranslationStartIndex + depth_axis_,
+    //     measured_depth,
+    //     params_.depth_sensor_noise_model));
   }
 
   //========================================= RANGE FACTOR =========================================
   if (!maybe_ranges.empty()) {
-    // if (maybe_ranges.size() >= 3) {
-    //   LOG(INFO) << "Adding trilateral range factor" << std::endl;
-    //   gtsam::Pose3 world_P_body = GetResult().world_P_body;
-
-    //   // Use current pose estimate to get receiver position in world.
-    //   Vector3d world_t_receiver = (world_P_body * params_.body_P_receiver).translation();
-    //   Matrix3d solution_cov = Matrix3d::Identity();
-    //   const std::vector<double> range_sigmas(maybe_ranges.size(), params_.range_noise_model->sigma());
-
-    //   const double lm_error = TrilateratePosition(maybe_ranges, range_sigmas, world_t_receiver, solution_cov, params_.lm_max_iters_range);
-    //   LOG(INFO) << lm_error << std::endl;
-    //   LOG(INFO) << solution_cov << std::endl;
-    //   world_P_body = gtsam::Pose3(world_P_body.rotation(), world_t_receiver - params_.body_P_receiver.translation());
-
-    //   gtsam::SharedNoiseModel model = gtsam::noiseModel::Gaussian::Covariance(solution_cov);
-    //   new_factors.push_back(gtsam::PoseTranslationPrior<gtsam::Pose3>(keypose_sym, world_P_body, model));
-    // } else {
     const size_t max_supported_beacons = 4;
 
     const std::vector<char> beacon_chars = { 'f', 'g', 'h', 'i' };
@@ -336,6 +346,18 @@ SmootherResult Smoother::UpdateGraphNoVision(const PimResult& pim_result,
           params_.range_noise_model,
           params_.body_P_receiver));
     }
+  }
+
+  //==================================== MAGNETOMETER FACTOR =======================================
+  if (maybe_mag_ptr) {
+    new_factors.push_back(MagFactor(
+      keypose_sym,
+      maybe_mag_ptr->field,
+      params_.mag_scale_factor,
+      params_.mag_local_field,
+      params_.mag_sensor_bias,
+      params_.mag_noise_model,
+      params_.body_P_mag));
   }
 
   //==================================== UPDATE FACTOR GRAPH =======================================
@@ -497,6 +519,13 @@ SmootherResult Smoother::UpdateGraphWithVision(
         depth_axis_,
         measured_depth,
         params_.depth_sensor_noise_model));
+
+    // NOTE(milo): Don't use this factor yet!
+    // new_factors.push_back(DepthFactor(
+    //     keypose_sym,
+    //     kTranslationStartIndex + depth_axis_,
+    //     measured_depth,
+    //     params_.depth_sensor_noise_model));
   }
 
   //========================================= RANGE FACTOR =========================================

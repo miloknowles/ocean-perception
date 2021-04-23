@@ -17,33 +17,35 @@ void StateEstimator::Params::LoadParams(const YamlParser& parser)
   smoother_params = Smoother::Params(parser.Subtree("SmootherParams"));
   filter_params = StateEkf::Params(parser.Subtree("StateEkfParams"));
 
-  parser.GetYamlParam("max_size_raw_stereo_queue", &max_size_raw_stereo_queue);
-  parser.GetYamlParam("max_size_smoother_vo_queue", &max_size_smoother_vo_queue);
-  parser.GetYamlParam("max_size_smoother_imu_queue", &max_size_smoother_imu_queue);
-  parser.GetYamlParam("max_size_smoother_depth_queue", &max_size_smoother_depth_queue);
-  parser.GetYamlParam("max_size_smoother_range_queue", &max_size_smoother_range_queue);
-  parser.GetYamlParam("max_size_filter_vo_queue", &max_size_filter_vo_queue);
-  parser.GetYamlParam("max_size_filter_imu_queue", &max_size_filter_imu_queue);
-  parser.GetYamlParam("max_size_filter_depth_queue", &max_size_filter_depth_queue);
-  parser.GetYamlParam("max_size_filter_range_queue", &max_size_smoother_range_queue);
-  parser.GetYamlParam("reliable_vision_min_lmks", &reliable_vision_min_lmks);
-  parser.GetYamlParam("max_sec_btw_keyposes", &max_sec_btw_keyposes);
-  parser.GetYamlParam("min_sec_btw_keyposes", &min_sec_btw_keyposes);
-  parser.GetYamlParam("smoother_init_wait_vision_sec", &smoother_init_wait_vision_sec);
-  parser.GetYamlParam("allowed_misalignment_depth", &allowed_misalignment_depth);
-  parser.GetYamlParam("allowed_misalignment_imu", &allowed_misalignment_imu);
-  parser.GetYamlParam("allowed_misalignment_range", &allowed_misalignment_range);
-  parser.GetYamlParam("max_filter_divergence_position", &max_filter_divergence_position);
-  parser.GetYamlParam("max_filter_divergence_rotation", &max_filter_divergence_rotation);
-  parser.GetYamlParam("show_feature_tracks", &show_feature_tracks);
-  parser.GetYamlParam("body_nG_tol", &body_nG_tol);
-  parser.GetYamlParam("filter_use_depth", &filter_use_depth);
-  parser.GetYamlParam("filter_use_range", &filter_use_range);
+  parser.GetParam("max_size_raw_stereo_queue", &max_size_raw_stereo_queue);
+  parser.GetParam("max_size_smoother_vo_queue", &max_size_smoother_vo_queue);
+  parser.GetParam("max_size_smoother_imu_queue", &max_size_smoother_imu_queue);
+  parser.GetParam("max_size_smoother_depth_queue", &max_size_smoother_depth_queue);
+  parser.GetParam("max_size_smoother_range_queue", &max_size_smoother_range_queue);
+  parser.GetParam("max_size_smoother_mag_queue", &max_size_smoother_mag_queue);
+  parser.GetParam("max_size_filter_vo_queue", &max_size_filter_vo_queue);
+  parser.GetParam("max_size_filter_imu_queue", &max_size_filter_imu_queue);
+  parser.GetParam("max_size_filter_depth_queue", &max_size_filter_depth_queue);
+  parser.GetParam("max_size_filter_range_queue", &max_size_smoother_range_queue);
+  parser.GetParam("reliable_vision_min_lmks", &reliable_vision_min_lmks);
+  parser.GetParam("max_sec_btw_keyposes", &max_sec_btw_keyposes);
+  parser.GetParam("min_sec_btw_keyposes", &min_sec_btw_keyposes);
+  parser.GetParam("smoother_init_wait_vision_sec", &smoother_init_wait_vision_sec);
+  parser.GetParam("allowed_misalignment_depth", &allowed_misalignment_depth);
+  parser.GetParam("allowed_misalignment_imu", &allowed_misalignment_imu);
+  parser.GetParam("allowed_misalignment_range", &allowed_misalignment_range);
+  parser.GetParam("allowed_misalignment_mag", &allowed_misalignment_mag);
+  parser.GetParam("max_filter_divergence_position", &max_filter_divergence_position);
+  parser.GetParam("max_filter_divergence_rotation", &max_filter_divergence_rotation);
+  parser.GetParam("show_feature_tracks", &show_feature_tracks);
+  parser.GetParam("body_nG_tol", &body_nG_tol);
+  parser.GetParam("filter_use_depth", &filter_use_depth);
+  parser.GetParam("filter_use_range", &filter_use_range);
 
-  YamlToVector<Vector3d>(parser.GetYamlNode("/shared/n_gravity"), n_gravity);
+  YamlToVector<Vector3d>(parser.GetNode("/shared/n_gravity"), n_gravity);
   Matrix4d body_T_imu, body_T_left, body_T_right;
-  YamlToMatrix<Matrix4d>(parser.GetYamlNode("/shared/imu0/body_T_imu"), body_T_imu);
-  YamlToStereoRig(parser.GetYamlNode("/shared/stereo_forward"), stereo_rig, body_T_left, body_T_right);
+  YamlToMatrix<Matrix4d>(parser.GetNode("/shared/imu0/body_T_imu"), body_T_imu);
+  YamlToStereoRig(parser.GetNode("/shared/stereo_forward"), stereo_rig, body_T_left, body_T_right);
 
   body_P_imu = gtsam::Pose3(body_T_imu);
   body_P_cam = gtsam::Pose3(body_T_left);
@@ -62,9 +64,11 @@ StateEstimator::StateEstimator(const Params& params)
       smoother_vo_queue_(params_.max_size_smoother_vo_queue, true, "smoother_vo_queue"),
       smoother_depth_manager_(params_.max_size_smoother_depth_queue, true, "smoother_depth_manager"),
       smoother_range_manager_(params_.max_size_smoother_range_queue, true, "smoother_range_manager"),
+      smoother_mag_manager_(params_.max_size_smoother_mag_queue, true, "smoother_mag_manager"),
       filter_imu_manager_(params.imu_manager_params, "filter_imu_manager"),
       filter_depth_manager_(params_.max_size_filter_depth_queue, true, "filter_depth_manager"),
-      filter_range_manager_(params_.max_size_filter_range_queue, true, "filter_range_manager")
+      filter_range_manager_(params_.max_size_filter_range_queue, true, "filter_range_manager"),
+      stats_("StateEstimator", params_.stats_tracker_k)
 {
   LOG(INFO) << "Constructed StateEstimator!" << std::endl;
 
@@ -108,6 +112,12 @@ void StateEstimator::ReceiveRange(const RangeMeasurement& range_data)
   if (params_.filter_use_range) {
     filter_range_manager_.Push(range_data);
   }
+}
+
+
+void StateEstimator::ReceiveMag(const MagMeasurement& mag_data)
+{
+  smoother_mag_manager_.Push(mag_data);
 }
 
 
@@ -234,8 +244,10 @@ void StateEstimator::GetKeyposeAlignedMeasurements(
     DepthMeasurement::Ptr& maybe_depth_ptr,
     AttitudeMeasurement::Ptr& maybe_attitude_ptr,
     MultiRange& maybe_ranges,
+    MagMeasurement::Ptr& maybe_mag_ptr,
     seconds_t allowed_misalignment_depth,
-    seconds_t allowed_misalignment_range)
+    seconds_t allowed_misalignment_range,
+    seconds_t allowed_misalignment_mag)
 {
   smoother_range_manager_.DiscardBefore(to_time, true);
   const seconds_t range_time_offset = std::fabs(smoother_range_manager_.Oldest() - to_time);
@@ -245,6 +257,13 @@ void StateEstimator::GetKeyposeAlignedMeasurements(
   if (range_time_offset < allowed_misalignment_range) {
     smoother_range_manager_.PopUntil(to_time, maybe_ranges);
   }
+
+  // Check if we have a nearby magnetometer measurement.
+  smoother_mag_manager_.DiscardBefore(to_time, true);
+  const seconds_t mag_time_offset = std::fabs(to_time - smoother_mag_manager_.Oldest());
+
+  maybe_mag_ptr = (mag_time_offset < allowed_misalignment_mag) ?
+      std::make_shared<MagMeasurement>(smoother_mag_manager_.Pop()) : nullptr;
 
   // Check if we have a nearby depth measurement (in time).
   smoother_depth_manager_.DiscardBefore(to_time, true);
@@ -355,20 +374,27 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
         DepthMeasurement::Ptr maybe_depth_ptr;
         AttitudeMeasurement::Ptr maybe_attitude_ptr;
         MultiRange maybe_ranges;
+        MagMeasurement::Ptr maybe_mag_ptr;
         GetKeyposeAlignedMeasurements(
             from_time, to_time,
             maybe_pim_ptr,
             maybe_depth_ptr,
             maybe_attitude_ptr,
             maybe_ranges,
+            maybe_mag_ptr,
             params_.allowed_misalignment_depth,
-            params_.allowed_misalignment_range);
+            params_.allowed_misalignment_range,
+            params_.allowed_misalignment_mag);
 
+        Timer timer(true);
         OnSmootherResult(smoother.UpdateGraphNoVision(
             *maybe_pim_ptr,
             maybe_depth_ptr,
             maybe_attitude_ptr,
-            maybe_ranges));
+            maybe_ranges,
+            maybe_mag_ptr));
+        stats_.Add("UpdateGraphNoVision", timer.Elapsed().milliseconds());
+        stats_.Print("UpdateGraphNoVision", params_.stats_print_interval_sec);
       }
     // VO AVAILABLE ==> Add a keyframe and smooth.
     } else {
@@ -379,14 +405,17 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
       DepthMeasurement::Ptr maybe_depth_ptr;
       AttitudeMeasurement::Ptr maybe_attitude_ptr;
       MultiRange maybe_ranges;
+      MagMeasurement::Ptr maybe_mag_ptr;
       GetKeyposeAlignedMeasurements(
           from_time, to_time,
           maybe_pim_ptr,
           maybe_depth_ptr,
           maybe_attitude_ptr,
           maybe_ranges,
+          maybe_mag_ptr,
           params_.allowed_misalignment_depth,
-          params_.allowed_misalignment_range);
+          params_.allowed_misalignment_range,
+          params_.allowed_misalignment_mag);
 
       OnSmootherResult(smoother.UpdateGraphWithVision(
           frontend_result,

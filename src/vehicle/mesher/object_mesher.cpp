@@ -17,17 +17,17 @@ namespace mesher {
 void ObjectMesher::Params::LoadParams(const YamlParser& parser)
 {
   // Each sub-module has a subtree in the params.yaml.
-  tracker_params = StereoTracker::Params(parser.GetYamlNode("StereoTracker"));
+  tracker_params = StereoTracker::Params(parser.GetNode("StereoTracker"));
 
-  parser.GetYamlParam("foreground_ksize", &foreground_ksize);
-  parser.GetYamlParam("foreground_min_gradient", &foreground_min_gradient);
-  parser.GetYamlParam("edge_min_foreground_percent", &edge_min_foreground_percent);
-  parser.GetYamlParam("edge_max_depth_change", &edge_max_depth_change);
-  parser.GetYamlParam("vertex_min_obs", &vertex_min_obs);
-  parser.GetYamlParam("min_obs_connect_edge", &min_obs_connect_edge);
-  parser.GetYamlParam("min_obs_disconnect_edge", &min_obs_disconnect_edge);
+  parser.GetParam("foreground_ksize", &foreground_ksize);
+  parser.GetParam("foreground_min_gradient", &foreground_min_gradient);
+  parser.GetParam("edge_min_foreground_percent", &edge_min_foreground_percent);
+  parser.GetParam("edge_max_depth_change", &edge_max_depth_change);
+  parser.GetParam("vertex_min_obs", &vertex_min_obs);
+  parser.GetParam("min_obs_connect_edge", &min_obs_connect_edge);
+  parser.GetParam("min_obs_disconnect_edge", &min_obs_disconnect_edge);
 
-  YamlToStereoRig(parser.GetYamlNode("/shared/stereo_forward"), stereo_rig, body_T_cam_left, body_T_cam_right);
+  YamlToStereoRig(parser.GetNode("/shared/stereo_forward"), stereo_rig, body_T_cam_left, body_T_cam_right);
 }
 
 

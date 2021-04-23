@@ -22,6 +22,21 @@ imu0:
     accel_bias_rw_sigma:  0.0001
     gyro_bias_rw_sigma:   0.00004
 
+mag0:
+  frame_id: mag0
+
+  body_T_sensor:
+    cols: 4
+    rows: 4
+    data: [1.0, 0.0, 0.0, 0.0,
+           0.0, 1.0, 0.0, 0.0,
+           0.0, 0.0, 1.0, 0.0,
+           0.0, 0.0, 0.0, 1.0]
+
+  sensor_bias: [0, 0, 0]
+  local_field: [0, 0, 1]
+  scale_factor: 50.0
+
 # NOTE(milo): Placeholder for acoustic positioning system.
 aps0:
   frame_id: receiver0
