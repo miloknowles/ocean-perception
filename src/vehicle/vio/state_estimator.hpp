@@ -14,8 +14,9 @@
 #include "core/depth_measurement.hpp"
 #include "core/range_measurement.hpp"
 #include "core/mag_measurement.hpp"
-#include "vio/stereo_frontend.hpp"
 #include "core/data_manager.hpp"
+#include "core/stats_tracker.hpp"
+#include "vio/stereo_frontend.hpp"
 #include "vio/imu_manager.hpp"
 #include "vio/state_estimator_util.hpp"
 #include "vio/state_ekf.hpp"
@@ -69,6 +70,9 @@ class StateEstimator final {
     int max_size_filter_imu_queue = 1000;
     int max_size_filter_depth_queue = 1000;
     int max_size_filter_range_queue = 100;
+
+    int stats_tracker_k = 10;                 // Store the last k samples of each scalar.
+    float stats_print_interval_sec = 5.0;     // Print out stats every 5 sec.
 
     int reliable_vision_min_lmks = 12;        // Vision is "unreliable" if not many features can be detected.
 
@@ -188,6 +192,8 @@ class StateEstimator final {
   RangeManager filter_range_manager_;
   std::vector<StateStamped::Callback> filter_result_callbacks_;
   //================================================================================================
+
+  StatsTracker stats_;
 };
 
 }

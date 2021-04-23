@@ -11,7 +11,7 @@ namespace core {
 
 // A fixed-length sliding buffer of items, implemented as a circular buffer.
 template <typename Item>
-class SlidingBuffer final {
+class SlidingBuffer {
  public:
   SlidingBuffer(size_t N) : cbuffer_(N) {}
 
@@ -41,6 +41,9 @@ class SlidingBuffer final {
 
   // Size of the circular buffer.
   size_t Size() const { return cbuffer_.size(); }
+
+  // How many items have been added so far?
+  size_t Added() const { return num_added_; }
 
  private:
   int head_index_ = 0;

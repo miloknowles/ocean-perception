@@ -67,7 +67,8 @@ StateEstimator::StateEstimator(const Params& params)
       smoother_mag_manager_(params_.max_size_smoother_mag_queue, true, "smoother_mag_manager"),
       filter_imu_manager_(params.imu_manager_params, "filter_imu_manager"),
       filter_depth_manager_(params_.max_size_filter_depth_queue, true, "filter_depth_manager"),
-      filter_range_manager_(params_.max_size_filter_range_queue, true, "filter_range_manager")
+      filter_range_manager_(params_.max_size_filter_range_queue, true, "filter_range_manager"),
+      stats_("StateEstimator", params_.stats_tracker_k)
 {
   LOG(INFO) << "Constructed StateEstimator!" << std::endl;
 
@@ -385,12 +386,15 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
             params_.allowed_misalignment_range,
             params_.allowed_misalignment_mag);
 
+        Timer timer(true);
         OnSmootherResult(smoother.UpdateGraphNoVision(
             *maybe_pim_ptr,
             maybe_depth_ptr,
             maybe_attitude_ptr,
             maybe_ranges,
             maybe_mag_ptr));
+        stats_.Add("UpdateGraphNoVision", timer.Elapsed().milliseconds());
+        stats_.Print("UpdateGraphNoVision", params_.stats_print_interval_sec);
       }
     // VO AVAILABLE ==> Add a keyframe and smooth.
     } else {

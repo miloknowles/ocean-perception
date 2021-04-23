@@ -5,6 +5,7 @@ use_stereo: 0
 use_range: 1
 use_depth: 1
 use_imu: 1
+use_mag: 1
 
 # LCM Channel Config
 channel_input_stereo: sim/auv/stereo
@@ -72,7 +73,7 @@ StateEstimator:
     beacon_noise_model_sigma: 0.5          # m
     attitude_noise_model_sigma: 0.5        # rad
     velocity_sigma: 0.1                    # m/s
-    mag_noise_model_sigma: 5.0             # uT
+    mag_noise_model_sigma: 1.0             # uT
 
     extra_smoothing_iters: 5
     use_smart_stereo_factors: 0           # 1=ON, 0=OFF

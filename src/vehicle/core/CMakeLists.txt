@@ -38,13 +38,13 @@ SET(LIBRARY_SRC
   range_measurement.hpp
   stereo_image.hpp
   make_unique.hpp
-  fixed_queue.hpp
   thread_safe_queue.hpp
   yaml_parser.cpp
   yaml_parser.hpp
   params_base.cpp
   params_base.hpp
   sliding_buffer.hpp
+  stats_tracker.hpp
   mag_measurement.hpp)
 
 add_library(${LIBRARY_NAME} SHARED ${LIBRARY_SRC})
