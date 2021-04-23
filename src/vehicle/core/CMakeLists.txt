@@ -44,6 +44,7 @@ SET(LIBRARY_SRC
   params_base.cpp
   params_base.hpp
   sliding_buffer.hpp
+  stats_tracker.cpp
   stats_tracker.hpp
   mag_measurement.hpp)
 

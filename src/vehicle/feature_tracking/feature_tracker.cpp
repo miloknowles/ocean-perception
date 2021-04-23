@@ -9,10 +9,10 @@ namespace ft {
 
 void FeatureTracker::Params::LoadParams(const YamlParser& parser)
 {
-  parser.GetYamlParam("klt_maxiters", &klt_maxiters);
-  parser.GetYamlParam("klt_epsilon", &klt_epsilon);
-  parser.GetYamlParam("klt_winsize", &klt_winsize);
-  parser.GetYamlParam("klt_max_level", &klt_max_level);
+  parser.GetParam("klt_maxiters", &klt_maxiters);
+  parser.GetParam("klt_epsilon", &klt_epsilon);
+  parser.GetParam("klt_winsize", &klt_winsize);
+  parser.GetParam("klt_max_level", &klt_max_level);
 }
 
 

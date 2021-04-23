@@ -42,37 +42,11 @@ class StatsTracker final {
  public:
   MACRO_DELETE_COPY_CONSTRUCTORS(StatsTracker)
 
-  StatsTracker(const std::string& tracker_name, size_t k) : tracker_name_(tracker_name), k_(k) {}
+  StatsTracker(const std::string& tracker_name, size_t k);
 
-  void Add(const std::string& name, float value)
-  {
-    if (stats_.count(name) == 0) {
-      stats_.emplace(name, StatsBuffer<float>(k_));
-    }
-    stats_.at(name).Add(value);
-  }
+  void Add(const std::string& name, float value);
 
-  void Print(const std::string& name, float print_interval_sec = 0)
-  {
-    // Can't print stats for nonexistent scalar.
-    if (stats_.count(name) == 0) {
-      return;
-    }
-
-    if (timers_.count(name) == 0) {
-      timers_.emplace(name, Timer(true));
-    }
-
-    // If a time interval was specified, only print if that interval has elapsed.
-    if (timers_.at(name).Elapsed().seconds() >= print_interval_sec) {
-      int N;
-      float min, max, mean;
-      stats_.at(name).MinMaxMean(N, min, max, mean);
-      printf("[ %s/%s ] Stats for the last *%d* samples:  MIN=%f MAX=%f MEAN=%f\n",
-          tracker_name_.c_str(), name.c_str(), N, min, max, mean);
-      timers_.at(name).Reset();
-    }
-  }
+  void Print(const std::string& name, float print_interval_sec = 0);
 
  private:
   std::string tracker_name_;

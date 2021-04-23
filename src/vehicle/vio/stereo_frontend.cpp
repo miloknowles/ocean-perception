@@ -17,14 +17,14 @@ namespace vio {
 void StereoFrontend::Params::LoadParams(const YamlParser& parser)
 {
   // Each sub-module has a subtree in the params.yaml.
-  tracker_params = StereoTracker::Params(parser.GetYamlNode("StereoTracker"));
-  parser.GetYamlParam("max_avg_reprojection_error", &max_avg_reprojection_error);
-  parser.GetYamlParam("sigma_tracked_point", &sigma_tracked_point);
-  parser.GetYamlParam("lm_max_iters", &lm_max_iters);
-  parser.GetYamlParam("lm_max_error_stdevs", &lm_max_error_stdevs);
-  parser.GetYamlParam("kill_nonrigid_lmks", &kill_nonrigid_lmks);
+  tracker_params = StereoTracker::Params(parser.GetNode("StereoTracker"));
+  parser.GetParam("max_avg_reprojection_error", &max_avg_reprojection_error);
+  parser.GetParam("sigma_tracked_point", &sigma_tracked_point);
+  parser.GetParam("lm_max_iters", &lm_max_iters);
+  parser.GetParam("lm_max_error_stdevs", &lm_max_error_stdevs);
+  parser.GetParam("kill_nonrigid_lmks", &kill_nonrigid_lmks);
 
-  YamlToStereoRig(parser.GetYamlNode("/shared/stereo_forward"), stereo_rig, body_T_left, body_T_right);
+  YamlToStereoRig(parser.GetNode("/shared/stereo_forward"), stereo_rig, body_T_left, body_T_right);
 
   CHECK_GE(sigma_tracked_point, 1.0);
   CHECK_GE(lm_max_iters, 5);

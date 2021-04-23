@@ -78,26 +78,26 @@ class StateEstimatorLcm final {
    private:
     void LoadParams(const YamlParser& parser) override
     {
-      parser.GetYamlParam("use_stereo", &use_stereo);
-      parser.GetYamlParam("use_imu", &use_imu);
-      parser.GetYamlParam("use_depth", &use_depth);
-      parser.GetYamlParam("use_range", &use_range);
-      parser.GetYamlParam("use_mag", &use_mag);
+      parser.GetParam("use_stereo", &use_stereo);
+      parser.GetParam("use_imu", &use_imu);
+      parser.GetParam("use_depth", &use_depth);
+      parser.GetParam("use_range", &use_range);
+      parser.GetParam("use_mag", &use_mag);
 
-      channel_input_stereo = YamlToString(parser.GetYamlNode("channel_input_stereo"));
-      parser.GetYamlParam("expect_shm_images", &expect_shm_images);
+      channel_input_stereo = YamlToString(parser.GetNode("channel_input_stereo"));
+      parser.GetParam("expect_shm_images", &expect_shm_images);
 
-      channel_input_imu = YamlToString(parser.GetYamlNode("channel_input_imu"));
-      channel_input_depth = YamlToString(parser.GetYamlNode("channel_input_depth"));
-      channel_input_range = YamlToString(parser.GetYamlNode("channel_input_range"));
-      channel_input_mag = YamlToString(parser.GetYamlNode("channel_input_mag"));
-      channel_initial_pose = YamlToString(parser.GetYamlNode("channel_initial_pose"));
+      channel_input_imu = YamlToString(parser.GetNode("channel_input_imu"));
+      channel_input_depth = YamlToString(parser.GetNode("channel_input_depth"));
+      channel_input_range = YamlToString(parser.GetNode("channel_input_range"));
+      channel_input_mag = YamlToString(parser.GetNode("channel_input_mag"));
+      channel_initial_pose = YamlToString(parser.GetNode("channel_initial_pose"));
 
-      channel_output_filter_pose = YamlToString(parser.GetYamlNode("channel_output_filter_pose"));
-      channel_output_smoother_pose = YamlToString(parser.GetYamlNode("channel_output_smoother_pose"));
+      channel_output_filter_pose = YamlToString(parser.GetNode("channel_output_filter_pose"));
+      channel_output_smoother_pose = YamlToString(parser.GetNode("channel_output_smoother_pose"));
 
-      parser.GetYamlParam("visualize", &visualize);
-      parser.GetYamlParam("filter_publish_hz", &filter_publish_hz);
+      parser.GetParam("visualize", &visualize);
+      parser.GetParam("filter_publish_hz", &filter_publish_hz);
 
       state_estimator_params = StateEstimator::Params(parser.Subtree("StateEstimator"));
       visualizer3d_params = Visualizer3D::Params(parser.Subtree("Visualizer3D"));

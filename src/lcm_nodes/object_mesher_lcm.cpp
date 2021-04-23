@@ -37,11 +37,11 @@ class ObjectMesherLcm final {
    private:
     void LoadParams(const YamlParser& parser) override
     {
-      channel_input_stereo = YamlToString(parser.GetYamlNode("channel_input_stereo"));
-      channel_output_mesh = YamlToString(parser.GetYamlNode("channel_output_mesh"));
-      parser.GetYamlParam("visualize", &visualize);
-      parser.GetYamlParam("expect_shm_images", &expect_shm_images);
-      parser.GetYamlParam("mesher_input_height", &mesher_input_height);
+      channel_input_stereo = YamlToString(parser.GetNode("channel_input_stereo"));
+      channel_output_mesh = YamlToString(parser.GetNode("channel_output_mesh"));
+      parser.GetParam("visualize", &visualize);
+      parser.GetParam("expect_shm_images", &expect_shm_images);
+      parser.GetParam("mesher_input_height", &mesher_input_height);
       mesher_params = ObjectMesher::Params(parser.Subtree("ObjectMesher"));
     }
   };

@@ -51,7 +51,7 @@ class YamlParser {
 
   // Retrieve a param from the YAML hierarchy and pass it to output.
   template <class ParamType>
-  void GetYamlParam(const std::string& id, ParamType* output) const
+  void GetParam(const std::string& id, ParamType* output) const
   {
     CHECK_NOTNULL(output);
 
@@ -59,29 +59,29 @@ class YamlParser {
     std::string maybe_suffix;
     if (CheckIfSharedId(id, maybe_suffix)) {
       CHECK(!shared_node_.empty())
-          << "GetYamlParam: shared_node_ is empty. Was the parser constructed with a shared node?"
+          << "GetParam: shared_node_ is empty. Was the parser constructed with a shared node?"
           << "\n  id: " << id << std::endl;
-      const cv::FileNode& node = GetYamlNodeHelper(shared_node_, maybe_suffix);
+      const cv::FileNode& node = GetNodeHelper(shared_node_, maybe_suffix);
       node >> *output;
 
     // Anything else is directed to the root params.
     } else {
       CHECK(!root_node_.empty())
-          << "GetYamlParam: root_node_ is empty. Was the parser constructed?"
+          << "GetParam: root_node_ is empty. Was the parser constructed?"
           << "\n  id: " << id << std::endl;
-      const cv::FileNode& node = GetYamlNodeHelper(root_node_, id);
+      const cv::FileNode& node = GetNodeHelper(root_node_, id);
       node >> *output;
     }
   }
 
   // Get a YAML node relative to the root. This is used for constructing params that are a subtree.
-  cv::FileNode GetYamlNode(const std::string& id) const;
+  cv::FileNode GetNode(const std::string& id) const;
 
   YamlParser Subtree(const std::string& id) const;
 
  private:
   // Recursively finds a node with "id", starting from the "root_node".
-  cv::FileNode GetYamlNodeHelper(const cv::FileNode& root_node, const std::string& id) const;
+  cv::FileNode GetNodeHelper(const cv::FileNode& root_node, const std::string& id) const;
 
  private:
   cv::FileStorage fs_, fs_shared_;

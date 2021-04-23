@@ -68,7 +68,7 @@ StateEstimator:
     frontend_vo_noise_model: [0.1, 0.1, 0.1, 0.4, 0.4, 1.0]      # rad, rad, rad, m, m, m
     lmk_mono_reproj_err_sigma: 3.0         # px in u and v
     lmk_stereo_reproj_err_sigma: 10.0      # px in u and v
-    depth_sensor_noise_model_sigma: 0.05   # m
+    depth_sensor_noise_model_sigma: 1.0   # m
     range_noise_model_sigma: 0.05          # m
     beacon_noise_model_sigma: 0.5          # m
     attitude_noise_model_sigma: 0.5        # rad
