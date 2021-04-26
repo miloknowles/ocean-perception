@@ -183,7 +183,7 @@ class StateEkf final {
 
   // Update with an external velocity estimate (e.g from smoother).
   StateStamped PredictAndUpdate(seconds_t timestamp,
-                                const Vector3d& v_world_body,
+                                const Vector3d& world_v_body,
                                 const Matrix3d& R_velocity);
 
   // Update with an external estimate of ONE translation axis (e.g from barometer).

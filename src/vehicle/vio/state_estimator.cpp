@@ -518,7 +518,7 @@ void StateEstimator::FilterLoop(seconds_t t0, const gtsam::Pose3& P0_world_body)
 
         filter.Initialize(StateStamped(result.timestamp, State(
             result.world_P_body.translation(),
-            result.v_world_body,
+            result.world_v_body,
             Vector3d::Zero(),
             result.world_P_body.rotation().toQuaternion().normalized(),
             Vector3d::Zero(),
@@ -532,7 +532,7 @@ void StateEstimator::FilterLoop(seconds_t t0, const gtsam::Pose3& P0_world_body)
                                 result.world_P_body.translation(),
                                 result.cov_pose);
         filter.PredictAndUpdate(result.timestamp,
-                                result.v_world_body,
+                                result.world_v_body,
                                 result.cov_vel);
       }
 

@@ -95,8 +95,8 @@ TEST(SingleAxisFactor, TestGraph)
   gtsam::NonlinearFactorGraph new_factors;
   gtsam::Values new_values;
 
-  const IsotropicModel::shared_ptr depth_noise = IsotropicModel::Sigma(1, 1.0);
-  const IsotropicModel::shared_ptr pose_prior_noise = IsotropicModel::Sigma(6, 0.1);
+  const IsoModel::shared_ptr depth_noise = IsoModel::Sigma(1, 1.0);
+  const IsoModel::shared_ptr pose_prior_noise = IsoModel::Sigma(6, 0.1);
 
   const gtsam::Symbol x0('X', 0);
   const gtsam::Symbol x1('X', 1);

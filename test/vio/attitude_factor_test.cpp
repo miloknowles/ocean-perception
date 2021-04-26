@@ -27,7 +27,7 @@ TEST(VioTest, TestAttitudeFactorGraph)
   gtsam::NonlinearFactorGraph new_factors;
   gtsam::Values new_values;
 
-  const IsotropicModel::shared_ptr pose_prior_noise = IsotropicModel::Sigma(6, 0.1);
+  const IsoModel::shared_ptr pose_prior_noise = IsoModel::Sigma(6, 0.1);
 
   const gtsam::Symbol pose_sym('X', 0);
 
@@ -49,7 +49,7 @@ TEST(VioTest, TestAttitudeFactorGraph)
   // Gravity points in the +y direction in the world frame (RDF).
   const Vector3d world_nG_unit = Vector3d(0, 9.81, 0).normalized();
 
-  const IsotropicModel::shared_ptr attitude_noise = IsotropicModel::Sigma(2, 0.1);
+  const IsoModel::shared_ptr attitude_noise = IsoModel::Sigma(2, 0.1);
 
   // NOTE(milo): GTSAM computes error as: nZ_.error(nRb * bRef_).
   // So if we measure body_nG, we should plug it in for bRef_, and use the world_nG as nZ_.

@@ -6,8 +6,8 @@ namespace bm {
 namespace vio {
 
 
-typedef gtsam::noiseModel::Isotropic IsotropicModel;
-typedef gtsam::noiseModel::Diagonal DiagonalModel;
+typedef gtsam::noiseModel::Isotropic IsoModel;
+typedef gtsam::noiseModel::Diagonal DiagModel;
 
 
 }

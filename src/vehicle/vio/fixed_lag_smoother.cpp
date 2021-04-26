@@ -2,7 +2,6 @@
 #include <gtsam/navigation/AttitudeFactor.h>
 #include <gtsam/inference/Symbol.h>
 #include <gtsam/nonlinear/Values.h>
-#include <gtsam/inference/Key.h>
 #include <gtsam/sam/RangeFactor.h>
 #include <gtsam_unstable/slam/MagPoseFactor.h>
 #include <gtsam_unstable/slam/PartialPriorFactor.h>
@@ -11,7 +10,6 @@
 #include "vio/fixed_lag_smoother.hpp"
 #include "vio/vo_result.hpp"
 #include "vio/single_axis_factor.hpp"
-#include "vio/trilateration.hpp"
 
 namespace bm {
 namespace vio {
@@ -30,46 +28,46 @@ typedef gtsam::noiseModel::mEstimator::Cauchy mCauchy;
 typedef gtsam::IncrementalFixedLagSmoother::KeyTimestampMap KeyTimestampMap;
 
 
-void FixedLagSmoother::Params::LoadParams(const YamlParser& parser)
+void FixedLagSmoother::Params::LoadParams(const YamlParser& p)
 {
-  parser.GetParam("extra_smoothing_iters", &extra_smoothing_iters);
-  parser.GetParam("use_smart_stereo_factors", &use_smart_stereo_factors);
-  parser.GetParam("smoother_lag_sec", &smoother_lag_sec);
+  p.GetParam("extra_smoothing_iters", &extra_smoothing_iters);
+  p.GetParam("use_smart_stereo_factors", &use_smart_stereo_factors);
+  p.GetParam("smoother_lag_sec", &smoother_lag_sec);
 
-  pose_prior_noise_model = DiagonalModel::Sigmas(YamlToVector<gtsam::Vector6>(parser.GetNode("pose_prior_noise_model")));
-  frontend_vo_noise_model = DiagonalModel::Sigmas(YamlToVector<gtsam::Vector6>(parser.GetNode("frontend_vo_noise_model")));
+  pose_prior_noise_model = DiagModel::Sigmas(YamlToVector<gtsam::Vector6>(p.GetNode("pose_prior_noise_model")));
+  frontend_vo_noise_model = DiagModel::Sigmas(YamlToVector<gtsam::Vector6>(p.GetNode("frontend_vo_noise_model")));
 
-  lmk_mono_factor_noise_model = IsotropicModel::Sigma(2, parser.GetParam<double>("lmk_mono_reproj_err_sigma"));
-  lmk_stereo_factor_noise_model = IsotropicModel::Sigma(3, parser.GetParam<double>("lmk_stereo_reproj_err_sigma"));
+  lmk_mono_factor_noise_model = IsoModel::Sigma(2, p.GetParam<double>("lmk_mono_reproj_err_sigma"));
+  lmk_stereo_factor_noise_model = IsoModel::Sigma(3, p.GetParam<double>("lmk_stereo_reproj_err_sigma"));
 
-  velocity_noise_model = IsotropicModel::Sigma(3, parser.GetParam<double>("velocity_sigma"));
+  velocity_noise_model = IsoModel::Sigma(3, p.GetParam<double>("velocity_sigma"));
 
-  bias_prior_noise_model = IsotropicModel::Sigma(6, parser.GetParam<double>("bias_prior_noise_model_sigma"));
-  bias_drift_noise_model = IsotropicModel::Sigma(6, parser.GetParam<double>("bias_drift_noise_model_sigma"));
+  bias_prior_noise_model = IsoModel::Sigma(6, p.GetParam<double>("bias_prior_noise_model_sigma"));
+  bias_drift_noise_model = IsoModel::Sigma(6, p.GetParam<double>("bias_drift_noise_model_sigma"));
 
-  depth_sensor_noise_model = IsotropicModel::Sigma(1, parser.GetParam<double>("depth_sensor_noise_model_sigma"));
-  attitude_noise_model = IsotropicModel::Sigma(2, parser.GetParam<double>("attitude_noise_model_sigma"));
+  depth_sensor_noise_model = IsoModel::Sigma(1, p.GetParam<double>("depth_sensor_noise_model_sigma"));
+  attitude_noise_model = IsoModel::Sigma(2, p.GetParam<double>("attitude_noise_model_sigma"));
 
-  range_noise_model = IsotropicModel::Sigma(1, parser.GetParam<double>("range_noise_model_sigma"));
-  beacon_noise_model = IsotropicModel::Sigma(3, parser.GetParam<double>("beacon_noise_model_sigma"));
+  range_noise_model = IsoModel::Sigma(1, p.GetParam<double>("range_noise_model_sigma"));
+  beacon_noise_model = IsoModel::Sigma(3, p.GetParam<double>("beacon_noise_model_sigma"));
 
-  parser.GetParam("/shared/mag0/scale_factor", &mag_scale_factor);
-  YamlToVector<Vector3d>(parser.GetNode("/shared/mag0/sensor_bias"), mag_sensor_bias);
-  YamlToVector<Vector3d>(parser.GetNode("/shared/mag0/local_field"), mag_local_field);
+  p.GetParam("/shared/mag0/scale_factor", &mag_scale_factor);
+  YamlToVector<Vector3d>(p.GetNode("/shared/mag0/sensor_bias"), mag_sensor_bias);
+  YamlToVector<Vector3d>(p.GetNode("/shared/mag0/local_field"), mag_local_field);
   CHECK_GT(mag_scale_factor, 0) << "Invalid mag_scale_factor, must be > 0" << std::endl;
   CHECK_NEAR(1.0, mag_local_field.norm(), 1e-3);
 
-  mag_noise_model = IsotropicModel::Sigma(3, parser.GetParam<double>("mag_noise_model_sigma"));
+  mag_noise_model = IsoModel::Sigma(3, p.GetParam<double>("mag_noise_model_sigma"));
 
-  body_P_imu = gtsam::Pose3(YamlToTransform(parser.GetNode("/shared/imu0/body_T_imu")));
-  body_P_mag = gtsam::Pose3(YamlToTransform(parser.GetNode("/shared/mag0/body_T_sensor")));
-  body_P_receiver = gtsam::Pose3(YamlToTransform(parser.GetNode("/shared/aps0/body_T_receiver")));
+  body_P_imu = gtsam::Pose3(YamlToTransform(p.GetNode("/shared/imu0/body_T_imu")));
+  body_P_mag = gtsam::Pose3(YamlToTransform(p.GetNode("/shared/mag0/body_T_sensor")));
+  body_P_receiver = gtsam::Pose3(YamlToTransform(p.GetNode("/shared/aps0/body_T_receiver")));
 
   Matrix4d body_T_left, body_T_right;
-  YamlToStereoRig(parser.GetNode("/shared/stereo_forward"), stereo_rig, body_T_left, body_T_right);
+  YamlToStereoRig(p.GetNode("/shared/stereo_forward"), stereo_rig, body_T_left, body_T_right);
   body_P_cam = gtsam::Pose3(body_T_left);
 
-  YamlToVector<Vector3d>(parser.GetNode("/shared/n_gravity"), n_gravity);
+  YamlToVector<Vector3d>(p.GetNode("/shared/n_gravity"), n_gravity);
 }
 
 
@@ -77,7 +75,7 @@ FixedLagSmoother::FixedLagSmoother(const Params& params)
     : params_(params),
       stereo_rig_(params.stereo_rig)
 {
-  ResetISAM2();
+  ResetSmoother();
 
   cal3_stereo_ = gtsam::Cal3_S2Stereo::shared_ptr(
       new gtsam::Cal3_S2Stereo(
@@ -98,7 +96,7 @@ FixedLagSmoother::FixedLagSmoother(const Params& params)
 }
 
 
-void FixedLagSmoother::ResetISAM2()
+void FixedLagSmoother::ResetSmoother()
 {
   // If relinearizeThreshold is zero, the graph is always relinearized on update().
   gtsam::ISAM2Params smoother_params;
@@ -114,12 +112,12 @@ void FixedLagSmoother::ResetISAM2()
 
 void FixedLagSmoother::Initialize(seconds_t timestamp,
                                   const gtsam::Pose3& world_P_body,
-                                  const gtsam::Vector3& v_world_body,
+                                  const gtsam::Vector3& world_v_body,
                                   const ImuBias& imu_bias,
                                   bool imu_available)
 {
   ResetKeyposeId();
-  ResetISAM2();
+  ResetSmoother();
 
   // Clear out any members that store state.
   lmk_to_factor_map_.clear();;
@@ -134,7 +132,9 @@ void FixedLagSmoother::Initialize(seconds_t timestamp,
   gtsam::Values new_values;
   KeyTimestampMap new_timestamps;
 
-  result_ = SmootherResult(id0, timestamp, world_P_body, imu_available, v_world_body, imu_bias,
+  new_timestamps[P0_sym] = timestamp;
+
+  result_ = SmootherResult(id0, timestamp, world_P_body, imu_available, world_v_body, imu_bias,
       params_.pose_prior_noise_model->covariance(),
       params_.velocity_noise_model->covariance(),
       params_.bias_prior_noise_model->covariance());
@@ -145,7 +145,7 @@ void FixedLagSmoother::Initialize(seconds_t timestamp,
 
   // If IMU available, add inertial variables to the graph.
   if (imu_available) {
-    new_values.insert(V0_sym, v_world_body);
+    new_values.insert(V0_sym, world_v_body);
     new_values.insert(B0_sym, imu_bias);
     new_factors.addPrior(V0_sym, kZeroVelocity, params_.velocity_noise_model);
     new_factors.addPrior(B0_sym, kZeroImuBias, params_.bias_prior_noise_model);
@@ -153,23 +153,25 @@ void FixedLagSmoother::Initialize(seconds_t timestamp,
     new_timestamps[B0_sym] = timestamp;
   }
 
-  new_timestamps[P0_sym] = timestamp;
-
-  smoother_.update(new_factors, new_values);
+  smoother_.update(new_factors, new_values, new_timestamps);
 }
 
 
-// Preintegrate IMU measurements since the last keypose, and add an IMU factor to the graph.
-// Returns whether preintegration was successful. If so, there will be a factor constraining
-// X_{t-1}, V_{t-1}, B_{t-1} <--- FACTOR ---> X_{t}, V_{t}, B_{t}.
-// If the graph is missing variables for velocity and bias at (t-1), which will occur when IMU is
-// unavailable, then these variables will be initialized with a ZERO-VELOCITY, ZERO-BIAS prior.
+/**
+ * Preintegrate IMU measurements since the last keypose, and add an IMU factor to the graph.
+ *
+ * X_{t-1}, V_{t-1}, B_{t-1} <--- FACTOR ---> X_{t}, V_{t}, B_{t}.
+ *
+ * If the graph is missing variables for velocity and bias at (t-1), which will occur when IMU is
+ * unavailable, then these variables will be initialized with a ZERO-VELOCITY, ZERO-BIAS prior.
+ */
 static void AddImuFactors(uid_t keypose_id,
                           const PimResult& pim_result,
                           const SmootherResult& last_smoother_result,
                           bool predict_keypose_value,
                           gtsam::Values& new_values,
                           gtsam::NonlinearFactorGraph& new_factors,
+                          KeyTimestampMap& new_timestamps,
                           const FixedLagSmoother::Params& params)
 {
   CHECK(pim_result.timestamps_aligned) << "Preintegrated IMU invalid!" << std::endl;
@@ -179,13 +181,14 @@ static void AddImuFactors(uid_t keypose_id,
   const gtsam::Symbol bias_sym('B', keypose_id);
 
   const uid_t last_keypose_id = last_smoother_result.keypose_id;
+  const seconds_t last_keypose_time = last_smoother_result.timestamp;
   const gtsam::Symbol last_keypose_sym('X', last_keypose_id);
   const gtsam::Symbol last_vel_sym('V', last_keypose_id);
   const gtsam::Symbol last_bias_sym('B', last_keypose_id);
 
   // NOTE(milo): Gravity is corrected for in predict(), not during preintegration (NavState.cpp).
   const gtsam::NavState prev_state(last_smoother_result.world_P_body,
-                                   last_smoother_result.v_world_body);
+                                   last_smoother_result.world_v_body);
   const gtsam::NavState pred_state = pim_result.pim.predict(prev_state, last_smoother_result.imu_bias);
 
   // If no between factor from VO, we can use IMU to get an initial guess on the current pose.
@@ -196,6 +199,9 @@ static void AddImuFactors(uid_t keypose_id,
   new_values.insert(vel_sym, pred_state.velocity());
   new_values.insert(bias_sym, last_smoother_result.imu_bias);
 
+  new_timestamps[vel_sym] = pim_result.to_time;
+  new_timestamps[bias_sym] = pim_result.to_time;
+
   // If IMU was unavailable at the last state, we initialize it here with a prior.
   // NOTE(milo): For now we assume zero velocity and zero acceleration for the first pose.
   if (!last_smoother_result.has_imu_state) {
@@ -205,6 +211,9 @@ static void AddImuFactors(uid_t keypose_id,
 
     new_factors.addPrior(last_vel_sym, kZeroVelocity, params.velocity_noise_model);
     new_factors.addPrior(last_bias_sym, kZeroImuBias, params.bias_drift_noise_model);
+
+    new_timestamps[last_vel_sym] = last_keypose_time;
+    new_timestamps[last_bias_sym] = last_keypose_time;
   }
 
   const gtsam::CombinedImuFactor imu_factor(last_keypose_sym, last_vel_sym,
@@ -231,6 +240,7 @@ SmootherResult FixedLagSmoother::Update(VoResult::ConstPtr maybe_vo_ptr,
 
   gtsam::NonlinearFactorGraph new_factors;
   gtsam::Values new_values;
+  KeyTimestampMap new_timestamps;
 
   const uid_t keypose_id = GetNextKeyposeId();
   const seconds_t keypose_time = maybe_vo_ptr ? ConvertToSeconds(maybe_vo_ptr->timestamp) : maybe_pim_ptr->to_time;
@@ -248,17 +258,19 @@ SmootherResult FixedLagSmoother::Update(VoResult::ConstPtr maybe_vo_ptr,
   bool graph_has_vo_btw_factor = false;
   bool graph_has_imu_btw_factor = false;
 
+  new_timestamps[keypose_sym] = keypose_time;
+
+  // Needed for using ISAM2 with smart factors.
+  // gtsam::FastMap<gtsam::FactorIndex, gtsam::KeySet> factorNewAffectedKeys;
+
+  // Map: ISAM2 internal FactorIndex => lmk_id.
+  // std::map<gtsam::FactorIndex, uid_t> map_new_factor_to_lmk_id;
+
+  //====================================== VISUAL ODOMETRY =========================================
   if (maybe_vo_ptr) {
     const VoResult& odom_result = *maybe_vo_ptr;
     CHECK(odom_result.is_keyframe) << "Smoother shouldn't receive a non-keyframe odometry result" << std::endl;
     CHECK(odom_result.lmk_obs.size() > 0) << "Smoother shouln't receive a keyframe with no observations" << std::endl;
-
-    // Needed for using ISAM2 with smart factors.
-    gtsam::FastMap<gtsam::FactorIndex, gtsam::KeySet> factorNewAffectedKeys;
-
-    // Map: ISAM2 internal FactorIndex => lmk_id.
-    std::map<gtsam::FactorIndex, uid_t> map_new_factor_to_lmk_id;
-
 
     // Check if the timestamp from the LAST VO keyframe is close to the last smoother result.
     // If so, the odometry measurement can be used in the graph. Allowing 100 ms offset for now.
@@ -276,8 +288,7 @@ SmootherResult FixedLagSmoother::Update(VoResult::ConstPtr maybe_vo_ptr,
       const RobustModel::shared_ptr model = RobustModel::Create(mCauchy::Create(1.0), params_.frontend_vo_noise_model);
 
       // Add an odometry factor between the previous KF and current KF.
-      new_factors.push_back(gtsam::BetweenFactor<gtsam::Pose3>(
-          last_keypose_sym, keypose_sym, body_P_odom, model));
+      new_factors.push_back(gtsam::BetweenFactor<gtsam::Pose3>(last_keypose_sym, keypose_sym, body_P_odom, model));
 
       graph_has_vo_btw_factor = true;
     }
@@ -326,14 +337,10 @@ SmootherResult FixedLagSmoother::Update(VoResult::ConstPtr maybe_vo_ptr,
     const PimResult& pim_result = *maybe_pim_ptr;
     CHECK(pim_result.timestamps_aligned) << "Preintegrated IMU to/from timestamps not aligned" << std::endl;
 
-    AddImuFactors(
-        keypose_id,
-        pim_result,
-        result_,
-        true, // TODO: predict with VO is available?
-        new_values,
-        new_factors,
-        params_);
+    AddImuFactors(keypose_id, pim_result, result_, true, new_values, new_factors, new_timestamps, params_);
+
+    new_timestamps[vel_sym] = keypose_time;
+    new_timestamps[bias_sym] = keypose_time;
 
     graph_has_imu_btw_factor = true;
   }
@@ -359,11 +366,7 @@ SmootherResult FixedLagSmoother::Update(VoResult::ConstPtr maybe_vo_ptr,
     // Then we can treat it as a measurement of translation along the POSITIVE axis.
     const double measured_depth = depth_sign_ * maybe_depth_ptr->depth;
 
-    new_factors.push_back(gtsam::SingleAxisFactor(
-        keypose_sym,
-        depth_axis_,
-        measured_depth,
-        params_.depth_sensor_noise_model));
+    new_factors.push_back(gtsam::SingleAxisFactor(keypose_sym, depth_axis_, measured_depth, params_.depth_sensor_noise_model));
 
     // NOTE(milo): Don't use this factor yet!
     // new_factors.push_back(DepthFactor(
@@ -384,8 +387,8 @@ SmootherResult FixedLagSmoother::Update(VoResult::ConstPtr maybe_vo_ptr,
       const gtsam::Symbol beacon_sym(beacon_chars.at(i), keypose_id);
       const RangeMeasurement& range_meas = maybe_ranges.at(i);
       new_values.insert(beacon_sym, range_meas.point);
+      new_timestamps[beacon_sym] = keypose_time;
       new_factors.addPrior(beacon_sym, range_meas.point, params_.beacon_noise_model);
-
       new_factors.push_back(RangeFactor(
           keypose_sym,
           beacon_sym,
@@ -418,7 +421,7 @@ SmootherResult FixedLagSmoother::Update(VoResult::ConstPtr maybe_vo_ptr,
     // Use a robust noise model so that this no-motion prior can be "switched off" later.
     const RobustModel::shared_ptr model = RobustModel::Create(
       mCauchy::Create(1.0),
-      DiagonalModel::Sigmas((gtsam::Vector6() << 0.5, 0.5, 0.5, 5.0, 5.0, 5.0).finished()));
+      DiagModel::Sigmas((gtsam::Vector6() << 0.5, 0.5, 0.5, 5.0, 5.0, 5.0).finished()));
 
     new_factors.push_back(gtsam::BetweenFactor<gtsam::Pose3>(
         last_keypose_sym, keypose_sym, body_P_odom, model));
@@ -434,7 +437,7 @@ SmootherResult FixedLagSmoother::Update(VoResult::ConstPtr maybe_vo_ptr,
   //   lmk_to_factor_map_[fct_to_lmk.second] = isam_result.newFactorsIndices.at(fct_to_lmk.first);
   // }
 
-  smoother_.update(new_factors, new_values);
+  smoother_.update(new_factors, new_values, new_timestamps);
 
   // (Optional) run the smoother a few more times to reduce error.
   for (int i = 0; i < params_.extra_smoothing_iters; ++i) {
@@ -463,6 +466,7 @@ SmootherResult FixedLagSmoother::Update(VoResult::ConstPtr maybe_vo_ptr,
 
   return result_;
 }
+
 
 SmootherResult FixedLagSmoother::GetResult()
 {

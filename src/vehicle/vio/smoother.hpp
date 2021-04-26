@@ -50,29 +50,29 @@ class Smoother final {
     int lm_max_iters_range = 20;
     bool use_smart_stereo_factors = true;
 
-    DiagonalModel::shared_ptr pose_prior_noise_model = DiagonalModel::Sigmas(
+    DiagModel::shared_ptr pose_prior_noise_model = DiagModel::Sigmas(
         (gtsam::Vector(6) << 0.1, 0.1, 0.1, 0.3, 0.3, 0.3).finished());
 
-    IsotropicModel::shared_ptr lmk_mono_factor_noise_model = IsotropicModel::Sigma(2, 2.0); // one pixel in u and v
-    IsotropicModel::shared_ptr lmk_stereo_factor_noise_model = IsotropicModel::Sigma(3, 3.0); // u, v, disp?
+    IsoModel::shared_ptr lmk_mono_factor_noise_model = IsoModel::Sigma(2, 2.0); // one pixel in u and v
+    IsoModel::shared_ptr lmk_stereo_factor_noise_model = IsoModel::Sigma(3, 3.0); // u, v, disp?
 
-    IsotropicModel::shared_ptr velocity_noise_model = IsotropicModel::Sigma(3, 0.1);  // m/s
+    IsoModel::shared_ptr velocity_noise_model = IsoModel::Sigma(3, 0.1);  // m/s
 
-    DiagonalModel::shared_ptr frontend_vo_noise_model = DiagonalModel::Sigmas(
+    DiagModel::shared_ptr frontend_vo_noise_model = DiagModel::Sigmas(
         (gtsam::Vector(6) << 0.01, 0.01, 0.01, 0.05, 0.05, 0.05).finished());
 
-    IsotropicModel::shared_ptr bias_prior_noise_model = IsotropicModel::Sigma(6, 1e-2);
-    IsotropicModel::shared_ptr bias_drift_noise_model = IsotropicModel::Sigma(6, 1e-3);
+    IsoModel::shared_ptr bias_prior_noise_model = IsoModel::Sigma(6, 1e-2);
+    IsoModel::shared_ptr bias_drift_noise_model = IsoModel::Sigma(6, 1e-3);
 
-    IsotropicModel::shared_ptr depth_sensor_noise_model = IsotropicModel::Sigma(1, 0.05);
-    IsotropicModel::shared_ptr attitude_noise_model = IsotropicModel::Sigma(2, 0.1);
-    IsotropicModel::shared_ptr range_noise_model = IsotropicModel::Sigma(1, 0.5);
-    IsotropicModel::shared_ptr beacon_noise_model = IsotropicModel::Sigma(3, 0.01);
+    IsoModel::shared_ptr depth_sensor_noise_model = IsoModel::Sigma(1, 0.05);
+    IsoModel::shared_ptr attitude_noise_model = IsoModel::Sigma(2, 0.1);
+    IsoModel::shared_ptr range_noise_model = IsoModel::Sigma(1, 0.5);
+    IsoModel::shared_ptr beacon_noise_model = IsoModel::Sigma(3, 0.01);
 
     double mag_scale_factor = 1.0;                  // Scales a unit field direction into field units (e.g, nT or uT).
     Vector3d mag_local_field = Vector3d(0, 0, 1);   // Direction (unit vector) of local magnetic field.
     Vector3d mag_sensor_bias = Vector3d::Zero();    // Additive bias of the magnetometer.
-    IsotropicModel::shared_ptr mag_noise_model = IsotropicModel::Sigma(3, 1.0);
+    IsoModel::shared_ptr mag_noise_model = IsoModel::Sigma(3, 1.0);
 
     gtsam::Pose3 body_P_imu = gtsam::Pose3::identity();
     gtsam::Pose3 body_P_cam = gtsam::Pose3::identity();
@@ -97,7 +97,7 @@ class Smoother final {
   // external source of localization.
   void Initialize(seconds_t timestamp,
                   const gtsam::Pose3& world_P_body,
-                  const gtsam::Vector3& v_world_body,
+                  const gtsam::Vector3& world_v_body,
                   const ImuBias& imu_bias,
                   bool imu_available);
 

@@ -76,7 +76,7 @@ StateEstimator:
     mag_noise_model_sigma: 1.0             # uT
 
     extra_smoothing_iters: 5
-    smoother_lag_sec: 10.0
+    smoother_lag_sec: 5.0
     use_smart_stereo_factors: 0           # 1=ON, 0=OFF
 
     # Noise model for the zero-prior on IMU bias.
