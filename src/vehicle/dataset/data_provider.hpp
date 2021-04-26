@@ -6,10 +6,10 @@
 #include <functional>
 #include <vector>
 
-#include "core/cv_types.hpp"
+#include "vision_core/cv_types.hpp"
 #include "core/timestamp.hpp"
 #include "core/uid.hpp"
-#include "core/stereo_image.hpp"
+#include "vision_core/stereo_image.hpp"
 #include "core/imu_measurement.hpp"
 #include "core/depth_measurement.hpp"
 #include "core/range_measurement.hpp"

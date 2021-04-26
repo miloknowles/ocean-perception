@@ -1,7 +1,7 @@
 #pragma once
 
 #include "core/eigen_types.hpp"
-#include "core/pinhole_camera.hpp"
+#include "vision_core/pinhole_camera.hpp"
 
 namespace bm {
 namespace core {

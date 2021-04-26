@@ -1,7 +1,7 @@
 #pragma once
 
-#include "core/cv_types.hpp"
-#include "core/stereo_image.hpp"
+#include "vision_core/cv_types.hpp"
+#include "vision_core/stereo_image.hpp"
 
 namespace bm {
 namespace core {

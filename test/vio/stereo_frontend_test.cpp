@@ -6,8 +6,8 @@
 
 #include "dataset/euroc_dataset.hpp"
 #include "dataset/himb_dataset.hpp"
-#include "core/pinhole_camera.hpp"
-#include "core/stereo_camera.hpp"
+#include "vision_core/pinhole_camera.hpp"
+#include "vision_core/stereo_camera.hpp"
 #include "core/uid.hpp"
 #include "core/transform_util.hpp"
 #include "vio/stereo_frontend.hpp"

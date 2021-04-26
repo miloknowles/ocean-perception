@@ -12,7 +12,7 @@
 #include <boost/interprocess/mapped_region.hpp>
 
 #include "core/timestamp.hpp"
-#include "core/stereo_image.hpp"
+#include "vision_core/stereo_image.hpp"
 
 #include "vehicle/stereo_image_t.hpp"
 #include "vehicle/mmf_stereo_image_t.hpp"

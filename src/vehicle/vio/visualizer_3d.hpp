@@ -8,15 +8,15 @@
 
 #include <opencv2/viz.hpp>
 
-#include "core/params_base.hpp"
+#include "params/params_base.hpp"
 #include "core/macros.hpp"
 #include "core/eigen_types.hpp"
-#include "core/cv_types.hpp"
+#include "vision_core/cv_types.hpp"
 #include "core/uid.hpp"
-#include "core/pinhole_camera.hpp"
-#include "core/stereo_camera.hpp"
+#include "vision_core/pinhole_camera.hpp"
+#include "vision_core/stereo_camera.hpp"
 #include "core/thread_safe_queue.hpp"
-#include "core/landmark_observation.hpp"
+#include "vision_core/landmark_observation.hpp"
 #include "vio/ellipsoid.hpp"
 
 namespace bm {

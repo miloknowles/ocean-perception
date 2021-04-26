@@ -1,9 +1,10 @@
 #pragma once
 
 // #include <opencv2/core/cvstd.hpp>
+#include <string>
 #include <opencv2/core/persistence.hpp>
 
-#include "core/yaml_parser.hpp"
+#include "params/yaml_parser.hpp"
 
 namespace bm {
 namespace core {

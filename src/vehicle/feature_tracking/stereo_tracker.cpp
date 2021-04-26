@@ -2,7 +2,7 @@
 
 #include <opencv2/imgproc.hpp>
 
-#include "core/image_util.hpp"
+#include "vision_core/image_util.hpp"
 #include "core/math_util.hpp"
 #include "feature_tracking/visualization_2d.hpp"
 #include "feature_tracking/stereo_tracker.hpp"
@@ -30,8 +30,8 @@ void StereoTracker::Params::LoadParams(const YamlParser& parser)
 
 bool StereoTracker::TrackAndTriangulate(const StereoImage1b& stereo_pair, bool force_keyframe)
 {
-  std::map<int, std::vector<uid_t>> live_lmk_ids_k_ago;
-  std::map<int, VecPoint2f> live_lmk_pts_k_ago;
+  std::unordered_map<int, std::vector<uid_t>> live_lmk_ids_k_ago;
+  std::unordered_map<int, VecPoint2f> live_lmk_pts_k_ago;
   for (int k = 0; k <= params_.retrack_frames_k; ++k) {
     live_lmk_ids_k_ago.emplace(k, std::vector<uid_t>());
     live_lmk_pts_k_ago.emplace(k, VecPoint2f());

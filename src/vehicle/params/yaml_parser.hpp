@@ -9,8 +9,8 @@
 #include <opencv2/core/persistence.hpp>
 
 #include "core/eigen_types.hpp"
-#include "core/pinhole_camera.hpp"
-#include "core/stereo_camera.hpp"
+#include "vision_core/pinhole_camera.hpp"
+#include "vision_core/stereo_camera.hpp"
 
 namespace bm {
 namespace core {
@@ -49,7 +49,7 @@ class YamlParser {
   YamlParser(const cv::FileNode& root_node,
              const cv::FileNode& shared_node);
 
-  // Retrieve a param from the YAML hierarchy and pass it to output.
+  // Retrieve a param from the YAML hierarchy and pass it to output parameter.
   template <class ParamType>
   void GetParam(const std::string& id, ParamType* output) const
   {
@@ -72,6 +72,15 @@ class YamlParser {
       const cv::FileNode& node = GetNodeHelper(root_node_, id);
       node >> *output;
     }
+  }
+
+  // Retrieve a YAML param and return it.
+  template <class ParamType>
+  ParamType GetParam(const std::string& id) const
+  {
+    ParamType output;
+    GetParam<ParamType>(id, &output);
+    return output;
   }
 
   // Get a YAML node relative to the root. This is used for constructing params that are a subtree.
@@ -99,6 +108,15 @@ void YamlToVector(const cv::FileNode& node, VectorType& vout)
   for (int i = 0; i < vout.rows(); ++i) {
     vout(i) = node[i];
   }
+}
+
+// Convert a YAML list to an Eigen vector type. Returns the vector instead of using output param.
+template <typename VectorType>
+VectorType YamlToVector(const cv::FileNode& node)
+{
+  VectorType out;
+  YamlToVector<VectorType>(node, out);
+  return out;
 }
 
 
@@ -131,10 +149,15 @@ void YamlToMatrix(const cv::FileNode& node, MatrixType& mout)
   }
 }
 
+// Parse and return a 4x4 transformation matrix.
+Matrix4d YamlToTransform(const cv::FileNode& node);
 
+
+// Parse and return a string.
 std::string YamlToString(const cv::FileNode& node);
 
 
+// Parse and return an enum (cast from an int to enum type).
 template <typename EnumT>
 inline EnumT YamlToEnum(const cv::FileNode& node)
 {
@@ -145,13 +168,15 @@ inline EnumT YamlToEnum(const cv::FileNode& node)
 }
 
 
+// Parse and return a PinholeCamera as an output param.
 void YamlToCameraModel(const cv::FileNode& node, PinholeCamera& cam);
 
 
+// Parse and return a StereoCamera as an output param.
 void YamlToStereoRig(const cv::FileNode& node,
-                            StereoCamera& stereo_rig,
-                            Matrix4d& body_T_left,
-                            Matrix4d& body_T_right);
+                    StereoCamera& stereo_rig,
+                    Matrix4d& body_T_left,
+                    Matrix4d& body_T_right);
 
 }
 }

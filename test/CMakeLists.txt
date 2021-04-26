@@ -4,7 +4,7 @@ set(CORE_TEST_SOURCES
   core/params_base_test.cpp
   core/stereo_camera_test.cpp
   core/grid_lookup_test.cpp
-  core/math_util_test.cpp
+  # core/math_util_test.cpp
   core/sliding_buffer_test.cpp
   core/data_manager_test.cpp)
 
@@ -41,6 +41,8 @@ function(MakeTestExecutable test_name test_sources)
   target_link_libraries(${test_name}
     gtest
     ${PROJECT_NAME}_core
+    ${PROJECT_NAME}_vision_core
+    ${PROJECT_NAME}_params
     ${PROJECT_NAME}_vio
     ${PROJECT_NAME}_dataset
     ${PROJECT_NAME}_ft

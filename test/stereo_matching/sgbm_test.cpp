@@ -8,7 +8,7 @@
 #include "core/timer.hpp"
 #include "core/math_util.hpp"
 #include "core/file_utils.hpp"
-#include "core/image_util.hpp"
+#include "vision_core/image_util.hpp"
 #include "imaging/normalization.hpp"
 #include "stereo_matching/stereo_matching.hpp"
 

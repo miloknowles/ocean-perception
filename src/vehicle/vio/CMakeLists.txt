@@ -1,6 +1,7 @@
 SET(LIBRARY_NAME ${PROJECT_NAME}_vio)
 
 SET(LIBRARY_SRC
+  smoother_result.hpp
   state_estimator_util.hpp
   attitude_measurement.hpp
   noise_model.hpp
@@ -21,6 +22,8 @@ SET(LIBRARY_SRC
   state_ekf.hpp
   smoother.cpp
   smoother.hpp
+  fixed_lag_smoother.cpp
+  fixed_lag_smoother.hpp
   state_estimator.cpp
   state_estimator.hpp
   trilateration.cpp
@@ -33,6 +36,8 @@ target_include_directories(${LIBRARY_NAME} PRIVATE
   ${PROJECT_SOURCE_DIR}/src)
 target_link_libraries(${LIBRARY_NAME}
   ${PROJECT_NAME}_core
+  ${PROJECT_NAME}_vision_core
+  ${PROJECT_NAME}_params
   ${PROJECT_NAME}_anms
   ${PROJECT_NAME}_ft
   ${Boost_LIBRARIES}

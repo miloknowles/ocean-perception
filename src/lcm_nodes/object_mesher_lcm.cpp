@@ -4,8 +4,8 @@
 
 #include <opencv2/imgproc.hpp>
 
-#include "core/image_util.hpp"
-#include "core/params_base.hpp"
+#include "vision_core/image_util.hpp"
+#include "params/params_base.hpp"
 #include "core/path_util.hpp"
 #include "lcm_util/decode_image.hpp"
 #include "lcm_util/util_mesh_t.hpp"

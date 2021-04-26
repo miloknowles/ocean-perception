@@ -1,4 +1,4 @@
-#include "core/yaml_parser.hpp"
+#include "params/yaml_parser.hpp"
 
 namespace bm {
 namespace core {
@@ -154,13 +154,25 @@ void YamlToStereoRig(const cv::FileNode& node,
   YamlToCameraModel(cam_left_node, cam_left);
   YamlToCameraModel(cam_right_node, cam_right);
 
-  YamlToMatrix<Matrix4d>(cam_left_node["body_T_cam"], body_T_left);
-  YamlToMatrix<Matrix4d>(cam_right_node["body_T_cam"], body_T_right);
-  CHECK(body_T_left(3, 3) == 1.0) << "body_T_left is invalid" << std::endl;
-  CHECK(body_T_right(3, 3) == 1.0) << "body_T_right is invalid" << std::endl;
+  body_T_left = YamlToTransform(cam_left_node["body_T_cam"]);
+  body_T_right = YamlToTransform(cam_right_node["body_T_cam"]);
 
   const Matrix4d left_T_right = body_T_left.inverse() * body_T_right;
   stereo_rig = StereoCamera(cam_left, cam_right, Transform3d(left_T_right));
+}
+
+
+Matrix4d YamlToTransform(const cv::FileNode& node)
+{
+  Matrix4d T;
+  YamlToMatrix(node, T);
+
+  CHECK_EQ(1.0, T(3, 3)) << "Transform matrix should have 1.0 as lower right entry" << std::endl;
+
+  const Matrix3d& R = T.block<3, 3>(0, 0);
+  CHECK(R.isApprox(R.transpose())) << "Rotation matrix should be symmetric" << std::endl;
+
+  return T;
 }
 
 

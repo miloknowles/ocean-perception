@@ -3,7 +3,7 @@
 #include "lcm_util/image_subscriber.hpp"
 #include "lcm_util/decode_image.hpp"
 
-#include "core/image_util.hpp"
+#include "vision_core/image_util.hpp"
 
 namespace bm {
 

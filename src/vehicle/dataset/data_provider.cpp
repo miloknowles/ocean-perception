@@ -5,7 +5,7 @@
 #include "dataset/data_provider.hpp"
 
 #include "core/file_utils.hpp"
-#include "core/image_util.hpp"
+#include "vision_core/image_util.hpp"
 
 namespace bm {
 namespace dataset {

@@ -14,8 +14,8 @@ endif()
 # I had to make sure that the 10.2 nvcc is found FIRST by prepending it to $PATH.
 # Then had to catkin clean to remove old build configuration.
 find_package(ZED 3 REQUIRED) # This is asking for CUDA 10.2
-find_package(GLUT REQUIRED)
-find_package(GLEW REQUIRED)
+# find_package(GLUT REQUIRED)
+# find_package(GLEW REQUIRED)
 find_package(OpenGL REQUIRED)
 find_package(CUDA ${ZED_CUDA_VERSION} EXACT REQUIRED)
 
@@ -48,11 +48,12 @@ else()
 endif()
 
 TARGET_LINK_LIBRARIES(zed_recorder
-  ${SPECIAL_OS_LIBS}
+  # ${SPECIAL_OS_LIBS}
   ${ZED_LIBS}
-  ${OPENGL_LIBRARIES}
-  ${GLUT_LIBRARY}
-  ${GLEW_LIBRARIES}
+  # ${OPENGL_LIBRARIES}
+  # ${GLUT_LIBRARY}
+  # ${GLEW_LIBRARIES}
   ${GLOG_LIBRARIES}
   ${PROJECT_NAME}_core
+  ${PROJECT_NAME}_vision_core
   ${PROJECT_NAME}_dataset)

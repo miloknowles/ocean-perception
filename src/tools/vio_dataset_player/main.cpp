@@ -9,9 +9,9 @@
 
 #include "core/eigen_types.hpp"
 #include "core/macros.hpp"
-#include "core/params_base.hpp"
-#include "core/pinhole_camera.hpp"
-#include "core/stereo_camera.hpp"
+#include "params/params_base.hpp"
+#include "vision_core/pinhole_camera.hpp"
+#include "vision_core/stereo_camera.hpp"
 #include "core/timer.hpp"
 #include "core/uid.hpp"
 #include "core/file_utils.hpp"

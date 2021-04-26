@@ -7,7 +7,7 @@
 #include "core/uid.hpp"
 #include "core/eigen_types.hpp"
 
-#include "core/landmark_observation.hpp"
+#include "vision_core/landmark_observation.hpp"
 
 namespace bm {
 namespace vio {
@@ -21,6 +21,7 @@ struct VoResult final
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   MACRO_DELETE_COPY_CONSTRUCTORS(VoResult)
   MACRO_DELETE_DEFAULT_CONSTRUCTOR(VoResult)
+  MACRO_SHARED_POINTER_TYPEDEFS(VoResult)
 
   explicit VoResult(timestamp_t timestamp,
                     timestamp_t timestamp_lkf,

@@ -9,10 +9,10 @@
 #include <opencv2/imgproc.hpp>
 
 #include "core/file_utils.hpp"
-#include "core/image_util.hpp"
-#include "core/params_base.hpp"
-#include "core/pinhole_camera.hpp"
-#include "core/stereo_camera.hpp"
+#include "vision_core/image_util.hpp"
+#include "params/params_base.hpp"
+#include "vision_core/pinhole_camera.hpp"
+#include "vision_core/stereo_camera.hpp"
 #include "core/data_manager.hpp"
 #include "core/path_util.hpp"
 

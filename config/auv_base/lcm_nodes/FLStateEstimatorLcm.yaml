@@ -63,7 +63,7 @@ StateEstimator:
   filter_use_depth: 0
 
   #===============================================================================
-  SmootherParams:
+  FixedLagSmoother:
     pose_prior_noise_model: [0.001, 0.001, 0.001, 0.01, 0.01, 0.01]    # rad, rad, rad, m, m, m
     frontend_vo_noise_model: [0.1, 0.1, 0.1, 0.4, 0.4, 1.0]      # rad, rad, rad, m, m, m
     lmk_mono_reproj_err_sigma: 3.0         # px in u and v
@@ -85,7 +85,7 @@ StateEstimator:
     bias_drift_noise_model_sigma: 0.0001
 
   #===============================================================================
-  StateEkfParams:
+  StateEkf:
     # Process noise standard deviations.
     # NOTE(milo): Set these values really high to make the filter follow the smoother more closely!
     sigma_Q_t: 1.1     # translation (m/sec)

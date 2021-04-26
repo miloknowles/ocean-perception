@@ -3,8 +3,8 @@
 #include <vector>
 
 #include "core/macros.hpp"
-#include "core/params_base.hpp"
-#include "core/cv_types.hpp"
+#include "params/params_base.hpp"
+#include "vision_core/cv_types.hpp"
 
 namespace bm {
 namespace ft {

@@ -7,7 +7,7 @@
 #include "core/uid.hpp"
 #include "core/eigen_types.hpp"
 #include "core/axis3.hpp"
-#include "core/params_base.hpp"
+#include "params/params_base.hpp"
 #include "core/thread_safe_queue.hpp"
 
 #include "vio/imu_manager.hpp"

@@ -9,20 +9,21 @@
 
 #include "core/eigen_types.hpp"
 #include "core/macros.hpp"
-#include "core/params_base.hpp"
-#include "core/pinhole_camera.hpp"
-#include "core/stereo_camera.hpp"
+#include "params/params_base.hpp"
+#include "vision_core/pinhole_camera.hpp"
+#include "vision_core/stereo_camera.hpp"
 #include "core/timer.hpp"
 #include "core/uid.hpp"
 #include "core/file_utils.hpp"
 #include "core/path_util.hpp"
-#include "core/image_util.hpp"
+#include "vision_core/image_util.hpp"
 #include "core/data_subsampler.hpp"
 
 #include "dataset/dataset_util.hpp"
 
 #include "vio/state_estimator.hpp"
 #include "vio/visualizer_3d.hpp"
+#include "vio/smoother_result.hpp"
 
 #include "lcm_util/util_pose3_t.hpp"
 #include "lcm_util/util_imu_measurement_t.hpp"

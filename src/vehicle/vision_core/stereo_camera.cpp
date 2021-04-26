@@ -1,6 +1,6 @@
 #include <glog/logging.h>
 
-#include "core/stereo_camera.hpp"
+#include "vision_core/stereo_camera.hpp"
 
 namespace bm {
 namespace core {
