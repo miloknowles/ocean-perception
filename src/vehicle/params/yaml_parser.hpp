@@ -47,7 +47,9 @@ class YamlParser {
 
   // Construct from a YAML node.
   YamlParser(const cv::FileNode& root_node,
-             const cv::FileNode& shared_node);
+             const cv::FileNode& shared_node,
+             const std::string& filepath = "",
+             const std::string& shared_filepath = "");
 
   // Retrieve a param from the YAML hierarchy and pass it to output parameter.
   template <class ParamType>
@@ -92,10 +94,14 @@ class YamlParser {
   // Recursively finds a node with "id", starting from the "root_node".
   cv::FileNode GetNodeHelper(const cv::FileNode& root_node, const std::string& id) const;
 
+  // Returns a string with information about the YAML filepaths, node names, etc. to debug parsing errors.
+  std::string HelpfulError(const std::string& id) const;
+
  private:
   cv::FileStorage fs_, fs_shared_;
   cv::FileNode root_node_;
   cv::FileNode shared_node_;
+  std::string filepath_, shared_filepath_;
 };
 
 
