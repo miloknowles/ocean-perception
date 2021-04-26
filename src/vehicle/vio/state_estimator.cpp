@@ -259,14 +259,14 @@ void StateEstimator::GetKeyposeAlignedMeasurements(
 
   // Check if we have a nearby magnetometer measurement.
   smoother_mag_manager_.DiscardBefore(to_time, true);
-  const seconds_t mag_time_offset = std::fabs(to_time - smoother_mag_manager_.Oldest());
+  const seconds_t mag_time_offset = std::fabs(smoother_mag_manager_.Oldest() - to_time);
 
   maybe_mag_ptr = (mag_time_offset < allowed_misalignment_mag) ?
       std::make_shared<MagMeasurement>(smoother_mag_manager_.Pop()) : nullptr;
 
   // Check if we have a nearby depth measurement (in time).
   smoother_depth_manager_.DiscardBefore(to_time, true);
-  const seconds_t depth_time_offset = std::fabs(to_time - smoother_depth_manager_.Oldest());
+  const seconds_t depth_time_offset = std::fabs(smoother_depth_manager_.Oldest() - to_time);
 
   maybe_depth_ptr = (depth_time_offset < allowed_misalignment_depth) ?
       std::make_shared<DepthMeasurement>(smoother_depth_manager_.Pop()) : nullptr;
@@ -358,7 +358,7 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
 
       // Can't add a new keypose until IMU is available (fully constraint 6DOF motion).
       // We make sure that there are IMU measurements up until the range measurement.
-      const bool can_add_range_keypose = range_is_available &&
+      const bool can_add_range_keypose = range_is_available && imu_is_available &&
           (smoother_imu_manager_.Newest() > (smoother_range_manager_.Newest() - params_.allowed_misalignment_imu));
       const bool can_add_imu_keypose = imu_is_available &&
           (smoother_imu_manager_.Newest() - from_time) > params_.min_sec_btw_keyposes;
