@@ -245,7 +245,8 @@ void StateEstimator::GetKeyposeAlignedMeasurements(
     MagMeasurement::Ptr& maybe_mag_ptr,
     seconds_t allowed_misalignment_depth,
     seconds_t allowed_misalignment_range,
-    seconds_t allowed_misalignment_mag)
+    seconds_t allowed_misalignment_mag,
+    seconds_t allowed_misalignment_imu)
 {
   smoother_range_manager_.DiscardBefore(to_time, true);
   const seconds_t range_time_offset = std::fabs(smoother_range_manager_.Oldest() - to_time);
@@ -271,7 +272,7 @@ void StateEstimator::GetKeyposeAlignedMeasurements(
       std::make_shared<DepthMeasurement>(smoother_depth_manager_.Pop()) : nullptr;
 
   // Preintegrate IMU between from_time and to_time.
-  const PimResult pim = smoother_imu_manager_.Preintegrate(from_time, to_time);
+  const PimResult pim = smoother_imu_manager_.Preintegrate(from_time, to_time, allowed_misalignment_imu);
   maybe_pim_ptr = (pim.timestamps_aligned) ? std::make_shared<PimResult>(pim) : nullptr;
 
   // Check if the accelerometer is giving a reading of attitude.
@@ -380,7 +381,10 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
             maybe_mag_ptr,
             params_.allowed_misalignment_depth,
             params_.allowed_misalignment_range,
-            params_.allowed_misalignment_mag);
+            params_.allowed_misalignment_mag,
+            params_.allowed_misalignment_imu);
+
+        CHECK(maybe_pim_ptr) << "Should have gotten a preintegrated IMU measurement, probably a timestamp offset issue" << std::endl;
 
         Timer timer(true);
         OnSmootherResult(smoother.Update(
@@ -412,7 +416,8 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
           maybe_mag_ptr,
           params_.allowed_misalignment_depth,
           params_.allowed_misalignment_range,
-          params_.allowed_misalignment_mag);
+          params_.allowed_misalignment_mag,
+          params_.allowed_misalignment_imu);
 
       Timer timer(true);
       OnSmootherResult(smoother.Update(

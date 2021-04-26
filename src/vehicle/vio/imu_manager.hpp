@@ -95,7 +95,8 @@ class ImuManager final : public DataManager<ImuMeasurement> {
   // IMU measurements into body frame measurements using body_P_sensor.
   // NOTE(milo): All measurements up to the to_time are removed from the queue!
   PimResult Preintegrate(seconds_t from_time = kMinSeconds,
-                         seconds_t to_time = kMaxSeconds);
+                         seconds_t to_time = kMaxSeconds,
+                         seconds_t allowed_misalignment_sec = 0.1);
 
 
   // Call this after getting a new bias estimate from the smoother update.
