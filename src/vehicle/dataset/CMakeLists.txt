@@ -21,7 +21,7 @@ target_include_directories(${LIBRARY_NAME} PRIVATE
   ${PROJECT_SOURCE_DIR}/src)
 target_link_libraries(${LIBRARY_NAME}
   ${PROJECT_NAME}_core
+  ${PROJECT_NAME}_vision_core
   ${Boost_LIBRARIES}
   ${OpenCV_LIBRARIES}
-  ${OpenCV_LIBS}
   ${GLOG_LIBRARIES})

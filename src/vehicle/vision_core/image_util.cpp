@@ -1,8 +1,8 @@
 #include <opencv2/imgproc.hpp>
 #include <opencv2/highgui.hpp>
 
-#include "core/stereo_image.hpp"
-#include "core/image_util.hpp"
+#include "vision_core/stereo_image.hpp"
+#include "vision_core/image_util.hpp"
 
 namespace bm {
 namespace core {

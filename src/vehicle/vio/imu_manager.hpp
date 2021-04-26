@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/params_base.hpp"
+#include "params/params_base.hpp"
 #include "core/macros.hpp"
 #include "core/imu_measurement.hpp"
 #include "core/uid.hpp"

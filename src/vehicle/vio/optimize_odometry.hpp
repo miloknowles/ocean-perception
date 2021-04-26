@@ -3,7 +3,7 @@
 #include <vector>
 
 #include "core/eigen_types.hpp"
-#include "core/stereo_camera.hpp"
+#include "vision_core/stereo_camera.hpp"
 
 namespace bm {
 namespace vio {

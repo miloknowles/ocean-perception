@@ -311,7 +311,7 @@ StateStamped StateEkf::PredictAndUpdate(const ImuMeasurement& imu, bool store)
 
 
 StateStamped StateEkf::PredictAndUpdate(seconds_t timestamp,
-                                        const Vector3d& v_world_body,
+                                        const Vector3d& world_v_body,
                                         const Matrix3d& R_velocity)
 {
   // PREDICT STEP: Simulate the system forward to the current timestep.
@@ -322,7 +322,7 @@ StateStamped StateEkf::PredictAndUpdate(seconds_t timestamp,
   H.block<3, 3>(0, v_row) = Matrix3d::Identity();
 
   // y = z - h(x)
-  const Vector3d y = v_world_body - x.v;
+  const Vector3d y = world_v_body - x.v;
 
   Vector15d mask = Vector15d::Zero();
   mask.block<3, 1>(v_row, 0) = Vector3d::Ones();

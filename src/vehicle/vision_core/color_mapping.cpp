@@ -1,6 +1,6 @@
 #include <opencv2/imgproc.hpp>
 
-#include "core/color_mapping.hpp"
+#include "vision_core/color_mapping.hpp"
 
 namespace bm {
 namespace core {

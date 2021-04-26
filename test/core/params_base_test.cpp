@@ -2,7 +2,7 @@
 #include <glog/logging.h>
 
 #include "core/macros.hpp"
-#include "core/params_base.hpp"
+#include "params/params_base.hpp"
 
 using namespace bm;
 using namespace core;

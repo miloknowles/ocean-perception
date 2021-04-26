@@ -4,7 +4,7 @@
 
 #include "core/imu_measurement.hpp"
 #include "core/depth_measurement.hpp"
-#include "core/stereo_image.hpp"
+#include "vision_core/stereo_image.hpp"
 
 namespace bm {
 namespace dataset {

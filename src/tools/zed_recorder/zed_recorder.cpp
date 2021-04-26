@@ -3,7 +3,7 @@
 #include "zed_recorder.hpp"
 #include "core/imu_measurement.hpp"
 #include "core/depth_measurement.hpp"
-#include "core/stereo_image.hpp"
+#include "vision_core/stereo_image.hpp"
 #include "core/math_util.hpp"
 #include "dataset/euroc_data_writer.hpp"
 
@@ -11,7 +11,6 @@ namespace bm {
 namespace zed {
 
 using namespace core;
-
 
 
 // Mapping between MAT_TYPE and CV_TYPE

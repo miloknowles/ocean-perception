@@ -2,28 +2,28 @@
 
 #include <unordered_map>
 
+#include "core/axis3.hpp"
 #include "core/depth_measurement.hpp"
 #include "core/eigen_types.hpp"
 #include "core/imu_measurement.hpp"
 #include "core/macros.hpp"
 #include "core/mag_measurement.hpp"
-#include "params/params_base.hpp"
 #include "core/range_measurement.hpp"
-#include "vision_core/stereo_camera.hpp"
 #include "core/timestamp.hpp"
 #include "core/uid.hpp"
+#include "params/params_base.hpp"
 #include "vio/attitude_measurement.hpp"
 #include "vio/imu_manager.hpp"
 #include "vio/noise_model.hpp"
-#include "vio/vo_result.hpp"
 #include "vio/smoother_result.hpp"
+#include "vio/vo_result.hpp"
+#include "vision_core/stereo_camera.hpp"
 
-#include <gtsam/nonlinear/NonlinearFactorGraph.h>
-#include <gtsam/nonlinear/ISAM2.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/geometry/Cal3_S2Stereo.h>
 #include <gtsam/slam/SmartProjectionPoseFactor.h>
 #include <gtsam_unstable/slam/SmartStereoProjectionPoseFactor.h>
+#include <gtsam_unstable/nonlinear/IncrementalFixedLagSmoother.h>
 
 namespace bm {
 namespace vio {
@@ -40,14 +40,14 @@ typedef std::unordered_map<uid_t, SmartStereoFactor::shared_ptr> SmartStereoFact
 typedef std::map<uid_t, gtsam::FactorIndex> LmkToFactorMap;
 
 
-class Smoother final {
+class FixedLagSmoother final {
  public:
   struct Params final : public ParamsBase
   {
     MACRO_PARAMS_STRUCT_CONSTRUCTORS(Params);
 
-    int extra_smoothing_iters = 2;            // More smoothing iters --> better accuracy.
-    int lm_max_iters_range = 20;
+    int extra_smoothing_iters = 2;    // More smoothing iters --> better accuracy.
+    double smoother_lag_sec = 10.0;   // Time window for optimization over the factor graph.
     bool use_smart_stereo_factors = true;
 
     DiagModel::shared_ptr pose_prior_noise_model = DiagModel::Sigmas(
@@ -82,41 +82,46 @@ class Smoother final {
 
     StereoCamera stereo_rig;
 
-  private:
+   private:
     void LoadParams(const YamlParser& parser) override;
   };
 
   // Construct with parameters.
-  Smoother(const Params& params);
+  FixedLagSmoother(const Params& params);
 
-  MACRO_DELETE_COPY_CONSTRUCTORS(Smoother)
-  MACRO_DELETE_DEFAULT_CONSTRUCTOR(Smoother)
+  MACRO_DELETE_COPY_CONSTRUCTORS(FixedLagSmoother)
+  MACRO_DELETE_DEFAULT_CONSTRUCTOR(FixedLagSmoother)
 
-  // Initialize the smoother by providing the first timestamp and corresponding state.
-  // This can be used to initialize the smoother for the first time, or to "reset" it through some
-  // external source of localization.
+  /**
+   * Initialize the smoother by providing the first timestamp and corresponding state.
+   * This can be used to initialize the smoother for the first time, or to "reset" it through some
+   * external source of localization.
+   */
   void Initialize(seconds_t timestamp,
                   const gtsam::Pose3& world_P_body,
                   const gtsam::Vector3& world_v_body,
                   const ImuBias& imu_bias,
                   bool imu_available);
 
-  // Add a new keypose WITHOUT vision information. For now, we use a preintegrated IMU measurement
-  // to provide odometry.
-  SmootherResult UpdateGraphNoVision(const PimResult& pim_result,
-                                     DepthMeasurement::ConstPtr maybe_depth_ptr = nullptr,
-                                     AttitudeMeasurement::ConstPtr maybe_attitude_ptr = nullptr,
-                                     const MultiRange& maybe_ranges = MultiRange(),
-                                     MagMeasurement::ConstPtr maybe_mag_ptr = nullptr);
-
-  // Add a new keypose using a keyframe from the stereo frontend. If pim_result_ptr is supplied,
-  // a preintegrated IMU factor is added also.
-  // NOTE: pim_result should be integrated in the BODY frame!
-  SmootherResult UpdateGraphWithVision(const VoResult& frontend_result,
-                                       PimResult::ConstPtr pim_result_ptr = nullptr,
-                                       DepthMeasurement::ConstPtr maybe_depth_ptr = nullptr,
-                                       AttitudeMeasurement::ConstPtr maybe_attitude_ptr = nullptr,
-                                       const MultiRange& maybe_ranges = MultiRange());
+  /**
+   * Update the graph with a variety of measurements. A new keypose is added and constrained based
+   * on the available sensor data. If VO is unavailable, a preintegrated IMU measurement is expected
+   * to fully constrain the 6-DOF pose.
+   *
+   * @param maybe_vo_ptr Visual landmarks tracks from the last keypose to now.
+   * @param pim_result Preintegrated IMU measurement, timestamp alignment should be handled by user.
+   * @param maybe_depth_ptr Barometer depth measurement.
+   * @param maybe_attitude_ptr Measurement of the gravity vector in the body frame.
+   * @param maybe_ranges A flexible number of range measurements, depending on the number of beacons.
+   * @param maybe_mag_ptr Magnetometer measurement.
+   * @return Smoothed state estimate at the newly added keypose.
+   */
+  SmootherResult Update(VoResult::ConstPtr maybe_vo_ptr,
+                        PimResult::ConstPtr pim_result,
+                        DepthMeasurement::ConstPtr maybe_depth_ptr = nullptr,
+                        AttitudeMeasurement::ConstPtr maybe_attitude_ptr = nullptr,
+                        const MultiRange& maybe_ranges = MultiRange(),
+                        MagMeasurement::ConstPtr maybe_mag_ptr = nullptr);
 
   // Threadsafe access to the latest result.
   SmootherResult GetResult();
@@ -128,8 +133,8 @@ class Smoother final {
   uid_t GetNextKeyposeId() { return next_kf_id_++; }
   uid_t GetPrevKeyposeId() { return next_kf_id_ - 1; }
 
-  // Reinitialize ISAM2, which clears any stored graph structure / factors.
-  void ResetISAM2();
+  // Reinitialize the smoother, which clears any stored graph structure / factors.
+  void ResetSmoother();
 
  private:
   Params params_;
@@ -139,7 +144,7 @@ class Smoother final {
 
   std::mutex result_lock_;
   SmootherResult result_;
-  gtsam::ISAM2 smoother_;
+  gtsam::IncrementalFixedLagSmoother smoother_;
 
   LmkToFactorMap lmk_to_factor_map_;
   SmartStereoFactorMap stereo_factors_;

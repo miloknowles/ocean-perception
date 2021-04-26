@@ -1,7 +1,7 @@
 #pragma once
 
-#include "core/cv_types.hpp"
-#include "core/image_util.hpp"
+#include "vision_core/cv_types.hpp"
+#include "vision_core/image_util.hpp"
 #include "core/eigen_types.hpp"
 
 namespace bm {

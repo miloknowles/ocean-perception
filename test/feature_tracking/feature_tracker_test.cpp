@@ -3,7 +3,7 @@
 
 #include <opencv2/highgui.hpp>
 
-#include "core/cv_types.hpp"
+#include "vision_core/cv_types.hpp"
 #include "core/timer.hpp"
 #include "feature_tracking/feature_detector.hpp"
 #include "feature_tracking/feature_tracker.hpp"

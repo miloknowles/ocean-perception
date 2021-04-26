@@ -1,8 +1,8 @@
 #include "gtest/gtest.h"
 
 #include "core/eigen_types.hpp"
-#include "core/pinhole_camera.hpp"
-#include "core/stereo_camera.hpp"
+#include "vision_core/pinhole_camera.hpp"
+#include "vision_core/stereo_camera.hpp"
 
 using namespace bm::core;
 

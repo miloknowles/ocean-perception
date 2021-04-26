@@ -39,43 +39,43 @@ void Smoother::Params::LoadParams(const YamlParser& parser)
 
   node = parser.GetNode("pose_prior_noise_model");
   YamlToVector<gtsam::Vector6>(node, tmp6);
-  pose_prior_noise_model = DiagonalModel::Sigmas(tmp6);
+  pose_prior_noise_model = DiagModel::Sigmas(tmp6);
 
   node = parser.GetNode("frontend_vo_noise_model");
   YamlToVector<gtsam::Vector6>(node, tmp6);
-  frontend_vo_noise_model = DiagonalModel::Sigmas(tmp6);
+  frontend_vo_noise_model = DiagModel::Sigmas(tmp6);
 
   double lmk_mono_reproj_err_sigma, lmk_stereo_reproj_err_sigma;
   parser.GetParam("lmk_mono_reproj_err_sigma", &lmk_mono_reproj_err_sigma);
   parser.GetParam("lmk_stereo_reproj_err_sigma", &lmk_stereo_reproj_err_sigma);
-  lmk_mono_factor_noise_model = IsotropicModel::Sigma(2, lmk_mono_reproj_err_sigma);
-  lmk_stereo_factor_noise_model = IsotropicModel::Sigma(3, lmk_stereo_reproj_err_sigma);
+  lmk_mono_factor_noise_model = IsoModel::Sigma(2, lmk_mono_reproj_err_sigma);
+  lmk_stereo_factor_noise_model = IsoModel::Sigma(3, lmk_stereo_reproj_err_sigma);
 
   double velocity_sigma;
   parser.GetParam("velocity_sigma", &velocity_sigma);
-  velocity_noise_model = IsotropicModel::Sigma(3, velocity_sigma);
+  velocity_noise_model = IsoModel::Sigma(3, velocity_sigma);
 
   double bias_prior_noise_model_sigma, bias_drift_noise_model_sigma;
   parser.GetParam("bias_prior_noise_model_sigma", &bias_prior_noise_model_sigma);
   parser.GetParam("bias_drift_noise_model_sigma", &bias_drift_noise_model_sigma);
-  bias_prior_noise_model = IsotropicModel::Sigma(6, bias_prior_noise_model_sigma);
-  bias_drift_noise_model = IsotropicModel::Sigma(6, bias_drift_noise_model_sigma);
+  bias_prior_noise_model = IsoModel::Sigma(6, bias_prior_noise_model_sigma);
+  bias_drift_noise_model = IsoModel::Sigma(6, bias_drift_noise_model_sigma);
 
   double depth_sensor_noise_model_sigma;
   parser.GetParam("depth_sensor_noise_model_sigma", &depth_sensor_noise_model_sigma);
-  depth_sensor_noise_model = IsotropicModel::Sigma(1, depth_sensor_noise_model_sigma);
+  depth_sensor_noise_model = IsoModel::Sigma(1, depth_sensor_noise_model_sigma);
 
   double atti_noise_model_sigma;
   parser.GetParam("attitude_noise_model_sigma", &atti_noise_model_sigma);
-  attitude_noise_model = IsotropicModel::Sigma(2, atti_noise_model_sigma);
+  attitude_noise_model = IsoModel::Sigma(2, atti_noise_model_sigma);
 
   double range_noise_model_sigma;
   parser.GetParam("range_noise_model_sigma", &range_noise_model_sigma);
-  range_noise_model = IsotropicModel::Sigma(1, range_noise_model_sigma);
+  range_noise_model = IsoModel::Sigma(1, range_noise_model_sigma);
 
   double beacon_noise_model_sigma;
   parser.GetParam("beacon_noise_model_sigma", &beacon_noise_model_sigma);
-  beacon_noise_model = IsotropicModel::Sigma(3, beacon_noise_model_sigma);
+  beacon_noise_model = IsoModel::Sigma(3, beacon_noise_model_sigma);
 
   parser.GetParam("/shared/mag0/scale_factor", &mag_scale_factor);
   YamlToVector<Vector3d>(parser.GetNode("/shared/mag0/sensor_bias"), mag_sensor_bias);
@@ -85,7 +85,7 @@ void Smoother::Params::LoadParams(const YamlParser& parser)
 
   double mag_noise_model_sigma;
   parser.GetParam("mag_noise_model_sigma", &mag_noise_model_sigma);
-  mag_noise_model = IsotropicModel::Sigma(3, mag_noise_model_sigma);
+  mag_noise_model = IsoModel::Sigma(3, mag_noise_model_sigma);
 
   Matrix4d body_T_imu, body_T_left, body_T_right, body_T_receiver, body_T_mag;
   YamlToStereoRig(parser.GetNode("/shared/stereo_forward"), stereo_rig, body_T_left, body_T_right);
@@ -157,7 +157,7 @@ void Smoother::ResetISAM2()
 
 void Smoother::Initialize(seconds_t timestamp,
                           const gtsam::Pose3& world_P_body,
-                          const gtsam::Vector3& v_world_body,
+                          const gtsam::Vector3& world_v_body,
                           const ImuBias& imu_bias,
                           bool imu_available)
 {
@@ -176,7 +176,7 @@ void Smoother::Initialize(seconds_t timestamp,
   gtsam::NonlinearFactorGraph new_factors;
   gtsam::Values new_values;
 
-  result_ = SmootherResult(id0, timestamp, world_P_body, imu_available, v_world_body, imu_bias,
+  result_ = SmootherResult(id0, timestamp, world_P_body, imu_available, world_v_body, imu_bias,
       params_.pose_prior_noise_model->covariance(),
       params_.velocity_noise_model->covariance(),
       params_.bias_prior_noise_model->covariance());
@@ -187,7 +187,7 @@ void Smoother::Initialize(seconds_t timestamp,
 
   // If IMU available, add inertial variables to the graph.
   if (imu_available) {
-    new_values.insert(V0_sym, v_world_body);
+    new_values.insert(V0_sym, world_v_body);
     new_values.insert(B0_sym, imu_bias);
     new_factors.addPrior(V0_sym, kZeroVelocity, params_.velocity_noise_model);
     new_factors.addPrior(B0_sym, kZeroImuBias, params_.bias_prior_noise_model);
@@ -223,7 +223,7 @@ static void AddImuFactors(uid_t keypose_id,
 
   // NOTE(milo): Gravity is corrected for in predict(), not during preintegration (NavState.cpp).
   const gtsam::NavState prev_state(last_smoother_result.world_P_body,
-                                   last_smoother_result.v_world_body);
+                                   last_smoother_result.world_v_body);
   const gtsam::NavState pred_state = pim_result.pim.predict(prev_state, last_smoother_result.imu_bias);
 
   // If no between factor from VO, we can use IMU to get an initial guess on the current pose.
@@ -562,7 +562,7 @@ SmootherResult Smoother::UpdateGraphWithVision(
     // https://ieeexplore.ieee.org/document/6696406?reload=true&arnumber=6696406
     const RobustModel::shared_ptr model = RobustModel::Create(
       mCauchy::Create(1.0),
-      DiagonalModel::Sigmas((gtsam::Vector6() << 0.5, 0.5, 0.5, 5.0, 5.0, 5.0).finished()));
+      DiagModel::Sigmas((gtsam::Vector6() << 0.5, 0.5, 0.5, 5.0, 5.0, 5.0).finished()));
 
     new_factors.push_back(gtsam::BetweenFactor<gtsam::Pose3>(
         last_keypose_sym, keypose_sym, body_P_odom, model));

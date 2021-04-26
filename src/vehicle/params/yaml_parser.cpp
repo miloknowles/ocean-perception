@@ -1,4 +1,4 @@
-#include "core/yaml_parser.hpp"
+#include "params/yaml_parser.hpp"
 
 namespace bm {
 namespace core {
@@ -8,6 +8,8 @@ namespace core {
 // a shared_params.yaml file.
 YamlParser::YamlParser(const std::string& filepath,
                        const std::string& shared_filepath)
+    : filepath_(filepath),
+      shared_filepath_(shared_filepath)
 {
   CHECK(!filepath.empty()) << "Empty filepath given to YamlParser!" << std::endl;
   fs_.open(filepath, cv::FileStorage::READ);
@@ -36,9 +38,13 @@ YamlParser::~YamlParser()
 
 // Construct from a YAML node.
 YamlParser::YamlParser(const cv::FileNode& root_node,
-                       const cv::FileNode& shared_node)
+                       const cv::FileNode& shared_node,
+                       const std::string& filepath,
+                       const std::string& shared_filepath)
     : root_node_(root_node),
-      shared_node_(shared_node) {}
+      shared_node_(shared_node),
+      filepath_(filepath),
+      shared_filepath_(shared_filepath) {}
 
 
 // Get a YAML node relative to the root. This is used for constructing params that are a subtree.
@@ -46,14 +52,10 @@ cv::FileNode YamlParser::GetNode(const std::string& id) const
 {
   std::string maybe_suffix;
   if (CheckIfSharedId(id, maybe_suffix)) {
-    CHECK(!shared_node_.empty())
-        << "GetParam: shared_node_ is empty. Was the parser constructed with a shared node?"
-        << "\n  id: " << id << std::endl;
+    CHECK(!shared_node_.empty()) << HelpfulError(id) << " Was the parser constructed with a shared node?";
     return GetNodeHelper(shared_node_, maybe_suffix);
   } else {
-    CHECK(!root_node_.empty())
-        << "GetParam: root_node_ is empty. Was the parser constructed?"
-        << "\n  id: " << id << std::endl;
+    CHECK(!root_node_.empty()) << HelpfulError(id) << " GetParam: root_node_ is empty. Was the parser constructed?";
     return GetNodeHelper(root_node_, id);
   }
 }
@@ -61,38 +63,52 @@ cv::FileNode YamlParser::GetNode(const std::string& id) const
 
 YamlParser YamlParser::Subtree(const std::string& id) const
 {
-  return YamlParser(GetNode(id), shared_node_);
+  // Pass in the filepath and shared_filepath for debugging purposes.
+  return YamlParser(GetNode(id), shared_node_, filepath_, shared_filepath_);
 }
 
 
 // Recursively finds a node with "id", starting from the "root_node".
 cv::FileNode YamlParser::GetNodeHelper(const cv::FileNode& root_node, const std::string& id) const
 {
-  CHECK(!id.empty()) << "GetParam: empty id given" << std::endl;
-  CHECK_NE(id[0], '/') << "Don't use leading slash!" << std::endl;
+  CHECK(!id.empty()) << HelpfulError(id) << " GetParam: empty id given" << std::endl;
+  CHECK_NE(id[0], '/') << HelpfulError(id) << " Don't use leading slash!" << std::endl;
 
   const size_t slash_idx = id.find_first_of("/");
 
   // CASE CASE: id is a leaf in the param tree.
   if (slash_idx == std::string::npos) {
     const cv::FileNode& file_handle = root_node[id];
-    CHECK_NE(file_handle.type(), cv::FileNode::NONE) << "GetParam: Missing id: " << id.c_str() << std::endl;
+    CHECK_NE(file_handle.type(), cv::FileNode::NONE) << HelpfulError(id) << " GetParam: Missing id: " << id << std::endl;
     return file_handle;
 
   // RECURSIVE CASE: id is a map (subtree) with params nested.
   } else {
-    CHECK_GE(slash_idx, 1) << "GetParam: should have nonzero substr before /"
+    CHECK_GE(slash_idx, 1) << HelpfulError(id) << " GetParam: should have nonzero substr before /"
         << "id: " << id.c_str() << " slash_idx: " << slash_idx << std::endl;
     const std::string& subtree_root_str = id.substr(0, slash_idx);
     const cv::FileNode& subtree_root = root_node[subtree_root_str];
-    CHECK_NE(subtree_root.type(), cv::FileNode::NONE)
-        << "GetParam: Missing (subtree) id: " << subtree_root_str.c_str() << std::endl;
+    CHECK_NE(subtree_root.type(), cv::FileNode::NONE) << HelpfulError(id)
+        << " GetParam: Missing (subtree) id: " << subtree_root_str.c_str() << std::endl;
     const std::string& subtree_relative_id = id.substr(slash_idx + 1, std::string::npos);
-    CHECK(!subtree_relative_id.empty())
-        << "GetParam: no recursive id within subtree: " << subtree_root_str
-        << "Make sure id doesn't have a trailing slash." << std::endl;
+    CHECK(!subtree_relative_id.empty()) << HelpfulError(id)
+        << " GetParam: no recursive id within subtree: " << subtree_root_str
+        << " Make sure id doesn't have a trailing slash." << std::endl;
     return GetNodeHelper(subtree_root, subtree_relative_id);
   }
+}
+
+
+std::string YamlParser::HelpfulError(const std::string& id) const
+{
+  std::stringstream ss;
+  ss << "\n" << "** YAML PARSING ERROR **" << std::endl;
+  ss << " Error while trying to parse id: " << id << std::endl;
+  ss << " Params file:    " << filepath_ << std::endl;
+  ss << " Shared file:    " << shared_filepath_ << std::endl;
+  ss << " Root node:      " << root_node_.name() << std::endl;
+  ss << " Shared node:    " << shared_node_.name() << std::endl;
+  return ss.str();
 }
 
 
@@ -154,13 +170,25 @@ void YamlToStereoRig(const cv::FileNode& node,
   YamlToCameraModel(cam_left_node, cam_left);
   YamlToCameraModel(cam_right_node, cam_right);
 
-  YamlToMatrix<Matrix4d>(cam_left_node["body_T_cam"], body_T_left);
-  YamlToMatrix<Matrix4d>(cam_right_node["body_T_cam"], body_T_right);
-  CHECK(body_T_left(3, 3) == 1.0) << "body_T_left is invalid" << std::endl;
-  CHECK(body_T_right(3, 3) == 1.0) << "body_T_right is invalid" << std::endl;
+  body_T_left = YamlToTransform(cam_left_node["body_T_cam"]);
+  body_T_right = YamlToTransform(cam_right_node["body_T_cam"]);
 
   const Matrix4d left_T_right = body_T_left.inverse() * body_T_right;
   stereo_rig = StereoCamera(cam_left, cam_right, Transform3d(left_T_right));
+}
+
+
+Matrix4d YamlToTransform(const cv::FileNode& node)
+{
+  Matrix4d T;
+  YamlToMatrix(node, T);
+
+  CHECK_EQ(1.0, T(3, 3)) << "Transform matrix should have 1.0 as lower right entry" << std::endl;
+
+  const Matrix3d& R = T.block<3, 3>(0, 0);
+  CHECK(R.isApprox(R.transpose())) << "Rotation matrix should be symmetric" << std::endl;
+
+  return T;
 }
 
 

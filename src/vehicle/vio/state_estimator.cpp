@@ -14,8 +14,9 @@ void StateEstimator::Params::LoadParams(const YamlParser& parser)
 {
   stereo_frontend_params = StereoFrontend::Params(parser.Subtree("StereoFrontend"));
   imu_manager_params = ImuManager::Params(parser.Subtree("ImuManager"));
-  smoother_params = Smoother::Params(parser.Subtree("SmootherParams"));
-  filter_params = StateEkf::Params(parser.Subtree("StateEkfParams"));
+  // smoother_params = Smoother::Params(parser.Subtree("SmootherParams"));
+  smoother_params = FixedLagSmoother::Params(parser.Subtree("FixedLagSmoother"));
+  filter_params = StateEkf::Params(parser.Subtree("StateEkf"));
 
   parser.GetParam("max_size_raw_stereo_queue", &max_size_raw_stereo_queue);
   parser.GetParam("max_size_smoother_vo_queue", &max_size_smoother_vo_queue);
@@ -43,14 +44,11 @@ void StateEstimator::Params::LoadParams(const YamlParser& parser)
   parser.GetParam("filter_use_range", &filter_use_range);
 
   YamlToVector<Vector3d>(parser.GetNode("/shared/n_gravity"), n_gravity);
-  Matrix4d body_T_imu, body_T_left, body_T_right;
-  YamlToMatrix<Matrix4d>(parser.GetNode("/shared/imu0/body_T_imu"), body_T_imu);
+  Matrix4d body_T_left, body_T_right;
   YamlToStereoRig(parser.GetNode("/shared/stereo_forward"), stereo_rig, body_T_left, body_T_right);
 
-  body_P_imu = gtsam::Pose3(body_T_imu);
+  body_P_imu = gtsam::Pose3(YamlToTransform(parser.GetNode("/shared/imu0/body_T_imu")));
   body_P_cam = gtsam::Pose3(body_T_left);
-  CHECK(body_T_imu(3, 3) == 1.0) << "body_T_imu is invalid" << std::endl;
-  CHECK(body_T_left(3, 3) == 1.0) << "body_T_cam is invalid" << std::endl;
 }
 
 
@@ -295,7 +293,8 @@ void StateEstimator::UpdateSmootherMode(SmootherMode mode)
 
 void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_body)
 {
-  Smoother smoother(params_.smoother_params);
+  // Smoother smoother(params_.smoother_params);
+  FixedLagSmoother smoother(params_.smoother_params);
 
   //====================================== INITIALIZATION ==========================================
   bool initialized = false;
@@ -367,9 +366,6 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
         // Decide when to trigger the next keypose: if range is available prefer that. Otherwise IMU.
         const seconds_t to_time = can_add_range_keypose ? smoother_range_manager_.Newest() : smoother_imu_manager_.Newest();
 
-        // LOG_IF(INFO, can_add_range_keypose) << "Adding range keypose" << std::endl;
-        // LOG_IF(INFO, !can_add_range_keypose) << "Adding IMU keypose" << std::endl;
-
         PimResult::Ptr maybe_pim_ptr;
         DepthMeasurement::Ptr maybe_depth_ptr;
         AttitudeMeasurement::Ptr maybe_attitude_ptr;
@@ -387,14 +383,15 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
             params_.allowed_misalignment_mag);
 
         Timer timer(true);
-        OnSmootherResult(smoother.UpdateGraphNoVision(
-            *maybe_pim_ptr,
+        OnSmootherResult(smoother.Update(
+            nullptr,
+            maybe_pim_ptr,
             maybe_depth_ptr,
             maybe_attitude_ptr,
             maybe_ranges,
             maybe_mag_ptr));
-        stats_.Add("UpdateGraphNoVision", timer.Elapsed().milliseconds());
-        stats_.Print("UpdateGraphNoVision", params_.stats_print_interval_sec);
+        stats_.Add("SmootherUpdateNoVision", timer.Elapsed().milliseconds());
+        stats_.Print("SmootherUpdateNoVision", params_.stats_print_interval_sec);
       }
     // VO AVAILABLE ==> Add a keyframe and smooth.
     } else {
@@ -417,12 +414,15 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
           params_.allowed_misalignment_range,
           params_.allowed_misalignment_mag);
 
-      OnSmootherResult(smoother.UpdateGraphWithVision(
-          frontend_result,
+      Timer timer(true);
+      OnSmootherResult(smoother.Update(
+          VoResult::ConstPtr(&frontend_result),
           maybe_pim_ptr,
           maybe_depth_ptr,
           maybe_attitude_ptr,
           maybe_ranges));
+      stats_.Add("SmootherUpdateWithVision", timer.Elapsed().milliseconds());
+      stats_.Print("SmootherUpdateWithVision", params_.stats_print_interval_sec);
     }
 
   } // end while (!is_shutdown)
@@ -518,7 +518,7 @@ void StateEstimator::FilterLoop(seconds_t t0, const gtsam::Pose3& P0_world_body)
 
         filter.Initialize(StateStamped(result.timestamp, State(
             result.world_P_body.translation(),
-            result.v_world_body,
+            result.world_v_body,
             Vector3d::Zero(),
             result.world_P_body.rotation().toQuaternion().normalized(),
             Vector3d::Zero(),
@@ -532,7 +532,7 @@ void StateEstimator::FilterLoop(seconds_t t0, const gtsam::Pose3& P0_world_body)
                                 result.world_P_body.translation(),
                                 result.cov_pose);
         filter.PredictAndUpdate(result.timestamp,
-                                result.v_world_body,
+                                result.world_v_body,
                                 result.cov_vel);
       }
 

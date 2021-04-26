@@ -2,7 +2,7 @@
 
 #include <opencv2/calib3d.hpp>
 
-#include "core/cv_types.hpp"
+#include "vision_core/cv_types.hpp"
 
 namespace bm {
 namespace stereo_matching {

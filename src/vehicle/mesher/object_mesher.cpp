@@ -1,14 +1,15 @@
 #include <glog/logging.h>
 
 #include <opencv2/imgproc.hpp>
+#include <opencv2/highgui.hpp>
 
-#include "core/timer.hpp"
-#include "core/image_util.hpp"
 #include "core/math_util.hpp"
-#include "core/color_mapping.hpp"
+#include "core/timer.hpp"
 #include "feature_tracking/visualization_2d.hpp"
 #include "mesher/neighbor_grid.hpp"
 #include "mesher/object_mesher.hpp"
+#include "vision_core/color_mapping.hpp"
+#include "vision_core/image_util.hpp"
 
 namespace bm {
 namespace mesher {

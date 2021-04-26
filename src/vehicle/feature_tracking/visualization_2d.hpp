@@ -2,7 +2,7 @@
 
 #include <vector>
 
-#include "core/cv_types.hpp"
+#include "vision_core/cv_types.hpp"
 
 namespace bm {
 namespace ft {

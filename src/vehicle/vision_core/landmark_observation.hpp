@@ -2,7 +2,7 @@
 
 #include "core/timestamp.hpp"
 #include "core/uid.hpp"
-#include "core/cv_types.hpp"
+#include "vision_core/cv_types.hpp"
 
 namespace bm {
 namespace core {

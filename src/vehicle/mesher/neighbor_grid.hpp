@@ -3,7 +3,7 @@
 #include <vector>
 
 #include "core/uid.hpp"
-#include "core/cv_types.hpp"
+#include "vision_core/cv_types.hpp"
 #include "core/eigen_types.hpp"
 #include "core/grid_lookup.hpp"
 

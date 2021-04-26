@@ -2,9 +2,9 @@
 
 #include <vector>
 
-#include "core/params_base.hpp"
+#include "params/params_base.hpp"
 #include "core/macros.hpp"
-#include "core/cv_types.hpp"
+#include "vision_core/cv_types.hpp"
 
 namespace bm {
 namespace ft {

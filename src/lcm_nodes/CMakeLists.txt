@@ -27,6 +27,8 @@ target_link_libraries(object_mesher_lcm
   ${OpenCV_LIBRARIES}
   ${PROJECT_NAME}_lcm_util
   ${PROJECT_NAME}_core
+  ${PROJECT_NAME}_vision_core
+  ${PROJECT_NAME}_params
   ${PROJECT_NAME}_ft
   ${PROJECT_NAME}_mesher
   vehicle_lcmtypes_cpp

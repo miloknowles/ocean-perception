@@ -3,13 +3,13 @@
 #include <thread>
 #include <atomic>
 
-#include "core/params_base.hpp"
+#include "params/params_base.hpp"
 #include "core/macros.hpp"
 #include "core/eigen_types.hpp"
-#include "core/cv_types.hpp"
+#include "vision_core/cv_types.hpp"
 #include "core/axis3.hpp"
 #include "core/thread_safe_queue.hpp"
-#include "core/stereo_image.hpp"
+#include "vision_core/stereo_image.hpp"
 #include "core/imu_measurement.hpp"
 #include "core/depth_measurement.hpp"
 #include "core/range_measurement.hpp"
@@ -20,7 +20,9 @@
 #include "vio/imu_manager.hpp"
 #include "vio/state_estimator_util.hpp"
 #include "vio/state_ekf.hpp"
-#include "vio/smoother.hpp"
+// #include "vio/smoother.hpp"
+#include "vio/smoother_result.hpp"
+#include "vio/fixed_lag_smoother.hpp"
 
 #include <gtsam/geometry/Pose3.h>
 
@@ -57,7 +59,8 @@ class StateEstimator final {
 
     StereoFrontend::Params stereo_frontend_params;
     ImuManager::Params imu_manager_params;
-    Smoother::Params smoother_params;
+    // Smoother::Params smoother_params;
+    FixedLagSmoother::Params smoother_params;
     StateEkf::Params filter_params;
 
     int max_size_raw_stereo_queue = 100;      // Images for the stereo frontend to process.

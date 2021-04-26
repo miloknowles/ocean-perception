@@ -35,7 +35,7 @@ StateEstimator:
   max_size_smoother_vo_queue: 100
   max_size_smoother_imu_queue: 1000
   max_size_smoother_depth_queue: 100
-  max_size_smoother_range_queue: 100
+  max_size_smoother_range_qaueue: 100
   max_size_smoother_mag_queue: 100
   max_size_filter_vo_queue: 100
   max_size_filter_imu_queue: 1000

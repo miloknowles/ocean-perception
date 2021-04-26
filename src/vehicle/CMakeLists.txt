@@ -2,6 +2,8 @@
 # add_subdirectory(./stereo_matching)
 # add_subdirectory(./tag_detector)
 add_subdirectory(./core)
+add_subdirectory(./vision_core)
+add_subdirectory(./params)
 add_subdirectory(./dataset)
 add_subdirectory(./feature_tracking)
 add_subdirectory(./lcm_util)
