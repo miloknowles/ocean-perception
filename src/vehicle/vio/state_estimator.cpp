@@ -14,7 +14,6 @@ void StateEstimator::Params::LoadParams(const YamlParser& parser)
 {
   stereo_frontend_params = StereoFrontend::Params(parser.Subtree("StereoFrontend"));
   imu_manager_params = ImuManager::Params(parser.Subtree("ImuManager"));
-  // smoother_params = Smoother::Params(parser.Subtree("SmootherParams"));
   smoother_params = FixedLagSmoother::Params(parser.Subtree("FixedLagSmoother"));
   filter_params = StateEkf::Params(parser.Subtree("StateEkf"));
 
@@ -294,7 +293,6 @@ void StateEstimator::UpdateSmootherMode(SmootherMode mode)
 
 void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_body)
 {
-  // Smoother smoother(params_.smoother_params);
   FixedLagSmoother smoother(params_.smoother_params);
 
   //====================================== INITIALIZATION ==========================================
@@ -510,10 +508,11 @@ void StateEstimator::FilterLoop(seconds_t t0, const gtsam::Pose3& P0_world_body)
       const double position_err = (result.world_P_body.translation() - filter.GetState().state.t).norm();
       const double rotation_err = (result.world_P_body.rotation().toQuaternion().angularDistance(filter.GetState().state.q));
 
-      // If the filter has diverged, do a hard reset to the smoother pose.
-      if (position_err > params_.max_filter_divergence_position ||
-          rotation_err > params_.max_filter_divergence_rotation) {
+      const bool filter_has_diverged = (position_err > params_.max_filter_divergence_position ||
+                                        rotation_err > params_.max_filter_divergence_rotation);
 
+      // If the filter has diverged, do a hard reset to the smoother pose.
+      if (filter_has_diverged) {
         LOG(INFO) << "Filter has diverged from smoother, doing a hard reset" << std::endl;
 
         StateCovariance S = 1.0*StateCovariance::Identity();

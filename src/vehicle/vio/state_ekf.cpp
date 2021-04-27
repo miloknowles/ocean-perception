@@ -1,5 +1,7 @@
 #include "vio/state_ekf.hpp"
 
+#include <gtsam/geometry/Pose3.h>
+
 namespace bm {
 namespace vio {
 
@@ -61,7 +63,7 @@ StateEkf::StateEkf(const Params& params)
 {
   ImuManager::Params imu_manager_params;
   imu_manager_params.max_queue_size = params_.stored_imu_max_queue_size;
-  imu_history_ = std::shared_ptr<ImuManager>(new ImuManager(imu_manager_params));
+  imu_history_ = std::shared_ptr<ImuManager>(new ImuManager(imu_manager_params, "filter_imu_history"));
 
   // IMU measurement noise: [ wx wy wz ax ay az ]
   R_imu_.block<3, 3>(0, 0) =  Matrix3d::Identity() * std::pow(params_.sigma_R_imu_w, 2.0);
@@ -117,6 +119,7 @@ void StateEkf::ReapplyImu()
 
 // [1] https://bicr.atr.jp//~aude/publications/ras99.pdf
 // [2] https://en.wikipedia.org/wiki/Extended_Kalman_filter
+// [3] https://stackoverflow.com/questions/24197182/efficient-quaternion-angular-velocity/24201879#24201879
 static State Predict(const State& x0,
                      double dt,
                      const Matrix15d& Q)
@@ -128,19 +131,19 @@ static State Predict(const State& x0,
   const Vector3d w1 = x0.w;
 
   // Apply a rotation due to angular velocity over dt using the exponential map.
-  // q_t+1 = delta_q * q_t where delta_q = exp(1/2 * dt * w)
-  const Vector3d rotation_dt = dt * x0.w;
-  const double angle = rotation_dt.norm();
-  const Vector3d axis = rotation_dt.normalized(); // NOTE(milo): Eigen takes care of zero angle case.
-
-  const Quaterniond q1 = Quaterniond(AngleAxisd(angle, axis)) * x0.q;
+  // q1 = dq * q0 where dq = exp(dt * w).
+  const Vector3d drot = dt * x0.w;
+  const double angle = drot.norm();
+  const Vector3d axis = drot.normalized(); // NOTE(milo): Eigen takes care of zero angle case.
+  const Quaterniond dq = Quaterniond(AngleAxisd(angle, axis));
+  const Quaterniond q1 = dq * x0.q;
 
   // Update the covariance with 1st-order propagation and additive process noise.
   Matrix15d F = Matrix15d::Identity();
   F.block<3, 3>(t_row, v_row) = dt * Matrix3d::Identity();
   F.block<3, 3>(t_row, a_row) = 0.5*dt*dt * Matrix3d::Identity();
   F.block<3, 3>(v_row, a_row) = dt * Matrix3d::Identity();
-  F.block<3, 3>(uq_row, uq_row) = AngleAxisd(angle, axis).toRotationMatrix();
+  F.block<3, 3>(uq_row, uq_row) = dq.toRotationMatrix();
 
   // Compute d(uq)/dw (see (21) in [1]). If angle is zero, then the derivative is zero.
   if (angle > 1e-5) {
@@ -204,58 +207,130 @@ static State GenericKalmanUpdate(const State& x,
 
   // https://stats.stackexchange.com/questions/50487/possible-causes-for-the-state-noise-variance-to-become-negative-in-a-kalman-filt
   const Matrix15d A = (Matrix15d::Identity() - K*H);
-  const Matrix15d P_update = A*P*A.transpose() + K*R*K.transpose();
+  const Matrix15d S_new = A*P*A.transpose() + K*R*K.transpose();
 
-  CHECK(DiagonalNonnegative(P_update)) << "New covariance matrix is not PSD!\n" << P_update << std::endl;
+  LOG(INFO) << "GenericKalmanUpdate" << std::endl;
+  std::cout << "P:\n" << P << std::endl;
+  std::cout << "R:\n" << R << std::endl;
+  std::cout << "S:\n" << S << std::endl;
+  std::cout << "K:\n" << K << std::endl;
+  std::cout << "A:\n" << A << std::endl;
+  std::cout << "APA:\n" << A*P*A.transpose() << std::endl;
+  std::cout << "KRK:\n" << K*R*K.transpose() << std::endl;
+  std::cout << "S_new:\n" << S_new << std::endl;
 
-  return State(x.ToVector() + (K*y).cwiseProduct(mask), P_update);
+  CHECK(DiagonalNonnegative(S_new)) << "New covariance matrix is not PSD!\n" << S_new << std::endl;
+
+  return State(x.ToVector() + (K*y).cwiseProduct(mask), S_new);
 }
 
 
+// static State UpdatePose(const State& x,
+//                         const Quaterniond& world_q_body,
+//                         const Vector3d& world_t_body,
+//                         const Matrix6d& R_pose)
+// {
+//   // To be consistent with the way GTSAM orders pose variables:
+//   // [ rx, ry, rz, tx, ty, tz ]
+//   Matrix6x15 H = Matrix6x15::Zero();
+//   H.block<3, 3>(0, uq_row) = Matrix3d::Identity();
+//   H.block<3, 3>(3, t_row) = Matrix3d::Identity();
+
+//   const Matrix15d P = x.S;
+//   const Matrix6d S = H*P*H.transpose() + R_pose;
+//   const Matrix15x6 K = P*H.transpose()*S.inverse();
+
+//   // NOTE(milo): We compute the relative rotation between the measured world_q_body and predicted
+//   // state.q. Then, we express that error in the TANGENT space (angle-axis), where it is valid to
+//   // apply a linear Kalman gain. Finally, we take the gain-weighted tangent space differential
+//   // rotation (dr), convert it back to a quaternion, and apply it.
+//   // q_pred_true = q_pred_world * q_world_true = q_world_pred.inverse() * q_world_true
+//   const Quaterniond q_err = x.q.inverse() * world_q_body;
+//   const AngleAxisd uq_err(q_err);
+
+//   Vector6d y;
+//   y.block<3, 1>(0, 0) = uq_err.angle() * uq_err.axis();
+//   y.block<3, 1>(3, 0) = (world_t_body - x.t);
+
+//   const Vector15d dx = K*y;
+//   const AngleAxisd dr(dx.block<3, 1>(uq_row, 0).norm(), dx.block<3, 1>(uq_row, 0).normalized());
+
+//   State xu = x;
+//   xu.t += dx.block<3, 1>(3, 0);
+//   xu.q = xu.q * Quaterniond(dr);
+
+//   // https://stats.stackexchange.com/questions/50487/possible-causes-for-the-state-noise-variance-to-become-negative-in-a-kalman-filt
+//   const Matrix15d A = (Matrix15d::Identity() - K*H);
+//   const Matrix15d P_update = A*P*A.transpose() + K*R_pose*K.transpose();
+//   xu.S = P_update;
+
+//   CHECK(DiagonalNonnegative(xu.S)) << "New covariance matrix is not PSD!\n" << xu.S << std::endl;
+
+//   return xu;
+// }
+
+
 static State UpdatePose(const State& x,
-                        const Quaterniond& q_world_body,
-                        const Vector3d& world_T_body,
+                        const Quaterniond& world_q_body,
+                        const Vector3d& world_t_body,
                         const Matrix6d& R_pose)
 {
-  // To be consistent with the way GTSAM orders pose variables:
-  // [ rx, ry, rz, tx, ty, tz ]
+  const gtsam::Pose3 world_P_body = gtsam::Pose3(gtsam::Rot3(x.q), gtsam::Point3(x.t));
+  const gtsam::Pose3 measured = gtsam::Pose3(gtsam::Rot3(world_q_body), gtsam::Point3(world_t_body));
+
+  // Manifold equivalent of h(x) - z.
+  // NOTE(milo): Using GTSAM convention of [ rx rx rz tx ty tz ].
+  const Vector6d error_tangent = world_P_body.localCoordinates(measured);
+
   Matrix6x15 H = Matrix6x15::Zero();
   H.block<3, 3>(0, uq_row) = Matrix3d::Identity();
   H.block<3, 3>(3, t_row) = Matrix3d::Identity();
 
-  const Matrix15d P = x.S;
+  // Matrix6d P = Matrix6d::Zero();
+  // P.block<3, 3>(3, 3) = x.S.block<3, 3>(t_row, t_row);
+  // P.block<3, 3>(0, 0) = x.S.block<3, 3>(uq_row, uq_row);
+  // P.block<3, 3>(0, 3) = x.S.block<3, 3>(uq_row, t_row);
+  // P.block<3, 3>(3, 0) = x.S.block<3, 3>(t_row, uq_row);
+  // Symmetrize(P);
+  Matrix15d P = x.S;
+
   const Matrix6d S = H*P*H.transpose() + R_pose;
   const Matrix15x6 K = P*H.transpose()*S.inverse();
 
-  // NOTE(milo): We compute the relative rotation between the measured q_world_body and predicted
-  // state.q. Then, we express that error in the TANGENT space (angle-axis), where it is valid to
-  // apply a linear Kalman gain. Finally, we take the gain-weighted tangent space differential
-  // rotation (dr), convert it back to a quaternion, and apply it.
-  // q_pred_true = q_pred_world * q_world_true = q_world_pred.inverse() * q_world_true
-  const Quaterniond q_err = x.q.inverse() * q_world_body;
-  const AngleAxisd uq_err(q_err);
+  const Vector15d dx = K*error_tangent;
+  Vector6d dx_tangent;
+  dx_tangent.head(3) = dx.middleRows<3>(uq_row);
+  dx_tangent.tail(3) = dx.middleRows<3>(t_row);
+  const gtsam::Pose3 dx_manifold = gtsam::Pose3::Retract(dx_tangent);
 
-  Vector6d y;
-  y.block<3, 1>(0, 0) = uq_err.angle() * uq_err.axis();
-  y.block<3, 1>(3, 0) = (world_T_body - x.t);
-
-  const Vector15d dx = K*y;
-  const AngleAxisd dr(dx.block<3, 1>(uq_row, 0).norm(), dx.block<3, 1>(uq_row, 0).normalized());
+  const gtsam::Pose3 world_P_body_new = world_P_body * dx_manifold;
 
   State xu = x;
-  xu.t += dx.block<3, 1>(3, 0);
-  xu.q = xu.q * Quaterniond(dr);
+  xu.t = world_P_body_new.translation();
+  xu.q = world_P_body_new.rotation().toQuaternion().normalized();
 
   // https://stats.stackexchange.com/questions/50487/possible-causes-for-the-state-noise-variance-to-become-negative-in-a-kalman-filt
   const Matrix15d A = (Matrix15d::Identity() - K*H);
-  const Matrix15d P_update = A*P*A.transpose() + K*R_pose*K.transpose();
-  xu.S = P_update;
+  const Matrix15d S_new = A*P*A.transpose() + K*R_pose*K.transpose();
 
+  // std::cout << "UpdatePose" << std::endl;
+  // std::cout << "P:\n" << P << std::endl;
+  // std::cout << "R:\n" << R_pose << std::endl;
+  // std::cout << "S:\n" << S << std::endl;
+  // std::cout << "K:\n" << K << std::endl;
+  // std::cout << "A:\n" << A << std::endl;
+  // std::cout << "S_new:\n" << S_new << std::endl;
+
+  xu.S.block<3, 3>(t_row, t_row) = S_new.block<3, 3>(3, 3);
+  xu.S.block<3, 3>(t_row, uq_row) = S_new.block<3, 3>(3, 0);
+  xu.S.block<3, 3>(uq_row, t_row) = S_new.block<3, 3>(0, 3);
+  xu.S.block<3, 3>(uq_row, uq_row) = S_new.block<3, 3>(0, 0);
+
+  Symmetrize(xu.S);
   CHECK(DiagonalNonnegative(xu.S)) << "New covariance matrix is not PSD!\n" << xu.S << std::endl;
 
   return xu;
 }
-
 
 void StateEkf::Initialize(const StateStamped& state, const ImuBias& imu_bias)
 {
@@ -272,6 +347,7 @@ void StateEkf::Initialize(const StateStamped& state, const ImuBias& imu_bias)
 
 StateStamped StateEkf::PredictAndUpdate(const ImuMeasurement& imu, bool store)
 {
+  LOG(INFO) << "PredictAndUpdate IMU" << std::endl;
   // PREDICT STEP: Simulate the system forward to the current timestep.
   const seconds_t t_new = ConvertToSeconds(imu.timestamp);
   const State& x = PredictIfTimeElapsed(t_new);
@@ -314,6 +390,7 @@ StateStamped StateEkf::PredictAndUpdate(seconds_t timestamp,
                                         const Vector3d& world_v_body,
                                         const Matrix3d& R_velocity)
 {
+  LOG(INFO) << "velocity update" << std::endl;
   // PREDICT STEP: Simulate the system forward to the current timestep.
   const State& x = PredictIfTimeElapsed(timestamp);
 
@@ -336,7 +413,7 @@ StateStamped StateEkf::PredictAndUpdate(seconds_t timestamp,
 
 
 StateStamped StateEkf::PredictAndUpdate(seconds_t timestamp,
-                                        const Quaterniond& q_world_body,
+                                        const Quaterniond& world_q_body,
                                         const Vector3d& world_T_body,
                                         const Matrix6d& R_pose)
 {
@@ -346,7 +423,7 @@ StateStamped StateEkf::PredictAndUpdate(seconds_t timestamp,
   // UPDATE STEP: Compute redidual errors, Kalman gain, and apply update.
   Matrix6d R_pose_safe = R_pose;
   Symmetrize(R_pose_safe);
-  const State& xu = UpdatePose(xp, q_world_body, world_T_body, R_pose_safe);
+  const State& xu = UpdatePose(xp, world_q_body, world_T_body, R_pose_safe);
 
   return ThreadsafeSetState(timestamp, xu);
 }

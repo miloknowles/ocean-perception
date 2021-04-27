@@ -84,14 +84,14 @@ struct State final
     return vector;
   }
 
-  void Print() const
+  void Print(bool print_covariance = false) const
   {
     std::cout << "t: " << t.transpose() << std::endl;
     std::cout << "v: " << v.transpose() << std::endl;
     std::cout << "a: " << a.transpose() << std::endl;
     std::cout << "q: " << q.vec().transpose() << std::endl;
     std::cout << "w: " << w.transpose() << std::endl;
-    std::cout << "S:\n" << S << std::endl;
+    if (print_covariance) std::cout << "S:\n" << S << std::endl;
   }
 };
 
@@ -151,7 +151,6 @@ class StateEkf final {
     Matrix4d body_T_imu = Matrix4d::Identity();
     Matrix4d body_T_cam = Matrix4d::Identity();
     Matrix4d body_T_receiver = Matrix4d::Identity();
-
 
    private:
     void LoadParams(const YamlParser& parser) override;
