@@ -89,7 +89,7 @@ StateEstimator:
   StateEkf:
     # Process noise standard deviations.
     # NOTE(milo): Set these values really high to make the filter follow the smoother more closely!
-    sigma_Q_t: 0.05     # translation (m/sec)
+    sigma_Q_t: 0.1     # translation (m/sec)
     sigma_Q_v: 0.05     # velocity (m/sec/sec)
     sigma_Q_a: 0.05     # acceleration (m/sec^2/sec)
     sigma_Q_uq: 0.05    # orientation (3D tangent space) (rad/sec)

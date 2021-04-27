@@ -209,19 +209,10 @@ static State GenericKalmanUpdate(const State& x,
   const Matrix15d A = (Matrix15d::Identity() - K*H);
   const Matrix15d S_new = A*P*A.transpose() + K*R*K.transpose();
 
-  // LOG(INFO) << "GenericKalmanUpdate" << std::endl;
-  // std::cout << "P:\n" << P << std::endl;
-  // std::cout << "R:\n" << R << std::endl;
-  // std::cout << "S:\n" << S << std::endl;
-  // std::cout << "K:\n" << K << std::endl;
-  // std::cout << "A:\n" << A << std::endl;
-  // std::cout << "APA:\n" << A*P*A.transpose() << std::endl;
-  // std::cout << "KRK:\n" << K*R*K.transpose() << std::endl;
-  // std::cout << "S_new:\n" << S_new << std::endl;
-
   CHECK(DiagonalNonnegative(S_new)) << "New covariance matrix is not PSD!\n" << S_new << std::endl;
 
-  return State(x.ToVector() + (K*y).cwiseProduct(mask), S_new);
+  // return State(x.ToVector() + (K*y).cwiseProduct(mask), S_new);
+  return State(x.ToVector() + K*y, S_new);
 }
 
 
