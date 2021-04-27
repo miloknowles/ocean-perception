@@ -395,7 +395,7 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
             maybe_ranges,
             maybe_mag_ptr));
         stats_.Add("SmootherUpdateNoVision", timer.Elapsed().milliseconds());
-        stats_.Print("SmootherUpdateNoVision", params_.stats_print_interval_sec);
+        stats_.Print("SmootherUpdateNoVision", "ms", params_.stats_print_interval_sec);
       }
     // VO AVAILABLE ==> Add a keyframe and smooth.
     } else {
@@ -427,7 +427,7 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
           maybe_attitude_ptr,
           maybe_ranges));
       stats_.Add("SmootherUpdateWithVision", timer.Elapsed().milliseconds());
-      stats_.Print("SmootherUpdateWithVision", params_.stats_print_interval_sec);
+      stats_.Print("SmootherUpdateWithVision", "ms", params_.stats_print_interval_sec);
     }
 
   } // end while (!is_shutdown)

@@ -44,9 +44,12 @@ class StatsTracker final {
 
   StatsTracker(const std::string& tracker_name, size_t k);
 
-  void Add(const std::string& name, float value);
+  void Add(const std::string& name,
+           float value);
 
-  void Print(const std::string& name, float print_interval_sec = 0);
+  void Print(const std::string& name,
+             const std::string& units = "",
+             float print_interval_sec = 0);
 
  private:
   std::string tracker_name_;
