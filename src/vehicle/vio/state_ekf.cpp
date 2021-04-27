@@ -146,7 +146,7 @@ static State Predict(const State& x0,
   F.block<3, 3>(uq_row, uq_row) = dq.toRotationMatrix();
 
   // Compute d(uq)/dw (see (21) in [1]). If angle is zero, then the derivative is zero.
-  if (angle > 1e-5) {
+  if (angle > 1e-7) {
     const Vector3d n = axis;
     const double dt_angle = dt * angle;
     const double sin = std::sin(0.5 * dt_angle);
@@ -209,65 +209,20 @@ static State GenericKalmanUpdate(const State& x,
   const Matrix15d A = (Matrix15d::Identity() - K*H);
   const Matrix15d S_new = A*P*A.transpose() + K*R*K.transpose();
 
-  LOG(INFO) << "GenericKalmanUpdate" << std::endl;
-  std::cout << "P:\n" << P << std::endl;
-  std::cout << "R:\n" << R << std::endl;
-  std::cout << "S:\n" << S << std::endl;
-  std::cout << "K:\n" << K << std::endl;
-  std::cout << "A:\n" << A << std::endl;
-  std::cout << "APA:\n" << A*P*A.transpose() << std::endl;
-  std::cout << "KRK:\n" << K*R*K.transpose() << std::endl;
-  std::cout << "S_new:\n" << S_new << std::endl;
+  // LOG(INFO) << "GenericKalmanUpdate" << std::endl;
+  // std::cout << "P:\n" << P << std::endl;
+  // std::cout << "R:\n" << R << std::endl;
+  // std::cout << "S:\n" << S << std::endl;
+  // std::cout << "K:\n" << K << std::endl;
+  // std::cout << "A:\n" << A << std::endl;
+  // std::cout << "APA:\n" << A*P*A.transpose() << std::endl;
+  // std::cout << "KRK:\n" << K*R*K.transpose() << std::endl;
+  // std::cout << "S_new:\n" << S_new << std::endl;
 
   CHECK(DiagonalNonnegative(S_new)) << "New covariance matrix is not PSD!\n" << S_new << std::endl;
 
   return State(x.ToVector() + (K*y).cwiseProduct(mask), S_new);
 }
-
-
-// static State UpdatePose(const State& x,
-//                         const Quaterniond& world_q_body,
-//                         const Vector3d& world_t_body,
-//                         const Matrix6d& R_pose)
-// {
-//   // To be consistent with the way GTSAM orders pose variables:
-//   // [ rx, ry, rz, tx, ty, tz ]
-//   Matrix6x15 H = Matrix6x15::Zero();
-//   H.block<3, 3>(0, uq_row) = Matrix3d::Identity();
-//   H.block<3, 3>(3, t_row) = Matrix3d::Identity();
-
-//   const Matrix15d P = x.S;
-//   const Matrix6d S = H*P*H.transpose() + R_pose;
-//   const Matrix15x6 K = P*H.transpose()*S.inverse();
-
-//   // NOTE(milo): We compute the relative rotation between the measured world_q_body and predicted
-//   // state.q. Then, we express that error in the TANGENT space (angle-axis), where it is valid to
-//   // apply a linear Kalman gain. Finally, we take the gain-weighted tangent space differential
-//   // rotation (dr), convert it back to a quaternion, and apply it.
-//   // q_pred_true = q_pred_world * q_world_true = q_world_pred.inverse() * q_world_true
-//   const Quaterniond q_err = x.q.inverse() * world_q_body;
-//   const AngleAxisd uq_err(q_err);
-
-//   Vector6d y;
-//   y.block<3, 1>(0, 0) = uq_err.angle() * uq_err.axis();
-//   y.block<3, 1>(3, 0) = (world_t_body - x.t);
-
-//   const Vector15d dx = K*y;
-//   const AngleAxisd dr(dx.block<3, 1>(uq_row, 0).norm(), dx.block<3, 1>(uq_row, 0).normalized());
-
-//   State xu = x;
-//   xu.t += dx.block<3, 1>(3, 0);
-//   xu.q = xu.q * Quaterniond(dr);
-
-//   // https://stats.stackexchange.com/questions/50487/possible-causes-for-the-state-noise-variance-to-become-negative-in-a-kalman-filt
-//   const Matrix15d A = (Matrix15d::Identity() - K*H);
-//   const Matrix15d P_update = A*P*A.transpose() + K*R_pose*K.transpose();
-//   xu.S = P_update;
-
-//   CHECK(DiagonalNonnegative(xu.S)) << "New covariance matrix is not PSD!\n" << xu.S << std::endl;
-
-//   return xu;
-// }
 
 
 static State UpdatePose(const State& x,
@@ -286,45 +241,35 @@ static State UpdatePose(const State& x,
   H.block<3, 3>(0, uq_row) = Matrix3d::Identity();
   H.block<3, 3>(3, t_row) = Matrix3d::Identity();
 
-  // Matrix6d P = Matrix6d::Zero();
-  // P.block<3, 3>(3, 3) = x.S.block<3, 3>(t_row, t_row);
-  // P.block<3, 3>(0, 0) = x.S.block<3, 3>(uq_row, uq_row);
-  // P.block<3, 3>(0, 3) = x.S.block<3, 3>(uq_row, t_row);
-  // P.block<3, 3>(3, 0) = x.S.block<3, 3>(t_row, uq_row);
-  // Symmetrize(P);
   Matrix15d P = x.S;
 
   const Matrix6d S = H*P*H.transpose() + R_pose;
   const Matrix15x6 K = P*H.transpose()*S.inverse();
 
+  // Get the update increment to apply to the state vector.
   const Vector15d dx = K*error_tangent;
   Vector6d dx_tangent;
   dx_tangent.head(3) = dx.middleRows<3>(uq_row);
   dx_tangent.tail(3) = dx.middleRows<3>(t_row);
   const gtsam::Pose3 dx_manifold = gtsam::Pose3::Retract(dx_tangent);
 
+  // The pose increment is applied on the manifold.
   const gtsam::Pose3 world_P_body_new = world_P_body * dx_manifold;
 
   State xu = x;
   xu.t = world_P_body_new.translation();
   xu.q = world_P_body_new.rotation().toQuaternion().normalized();
 
+  // NOTE(milo): Our observation of pose (rotation, translation) also affects other state variables
+  // if they co-vary. I think we want to apply these parts of dx to the state vector also.
+  xu.v += dx.middleRows<3>(v_row);
+  xu.a += dx.middleRows<3>(a_row);
+  xu.w += dx.middleRows<3>(w_row);
+
   // https://stats.stackexchange.com/questions/50487/possible-causes-for-the-state-noise-variance-to-become-negative-in-a-kalman-filt
   const Matrix15d A = (Matrix15d::Identity() - K*H);
-  const Matrix15d S_new = A*P*A.transpose() + K*R_pose*K.transpose();
 
-  // std::cout << "UpdatePose" << std::endl;
-  // std::cout << "P:\n" << P << std::endl;
-  // std::cout << "R:\n" << R_pose << std::endl;
-  // std::cout << "S:\n" << S << std::endl;
-  // std::cout << "K:\n" << K << std::endl;
-  // std::cout << "A:\n" << A << std::endl;
-  // std::cout << "S_new:\n" << S_new << std::endl;
-
-  xu.S.block<3, 3>(t_row, t_row) = S_new.block<3, 3>(3, 3);
-  xu.S.block<3, 3>(t_row, uq_row) = S_new.block<3, 3>(3, 0);
-  xu.S.block<3, 3>(uq_row, t_row) = S_new.block<3, 3>(0, 3);
-  xu.S.block<3, 3>(uq_row, uq_row) = S_new.block<3, 3>(0, 0);
+  xu.S = A*P*A.transpose() + K*R_pose*K.transpose();
 
   Symmetrize(xu.S);
   CHECK(DiagonalNonnegative(xu.S)) << "New covariance matrix is not PSD!\n" << xu.S << std::endl;
@@ -347,7 +292,6 @@ void StateEkf::Initialize(const StateStamped& state, const ImuBias& imu_bias)
 
 StateStamped StateEkf::PredictAndUpdate(const ImuMeasurement& imu, bool store)
 {
-  LOG(INFO) << "PredictAndUpdate IMU" << std::endl;
   // PREDICT STEP: Simulate the system forward to the current timestep.
   const seconds_t t_new = ConvertToSeconds(imu.timestamp);
   const State& x = PredictIfTimeElapsed(t_new);
@@ -390,7 +334,6 @@ StateStamped StateEkf::PredictAndUpdate(seconds_t timestamp,
                                         const Vector3d& world_v_body,
                                         const Matrix3d& R_velocity)
 {
-  LOG(INFO) << "velocity update" << std::endl;
   // PREDICT STEP: Simulate the system forward to the current timestep.
   const State& x = PredictIfTimeElapsed(timestamp);
 

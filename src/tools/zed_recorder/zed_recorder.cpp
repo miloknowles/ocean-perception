@@ -186,7 +186,7 @@ void ZedRecorder::CaptureLoop()
 
         const timestamp_t timestamp = sensors_data.imu.timestamp.getNanoseconds();
 
-        if (imu_sampler_.ShouldSample(timestamp)) {
+        if (imu_sampler_.ShouldSample(ConvertToSeconds(timestamp))) {
           const Vector3d angular_vel(DegToRad(sensors_data.imu.angular_velocity.x),
                                      DegToRad(sensors_data.imu.angular_velocity.y),
                                      DegToRad(sensors_data.imu.angular_velocity.y));
@@ -208,7 +208,7 @@ void ZedRecorder::CaptureLoop()
       // NOTE(milo): ZED returns a BGRA image, so we need to get the first 3 channels only.
       if (zed.grab() == sl::ERROR_CODE::SUCCESS) {
         const timestamp_t timestamp = zed.getTimestamp(sl::TIME_REFERENCE::IMAGE);
-        if (cam_sampler_.ShouldSample(timestamp)) {
+        if (cam_sampler_.ShouldSample(ConvertToSeconds(timestamp))) {
           sl::Mat iml, imr;
           zed.retrieveImage(iml, sl::VIEW::LEFT, sl::MEM::CPU);
           zed.retrieveImage(imr, sl::VIEW::RIGHT, sl::MEM::CPU);
