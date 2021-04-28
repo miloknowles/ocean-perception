@@ -245,7 +245,7 @@ class StateEstimatorLcm final {
   void FilterCallback(const StateStamped& ss)
   {
     // Limit the publishing rate to avoid overwhelming consumers.
-    if (!filter_subsampler_.ShouldSample(ConvertToNanoseconds(ss.timestamp))) {
+    if (!filter_subsampler_.ShouldSample(ss.timestamp)) {
       return;
     }
 

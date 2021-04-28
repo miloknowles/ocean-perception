@@ -149,7 +149,8 @@ class StateEstimator final {
                                      MagMeasurement::Ptr& maybe_mag_ptr,
                                      seconds_t allowed_misalignment_depth,
                                      seconds_t allowed_misalignment_range,
-                                     seconds_t allowed_misalignment_mag);
+                                     seconds_t allowed_misalignment_mag,
+                                     seconds_t allowed_misalignment_imu);
 
   // Smart the backend smoother with an initial timestamp and pose.
   void SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_body);

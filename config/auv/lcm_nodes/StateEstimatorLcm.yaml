@@ -35,11 +35,11 @@ StateEstimator:
   max_size_smoother_vo_queue: 100
   max_size_smoother_imu_queue: 1000
   max_size_smoother_depth_queue: 100
-  max_size_smoother_range_qaueue: 100
+  max_size_smoother_range_queue: 100
   max_size_smoother_mag_queue: 100
   max_size_filter_vo_queue: 100
-  max_size_filter_imu_queue: 1000
-  max_size_filter_depth_queue: 1000
+  max_size_filter_imu_queue: 100
+  max_size_filter_depth_queue: 100
   max_size_filter_range_queue: 100
 
   reliable_vision_min_lmks: 30       # State estimator uses vision if this many features are detected.
@@ -52,8 +52,8 @@ StateEstimator:
   allowed_misalignment_range: 0.15
   allowed_misalignment_mag: 0.05
 
-  max_filter_divergence_position: 0.2   # m
-  max_filter_divergence_rotation: 0.2   # rad
+  max_filter_divergence_position: 0.1   # m
+  max_filter_divergence_rotation: 0.1   # rad
 
   show_feature_tracks: 1              # 0=OFF, 1=ON
 
@@ -63,19 +63,20 @@ StateEstimator:
   filter_use_depth: 0
 
   #===============================================================================
-  SmootherParams:
+  FixedLagSmoother:
     pose_prior_noise_model: [0.001, 0.001, 0.001, 0.01, 0.01, 0.01]    # rad, rad, rad, m, m, m
     frontend_vo_noise_model: [0.1, 0.1, 0.1, 0.4, 0.4, 1.0]      # rad, rad, rad, m, m, m
     lmk_mono_reproj_err_sigma: 3.0         # px in u and v
     lmk_stereo_reproj_err_sigma: 10.0      # px in u and v
-    depth_sensor_noise_model_sigma: 1.0   # m
-    range_noise_model_sigma: 0.05          # m
-    beacon_noise_model_sigma: 0.5          # m
+    depth_sensor_noise_model_sigma: 0.2    # m
+    range_noise_model_sigma: 0.02          # m
+    beacon_noise_model_sigma: 0.2          # m
     attitude_noise_model_sigma: 0.5        # rad
     velocity_sigma: 0.1                    # m/s
     mag_noise_model_sigma: 1.0             # uT
 
     extra_smoothing_iters: 5
+    smoother_lag_sec: 20.0
     use_smart_stereo_factors: 0           # 1=ON, 0=OFF
 
     # Noise model for the zero-prior on IMU bias.
@@ -85,18 +86,18 @@ StateEstimator:
     bias_drift_noise_model_sigma: 0.0001
 
   #===============================================================================
-  StateEkfParams:
+  StateEkf:
     # Process noise standard deviations.
     # NOTE(milo): Set these values really high to make the filter follow the smoother more closely!
-    sigma_Q_t: 1.1     # translation (m/sec)
-    sigma_Q_v: 0.8     # velocity (m/sec/sec)
-    sigma_Q_a: 0.1     # acceleration (m/sec^2/sec)
-    sigma_Q_uq: 0.3    # orientation (3D tangent space) (rad/sec)
-    sigma_Q_w:  0.1    # angular velocity (rad/sec/sec)
+    sigma_Q_t: 0.1     # translation (m/sec)
+    sigma_Q_v: 0.05     # velocity (m/sec/sec)
+    sigma_Q_a: 0.05     # acceleration (m/sec^2/sec)
+    sigma_Q_uq: 0.05    # orientation (3D tangent space) (rad/sec)
+    sigma_Q_w:  0.05    # angular velocity (rad/sec/sec)
 
     # Sensor noise standard deviations.
-    sigma_R_imu_a: 0.003924
-    sigma_R_imu_w: 0.00205689024915
+    sigma_R_imu_a: 0.0003
+    sigma_R_imu_w: 0.0002
 
     sigma_R_depth: 0.5 # m
     sigma_R_range: 1.0 # m

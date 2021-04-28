@@ -6,7 +6,6 @@ namespace vio {
 
 void ImuManager::Params::LoadParams(const YamlParser& parser)
 {
-  parser.GetParam("allowed_misalignment_sec", &allowed_misalignment_sec);
   parser.GetParam("max_queue_size", &max_queue_size);
   parser.GetParam("integration_error_sigma", &integration_error_sigma);
   parser.GetParam("use_2nd_order_coriolis", &use_2nd_order_coriolis);
@@ -54,22 +53,27 @@ ImuManager::ImuManager(const Params& params, const std::string& queue_name)
 }
 
 
-PimResult ImuManager::Preintegrate(seconds_t from_time, seconds_t to_time)
+PimResult ImuManager::Preintegrate(seconds_t from_time,
+                                   seconds_t to_time,
+                                   seconds_t allowed_misalignment_sec)
 {
   pim_.resetIntegration();
 
   // If no measurements, return failure.
   if (Empty()) {
+    LOG(WARNING) << "PimResult invalid: queue is empty" << std::endl;
     return std::move(PimResult(false, kMinSeconds, kMaxSeconds));
   }
 
   // Requesting a from_time that is too far before our earliest measurement.
-  if (Oldest() > (from_time + params_.allowed_misalignment_sec) && (from_time != kMinSeconds)) {
+  if (Oldest() > (from_time + allowed_misalignment_sec) && (from_time != kMinSeconds)) {
+    LOG(WARNING) << "PimResult invalid: Oldest() measurement way past from_time" << std::endl;
     return PimResult(false, kMinSeconds, kMaxSeconds);
   }
 
   // Requesting a to_time that is too far after our newest measurement.
-  if (Newest() < (to_time - params_.allowed_misalignment_sec) && (to_time != kMaxSeconds)) {
+  if (Newest() < (to_time - allowed_misalignment_sec) && (to_time != kMaxSeconds)) {
+    LOG(WARNING) << "PimResult invalid: Newest() measurement way before to_time" << std::endl;
     return PimResult(false, kMinSeconds, kMaxSeconds);
   }
 
@@ -83,7 +87,8 @@ PimResult ImuManager::Preintegrate(seconds_t from_time, seconds_t to_time)
 
   // FAIL: No measurement close to (specified) from_time.
   const seconds_t offset_from_sec = (from_time != kMinSeconds) ? std::fabs(earliest_imu_sec - from_time) : 0.0;
-  if (offset_from_sec > params_.allowed_misalignment_sec) {
+  if (offset_from_sec > allowed_misalignment_sec) {
+    LOG(WARNING) << "PimResult invalid: no measurements near from_time" << std::endl;
     return PimResult(false, kMinSeconds, kMaxSeconds);
   }
 
@@ -110,7 +115,8 @@ PimResult ImuManager::Preintegrate(seconds_t from_time, seconds_t to_time)
 
   // FAIL: No measurement close to (specified) to_time.
   const seconds_t offset_to_sec = (to_time != kMaxSeconds) ? std::fabs(to_time - latest_imu_sec) : 0.0;
-  if (offset_to_sec > params_.allowed_misalignment_sec) {
+  if (offset_to_sec > allowed_misalignment_sec) {
+    LOG(WARNING) << "PimResult invalid: no measurements near to_time" << std::endl;
     return PimResult(false, kMinSeconds, kMaxSeconds);
   }
 

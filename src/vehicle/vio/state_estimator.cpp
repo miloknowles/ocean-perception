@@ -14,7 +14,6 @@ void StateEstimator::Params::LoadParams(const YamlParser& parser)
 {
   stereo_frontend_params = StereoFrontend::Params(parser.Subtree("StereoFrontend"));
   imu_manager_params = ImuManager::Params(parser.Subtree("ImuManager"));
-  // smoother_params = Smoother::Params(parser.Subtree("SmootherParams"));
   smoother_params = FixedLagSmoother::Params(parser.Subtree("FixedLagSmoother"));
   filter_params = StateEkf::Params(parser.Subtree("StateEkf"));
 
@@ -245,7 +244,8 @@ void StateEstimator::GetKeyposeAlignedMeasurements(
     MagMeasurement::Ptr& maybe_mag_ptr,
     seconds_t allowed_misalignment_depth,
     seconds_t allowed_misalignment_range,
-    seconds_t allowed_misalignment_mag)
+    seconds_t allowed_misalignment_mag,
+    seconds_t allowed_misalignment_imu)
 {
   smoother_range_manager_.DiscardBefore(to_time, true);
   const seconds_t range_time_offset = std::fabs(smoother_range_manager_.Oldest() - to_time);
@@ -258,20 +258,20 @@ void StateEstimator::GetKeyposeAlignedMeasurements(
 
   // Check if we have a nearby magnetometer measurement.
   smoother_mag_manager_.DiscardBefore(to_time, true);
-  const seconds_t mag_time_offset = std::fabs(to_time - smoother_mag_manager_.Oldest());
+  const seconds_t mag_time_offset = std::fabs(smoother_mag_manager_.Oldest() - to_time);
 
   maybe_mag_ptr = (mag_time_offset < allowed_misalignment_mag) ?
       std::make_shared<MagMeasurement>(smoother_mag_manager_.Pop()) : nullptr;
 
   // Check if we have a nearby depth measurement (in time).
   smoother_depth_manager_.DiscardBefore(to_time, true);
-  const seconds_t depth_time_offset = std::fabs(to_time - smoother_depth_manager_.Oldest());
+  const seconds_t depth_time_offset = std::fabs(smoother_depth_manager_.Oldest() - to_time);
 
   maybe_depth_ptr = (depth_time_offset < allowed_misalignment_depth) ?
       std::make_shared<DepthMeasurement>(smoother_depth_manager_.Pop()) : nullptr;
 
   // Preintegrate IMU between from_time and to_time.
-  const PimResult pim = smoother_imu_manager_.Preintegrate(from_time, to_time);
+  const PimResult pim = smoother_imu_manager_.Preintegrate(from_time, to_time, allowed_misalignment_imu);
   maybe_pim_ptr = (pim.timestamps_aligned) ? std::make_shared<PimResult>(pim) : nullptr;
 
   // Check if the accelerometer is giving a reading of attitude.
@@ -293,7 +293,6 @@ void StateEstimator::UpdateSmootherMode(SmootherMode mode)
 
 void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_body)
 {
-  // Smoother smoother(params_.smoother_params);
   FixedLagSmoother smoother(params_.smoother_params);
 
   //====================================== INITIALIZATION ==========================================
@@ -357,7 +356,7 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
 
       // Can't add a new keypose until IMU is available (fully constraint 6DOF motion).
       // We make sure that there are IMU measurements up until the range measurement.
-      const bool can_add_range_keypose = range_is_available &&
+      const bool can_add_range_keypose = range_is_available && imu_is_available &&
           (smoother_imu_manager_.Newest() > (smoother_range_manager_.Newest() - params_.allowed_misalignment_imu));
       const bool can_add_imu_keypose = imu_is_available &&
           (smoother_imu_manager_.Newest() - from_time) > params_.min_sec_btw_keyposes;
@@ -380,7 +379,10 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
             maybe_mag_ptr,
             params_.allowed_misalignment_depth,
             params_.allowed_misalignment_range,
-            params_.allowed_misalignment_mag);
+            params_.allowed_misalignment_mag,
+            params_.allowed_misalignment_imu);
+
+        CHECK(maybe_pim_ptr) << "Should have gotten a preintegrated IMU measurement, probably a timestamp offset issue" << std::endl;
 
         Timer timer(true);
         OnSmootherResult(smoother.Update(
@@ -391,7 +393,7 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
             maybe_ranges,
             maybe_mag_ptr));
         stats_.Add("SmootherUpdateNoVision", timer.Elapsed().milliseconds());
-        stats_.Print("SmootherUpdateNoVision", params_.stats_print_interval_sec);
+        stats_.Print("SmootherUpdateNoVision", "ms", params_.stats_print_interval_sec);
       }
     // VO AVAILABLE ==> Add a keyframe and smooth.
     } else {
@@ -412,7 +414,8 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
           maybe_mag_ptr,
           params_.allowed_misalignment_depth,
           params_.allowed_misalignment_range,
-          params_.allowed_misalignment_mag);
+          params_.allowed_misalignment_mag,
+          params_.allowed_misalignment_imu);
 
       Timer timer(true);
       OnSmootherResult(smoother.Update(
@@ -422,7 +425,7 @@ void StateEstimator::SmootherLoop(seconds_t t0, const gtsam::Pose3& P0_world_bod
           maybe_attitude_ptr,
           maybe_ranges));
       stats_.Add("SmootherUpdateWithVision", timer.Elapsed().milliseconds());
-      stats_.Print("SmootherUpdateWithVision", params_.stats_print_interval_sec);
+      stats_.Print("SmootherUpdateWithVision", "ms", params_.stats_print_interval_sec);
     }
 
   } // end while (!is_shutdown)
@@ -505,10 +508,11 @@ void StateEstimator::FilterLoop(seconds_t t0, const gtsam::Pose3& P0_world_body)
       const double position_err = (result.world_P_body.translation() - filter.GetState().state.t).norm();
       const double rotation_err = (result.world_P_body.rotation().toQuaternion().angularDistance(filter.GetState().state.q));
 
-      // If the filter has diverged, do a hard reset to the smoother pose.
-      if (position_err > params_.max_filter_divergence_position ||
-          rotation_err > params_.max_filter_divergence_rotation) {
+      const bool filter_has_diverged = (position_err > params_.max_filter_divergence_position ||
+                                        rotation_err > params_.max_filter_divergence_rotation);
 
+      // If the filter has diverged, do a hard reset to the smoother pose.
+      if (filter_has_diverged) {
         LOG(INFO) << "Filter has diverged from smoother, doing a hard reset" << std::endl;
 
         StateCovariance S = 1.0*StateCovariance::Identity();

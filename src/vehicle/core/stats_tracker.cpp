@@ -20,7 +20,9 @@ void StatsTracker::Add(const std::string& name, float value)
 }
 
 
-void StatsTracker::Print(const std::string& name, float print_interval_sec)
+void StatsTracker::Print(const std::string& name,
+                         const std::string& units,
+                         float print_interval_sec)
 {
   // Can't print stats for nonexistent scalar.
   if (stats_.count(name) == 0) {
@@ -36,8 +38,8 @@ void StatsTracker::Print(const std::string& name, float print_interval_sec)
     int N;
     float min, max, mean;
     stats_.at(name).MinMaxMean(N, min, max, mean);
-    printf("[ %s/%s ] Stats for the last *%d* samples:  MIN=%f MAX=%f MEAN=%f\n",
-        tracker_name_.c_str(), name.c_str(), N, min, max, mean);
+    printf("[ %s/%s ] MIN=%f %s MAX=%f %s MEAN=%f %s (N=%d)\n",
+        tracker_name_.c_str(), name.c_str(), min, units.c_str(), max, units.c_str(), mean, units.c_str(), N);
     timers_.at(name).Reset();
   }
 }
