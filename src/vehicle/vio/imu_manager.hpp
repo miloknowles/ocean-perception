@@ -59,9 +59,6 @@ class ImuManager final : public DataManager<ImuMeasurement> {
   {
     MACRO_PARAMS_STRUCT_CONSTRUCTORS(Params);
 
-    // Say that an IMU measurement is "synchronized" with a timestamp if it's within this epsilon.
-    // FarmSim IMU comes in at 50 Hz, so using slightly > 0.02 sec epsilon.
-    double allowed_misalignment_sec = 0.05;
     int max_queue_size = 1000;   // At 100Hz, collects 10 sec of measurements.
 
     // Sensor noise model parameters.
