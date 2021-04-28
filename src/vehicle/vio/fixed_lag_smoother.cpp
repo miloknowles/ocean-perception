@@ -4,12 +4,12 @@
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/sam/RangeFactor.h>
 #include <gtsam_unstable/slam/MagPoseFactor.h>
-#include <gtsam_unstable/slam/PartialPriorFactor.h>
+#include <gtsam_unstable/slam/PartialPosePriorFactor.h>
 
 #include "core/transform_util.hpp"
 #include "vio/fixed_lag_smoother.hpp"
 #include "vio/vo_result.hpp"
-#include "vio/single_axis_factor.hpp"
+// #include "vio/single_axis_factor.hpp"
 
 namespace bm {
 namespace vio {
@@ -19,7 +19,8 @@ static const int kTranslationStartIndex = 3;
 
 typedef gtsam::RangeFactorWithTransform<gtsam::Pose3, gtsam::Point3> RangeFactor;
 typedef gtsam::MagPoseFactor<gtsam::Pose3> MagFactor;
-typedef gtsam::PartialPriorFactor<gtsam::Pose3> DepthFactor;
+// typedef gtsam::PartialPriorFactor<gtsam::Pose3> DepthFactor;
+typedef gtsam::PartialPosePriorFactor<gtsam::Pose3> DepthFactor;
 
 typedef gtsam::noiseModel::Robust RobustModel;
 typedef gtsam::noiseModel::mEstimator::Tukey mTukey;
@@ -366,14 +367,14 @@ SmootherResult FixedLagSmoother::Update(VoResult::ConstPtr maybe_vo_ptr,
     // Then we can treat it as a measurement of translation along the POSITIVE axis.
     const double measured_depth = depth_sign_ * maybe_depth_ptr->depth;
 
-    new_factors.push_back(gtsam::SingleAxisFactor(keypose_sym, depth_axis_, measured_depth, params_.depth_sensor_noise_model));
+    // new_factors.push_back(gtsam::SingleAxisFactor(keypose_sym, depth_axis_, measured_depth, params_.depth_sensor_noise_model));
 
     // NOTE(milo): Don't use this factor yet!
-    // new_factors.push_back(DepthFactor(
-    //     keypose_sym,
-    //     kTranslationStartIndex + depth_axis_,
-    //     measured_depth,
-    //     params_.depth_sensor_noise_model));
+    new_factors.push_back(DepthFactor(
+        keypose_sym,
+        kTranslationStartIndex + depth_axis_,
+        measured_depth,
+        params_.depth_sensor_noise_model));
   }
 
   //========================================= RANGE FACTOR =========================================

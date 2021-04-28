@@ -10,6 +10,19 @@ Add these lines to your `.bashrc`:
 alias bm-shell='source ~/blue-meadow/catkin_ws/src/vehicle/setup/setup.bash'
 ```
 
+### Installing GTSAM
+
+I'm working off of a fork of GTSAM [here](https://github.com/miloknowles/gtsam). It has a couple
+factors that aren't fixed/merged into the GTSAM develop branch yet.
+
+To install this dependency:
+- Clone the fork of GTSAM
+- `git checkout develop` just to be safe
+- `mkdir build && cd build && cmake .. && make`
+- Can run tests with `make check`
+- `sudo make install` to put the custom library into `/usr/local`
+- This repo should include from and link against the installed fork version
+
 ### Installing LCM
 
 I had to install Java *before* building and installing LCM from source to get the `lcm-spy` tool.
