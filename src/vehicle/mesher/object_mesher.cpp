@@ -193,7 +193,7 @@ TriangleMesh ObjectMesher::ProcessStereo(const StereoImage1b& stereo_pair, bool 
 
   if (visualize) {
     const Image3b& viz_tracks = tracker_.VisualizeFeatureTracks();
-    cv::imshow("Feature Tracks", viz_tracks);
+    cv::imshow("Visual Navigation (Feature Tracking)", viz_tracks);
   }
 
   Image1b foreground_mask;
@@ -335,7 +335,7 @@ TriangleMesh ObjectMesher::ProcessStereo(const StereoImage1b& stereo_pair, bool 
     }
 
     if (visualize) {
-      cv::imshow("delaunay", viz_triangles);
+      cv::imshow("Obstacle Avoidance (Object Meshing)", viz_triangles);
     }
   }
 
