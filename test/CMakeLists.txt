@@ -32,6 +32,9 @@ set(VIO_TEST_SOURCES
 set(LCM_TEST_SOURCES
   lcmtypes/test_publish.cpp)
 
+set(RRT_TEST_SOURCES
+  rrt/rrt_test.cpp)
+
 # Function for defining a test executable.
 function(MakeTestExecutable test_name test_sources)
   add_executable(${test_name} ${test_sources} ./gtest/gtest-all.cc)
@@ -47,6 +50,7 @@ function(MakeTestExecutable test_name test_sources)
     ${PROJECT_NAME}_dataset
     ${PROJECT_NAME}_ft
     ${PROJECT_NAME}_mesher
+    ${PROJECT_NAME}_rrt
     ${OpenCV_LIBRARIES}
     gtsam
     gtsam_unstable
@@ -66,6 +70,7 @@ MakeTestExecutable(dataset_gtest_all "${DATASET_TEST_SOURCES}")
 MakeTestExecutable(vio_gtest_all "${VIO_TEST_SOURCES}")
 MakeTestExecutable(lcm_gtest_all "${LCM_TEST_SOURCES}")
 MakeTestExecutable(mesher_gtest_all "${MESHER_TEST_SOURCES}")
+MakeTestExecutable(rrt_gtest_all "${RRT_TEST_SOURCES}")
 
 # NOTE(milo): Using the "copy" command didn't seem to work...
 # Move resource files to the install location so that tests can use them.
