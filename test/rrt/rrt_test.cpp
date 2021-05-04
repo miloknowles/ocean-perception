@@ -51,21 +51,17 @@ TEST(TreeTest, Nearest)
 
   const kdtree_t kd = tree.BuildKdTree();
 
-  IndexAndDist out;
-  tree.Nearest(kd, Vector3d(0, 0, 0), out);
+  Tree::index_t out = tree.Nearest(kd, Vector3d(0, 0, 0));
 
-  ASSERT_EQ(0ul, out.first);
-  ASSERT_NEAR(p0.norm(), out.second, 1e-5);
+  ASSERT_EQ(0ul, out);
 
   const Vector3d p1(-2, 4, 8);
   tree.AddNode(Node(p1, 0, 101));
 
   const kdtree_t kd2 = tree.BuildKdTree();
 
-  tree.Nearest(kd2, Vector3d(-2, 4, 7), out);
-
-  ASSERT_EQ(1ul, out.first);
-  ASSERT_NEAR((p1 - Vector3d(-2, 4, 7)).norm(), out.second, 1e-5);
+  out = tree.Nearest(kd2, Vector3d(-2, 4, 7));
+  ASSERT_EQ(1ul, out);
 }
 
 
@@ -84,14 +80,14 @@ TEST(TreeTest, Nearby)
   const kdtree_t kd = tree.BuildKdTree();
 
   // Search radius is small, no points nearby.
-  std::vector<IndexAndDist> out;
+  std::vector<Tree::index_t> out;
   tree.Nearby(kd, Vector3d(10, 10, 10), 0.1, out);
   EXPECT_EQ(0ul, out.size());
 
   // Query at origin, 1 point nearby.
   tree.Nearby(kd, Vector3d(0, 0, 0), 0.1, out);
   EXPECT_EQ(1ul, out.size());
-  EXPECT_EQ(2ul, out[0].first);
+  EXPECT_EQ(2ul, out[0]);
 
   // Large search radius, all points nearby.
   const double r = Vector3d(1, 2, 3).norm();
