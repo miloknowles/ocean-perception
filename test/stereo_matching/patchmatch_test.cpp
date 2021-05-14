@@ -74,7 +74,7 @@ TEST(PatchmatchTest, Test01)
 
   Timer timer(true);
 
-  int pm_downsample_factor = 4;
+  int pm_downsample_factor = 2;
   Image1f disp = pm.Initialize(il, ir, pm_downsample_factor);
 
   Image1b iml_pm, imr_pm;
@@ -86,9 +86,9 @@ TEST(PatchmatchTest, Test01)
 
   cv::imshow("Initialize", VisualizeDisp(disp, max_disp, pm_downsample_factor * 2));
 
-  pm.Propagate(iml_pm, imr_pm, disp, L1CostFunction, 7, 3);
-  pm.Propagate(iml_pm, imr_pm, disp, L1CostFunction, 7, 3);
-  pm.Propagate(iml_pm, imr_pm, disp, L1CostFunction, 7, 3);
+  pm.Propagate(iml_pm, imr_pm, disp, L1CostFunction, 5, 5);
+  pm.Propagate(iml_pm, imr_pm, disp, L1CostFunction, 5, 5);
+  pm.Propagate(iml_pm, imr_pm, disp, L1CostFunction, 5, 5);
   LOG(INFO) << "Propagate disp took: " << timer.Elapsed().milliseconds() << " ms" << std::endl;
 
   cv::imshow("Propagate", VisualizeDisp(disp, max_disp, pm_downsample_factor * 2));

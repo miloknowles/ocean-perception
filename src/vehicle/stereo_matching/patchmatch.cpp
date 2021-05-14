@@ -129,6 +129,48 @@ static Image3b VisualizeDisp(const Image1f& disp, int max_disp, int pm_downsampl
 }
 
 
+static void PropagateNeighbors(const Image1b& iml,
+                              const Image1b& imr,
+                              float x, float y,
+                              Image1f& disp,
+                              const CostFunctor& f,
+                              int patch_height,
+                              int patch_width,
+                              int side)
+{
+  // Get the cost at current estimated disparity.
+  const Image1f& ref = GetPatchSubpix(iml, x, y, patch_width, patch_height);
+
+  float d0 = disp.at<float>(y, x); // NOTE: row, col.
+  d0 = std::fmin(std::fmax(d0, 0), (float)x - patch_width / 2);
+
+  const float dl = disp.at<float>(y, x + side);
+  const float dt = disp.at<float>(y + side, x);
+
+  const Image1b& p0 = GetPatchSubpix(imr, x - d0, y, patch_width, patch_height);
+  const float cost_using_current = f(ref, p0);
+
+  std::vector<float> disp_costs = { cost_using_current };
+  std::vector<float> disp_candidates = { d0 };
+
+  if (((float)x - dl) >= (patch_width / 2)) {
+    const Image1f& pl = GetPatchSubpix(imr, x - dl, y, patch_width, patch_height);
+    const float cost_using_left = f(ref, pl);
+    disp_costs.emplace_back(cost_using_left);
+    disp_candidates.emplace_back(dl);
+  }
+
+  if ((x - dt) >= (patch_width / 2)) {
+    const Image1f& pt = GetPatchSubpix(imr, x - dt, y, patch_width, patch_height);
+    const float cost_using_top = f(ref, pt);
+    disp_costs.emplace_back(cost_using_top);
+    disp_candidates.emplace_back(dt);
+  }
+
+  const size_t ibest = Argmin(disp_costs);
+  disp.at<float>(y, x) = disp_candidates.at(ibest);
+}
+
 
 void Patchmatch::Propagate(const Image1b& iml,
                            const Image1b& imr,
@@ -143,8 +185,6 @@ void Patchmatch::Propagate(const Image1b& iml,
   const int w = iml.cols;
   const int h = iml.rows;
 
-  LOG(INFO) << "forward pass" << std::endl;
-
   // Pass starting in the top left.
   for (float y = 1; y < (float)h; ++y) {
     for (float x = 1; x < (float)w; ++x) {
@@ -153,87 +193,21 @@ void Patchmatch::Propagate(const Image1b& iml,
           y > (h - patch_height / 2 - 1) || x > (w - patch_width / 2 - 1)) {
         continue;
       }
-
-      // Get the cost at current estimated disparity.
-      const Image1f& ref = GetPatchSubpix(iml, (float)x, (float)y, patch_width, patch_height);
-
-      float d0 = disp.at<float>(y, x); // NOTE: row, col.
-      d0 = std::fmin(std::fmax(d0, 0), (float)x - patch_width / 2);
-
-      const float dl = disp.at<float>(y, x - 1);
-      const float dt = disp.at<float>(y - 1, x);
-
-      const Image1b& p0 = GetPatchSubpix(imr, x - d0, y, patch_width, patch_height);
-      const float cost_using_current = f(ref, p0);
-
-      std::vector<float> disp_costs = { cost_using_current };
-      std::vector<float> disp_candidates = { d0 };
-
-      if (((float)x - dl) >= (patch_width / 2)) {
-        const Image1f& pl = GetPatchSubpix(imr, x - dl, y, patch_width, patch_height);
-        const float cost_using_left = f(ref, pl);
-        disp_costs.emplace_back(cost_using_left);
-        disp_candidates.emplace_back(dl);
-      }
-
-      if ((x - dt) >= (patch_width / 2)) {
-        const Image1f& pt = GetPatchSubpix(imr, x - dt, y, patch_width, patch_height);
-        const float cost_using_top = f(ref, pt);
-        disp_costs.emplace_back(cost_using_top);
-        disp_candidates.emplace_back(dt);
-      }
-
-      const size_t ibest = Argmin(disp_costs);
-      disp.at<float>(y, x) = disp_candidates.at(ibest);
-
-      // cv::namedWindow("debug", cv::WINDOW_NORMAL);
-      // cv::imshow("debug", VisualizeDisp(disp, 128, 8));
-      // cv::waitKey(0);
+      PropagateNeighbors(iml, imr, x, y, disp, f, patch_height, patch_width, -1);
     }
   }
 
-  LOG(INFO) << "backward pass" << std::endl;
-
-  // // Pass starting in the bottom right.
-  // for (int y = h - 2; y >= 0; --y) {
-  //   for (int x = w - 2; x >= 0; --x) {
-  //     // For now, skip pixels within patch dimensions of the border.
-  //     if (y < (patch_height / 2) || x < (patch_width / 2) ||
-  //         y > (h - patch_height / 2 - 1) || x > (w - patch_width / 2 - 1)) {
-  //       continue;
-  //     }
-
-  //     // Get the cost at current estimated disparity.
-  //     const Image1f& ref = GetPatch(iml, x, y, patch_width, patch_height);
-
-  //     const int d0 = std::round(disp.at<float>(y, x)); // NOTE: row, col.
-  //     const int dr = std::round(disp.at<float>(y, x + 1));
-  //     const int db = std::round(disp.at<float>(y + 1, x));
-
-  //     const Image1f& p0 = GetPatch(imr, x - d0, y, patch_width, patch_height);
-  //     const float cost_using_current = f(ref, p0);
-
-  //     std::vector<float> disp_costs = { cost_using_current };
-  //     std::vector<float> disp_candidates = { (float)d0 };
-
-  //     if ((x - dr) >= (patch_width / 2)) {
-  //       const Image1f& pr = GetPatch(imr, x - dr, y, patch_width, patch_height);
-  //       const float cost_using_right = f(ref, pr);
-  //       disp_costs.emplace_back(cost_using_right);
-  //       disp_candidates.emplace_back(dr);
-  //     }
-
-  //     if ((x - db) >= (patch_width / 2)) {
-  //       const Image1f& pb = GetPatch(imr, x - db, y, patch_width, patch_height);
-  //       const float cost_using_bottom = f(ref, pb);
-  //       disp_costs.emplace_back(cost_using_bottom);
-  //       disp_candidates.emplace_back(db);
-  //     }
-
-  //     const size_t ibest = Argmin(disp_costs);
-  //     disp.at<float>(y, x) = disp_candidates.at(ibest);
-  //   }
-  // }
+  // Pass starting in the bottom right.
+  for (int y = h - 2; y >= 0; --y) {
+    for (int x = w - 2; x >= 0; --x) {
+      // For now, skip pixels within patch dimensions of the border.
+      if (y < (patch_height / 2) || x < (patch_width / 2) ||
+          y > (h - patch_height / 2 - 1) || x > (w - patch_width / 2 - 1)) {
+        continue;
+      }
+      PropagateNeighbors(iml, imr, x, y, disp, f, patch_height, patch_width, 1);
+    }
+  }
 }
 
 
