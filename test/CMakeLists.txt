@@ -36,6 +36,7 @@ set(RRT_TEST_SOURCES
   rrt/rrt_test.cpp)
 
 set(STEREO_TEST_SOURCES
+  stereo_matching/patchmatch_test.cpp
   stereo_matching/sgbm_test.cpp)
 
 # Function for defining a test executable.
