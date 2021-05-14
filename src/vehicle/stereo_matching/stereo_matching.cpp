@@ -1,27 +1,30 @@
 #include "stereo_matching/stereo_matching.hpp"
 
 namespace bm {
-namespace stereo_matching {
+namespace stereo {
 
 
-static const int kNumDisp = 64;
-static const int kBlockSize = 3;
+// static const int kNumDisp = 64;
+// static const int kBlockSize = 3;
 
 
-Image1f EstimateDisparity(const Image1b& il, const Image1b& ir)
+Image1f EstimateDisparity(const Image1b& il,
+                          const Image1b& ir,
+                          int num_disp,
+                          int block_size)
 {
-  cv::Ptr<cv::StereoSGBM> sgbm = cv::StereoSGBM::create(0, kNumDisp, kBlockSize);
+  cv::Ptr<cv::StereoSGBM> sgbm = cv::StereoSGBM::create(0, num_disp, block_size);
 
   const int channels = il.channels();
 
-  sgbm->setP1(8*channels*kBlockSize*kBlockSize);
-  sgbm->setP2(32*channels*kBlockSize*kBlockSize);
+  // sgbm->setP1(8*channels*block_size*block_size);
+  // sgbm->setP2(32*channels*block_size*block_size);
   sgbm->setMinDisparity(0);
-  sgbm->setNumDisparities(kNumDisp);
-  sgbm->setUniquenessRatio(10);
-  sgbm->setSpeckleWindowSize(100);
-  sgbm->setSpeckleRange(32);
-  sgbm->setDisp12MaxDiff(1);
+  sgbm->setNumDisparities(num_disp);
+  // sgbm->setUniquenessRatio(10);
+  // sgbm->setSpeckleWindowSize(100);
+  // sgbm->setSpeckleRange(32);
+  // sgbm->setDisp12MaxDiff(1);
 
   sgbm->setMode(cv::StereoSGBM::MODE_SGBM);
 

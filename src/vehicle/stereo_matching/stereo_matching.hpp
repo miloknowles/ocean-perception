@@ -5,11 +5,14 @@
 #include "vision_core/cv_types.hpp"
 
 namespace bm {
-namespace stereo_matching {
+namespace stereo {
 
 using namespace core;
 
-Image1f EstimateDisparity(const Image1b& il, const Image1b& ir);
+Image1f EstimateDisparity(const Image1b& il,
+                          const Image1b& ir,
+                          int num_disp = 64,
+                          int block_size = 3);
 
 }
 }

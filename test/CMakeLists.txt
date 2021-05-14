@@ -35,6 +35,9 @@ set(LCM_TEST_SOURCES
 set(RRT_TEST_SOURCES
   rrt/rrt_test.cpp)
 
+set(STEREO_TEST_SOURCES
+  stereo_matching/sgbm_test.cpp)
+
 # Function for defining a test executable.
 function(MakeTestExecutable test_name test_sources)
   add_executable(${test_name} ${test_sources} ./gtest/gtest-all.cc)
@@ -51,6 +54,7 @@ function(MakeTestExecutable test_name test_sources)
     ${PROJECT_NAME}_ft
     ${PROJECT_NAME}_mesher
     ${PROJECT_NAME}_rrt
+    ${PROJECT_NAME}_stereo_matching
     ${OpenCV_LIBRARIES}
     gtsam
     gtsam_unstable
@@ -71,6 +75,7 @@ MakeTestExecutable(vio_gtest_all "${VIO_TEST_SOURCES}")
 MakeTestExecutable(lcm_gtest_all "${LCM_TEST_SOURCES}")
 MakeTestExecutable(mesher_gtest_all "${MESHER_TEST_SOURCES}")
 MakeTestExecutable(rrt_gtest_all "${RRT_TEST_SOURCES}")
+MakeTestExecutable(stereo_gtest_all "${STEREO_TEST_SOURCES}")
 
 # NOTE(milo): Using the "copy" command didn't seem to work...
 # Move resource files to the install location so that tests can use them.
