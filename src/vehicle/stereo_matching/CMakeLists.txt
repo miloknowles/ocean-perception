@@ -2,7 +2,9 @@ SET(LIBRARY_NAME ${PROJECT_NAME}_stereo_matching)
 
 SET(LIBRARY_SRC
   stereo_matching.cpp
-  stereo_matching.hpp)
+  stereo_matching.hpp
+  patchmatch.cpp
+  patchmatch.hpp)
 
 add_library(${LIBRARY_NAME} SHARED ${LIBRARY_SRC})
 set_target_properties(${LIBRARY_NAME} PROPERTIES LINKER_LANGUAGE CXX)
