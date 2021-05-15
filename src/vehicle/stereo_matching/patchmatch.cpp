@@ -74,7 +74,7 @@ Image1f Patchmatch::Initialize(const Image1b& iml,
   }
 
   // TODO
-  const int dilate_size = (int)std::pow(2, downsample_factor - 1) / 1 + 1;
+  const int dilate_size = (int)std::pow(2, downsample_factor - 1) + 1;
   cv::Mat element = cv::getStructuringElement(
       cv::MORPH_RECT, cv::Size(2*dilate_size+1, 2*dilate_size+1), cv::Point(dilate_size, dilate_size));
   cv::dilate(disps, disps, element);

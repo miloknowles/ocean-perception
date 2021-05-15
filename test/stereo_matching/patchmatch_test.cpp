@@ -25,6 +25,29 @@ float L1CostFunction(const Image1b& pl, const Image1b& pr)
 }
 
 
+float ZNCC(const Image1b& pl, const Image1b& pr)
+{
+  Image1f pln, prn;
+
+  cv::Scalar ul, sl, ur, sr;
+  cv::meanStdDev(pl, ul, sl);
+  cv::meanStdDev(pr, ur, sr);
+
+  // Avoid divide by zero.
+  const float stdl = std::fmax(sl[0], 1);
+  const float stdr = std::fmax(sr[0], 1);
+
+  pl.convertTo(pln, CV_32FC1, 1.0 / stdl, -ul[0] / stdl);
+  pr.convertTo(prn, CV_32FC1, 1.0 / stdr, -ur[0] / stdr);
+
+  // cv::Scalar ud, sd;
+  // cv::meanStdDev(pln, ud, sd);
+  // LOG(INFO) << ud[0] << " " << sd[0] << std::endl;
+
+  return (float)cv::mean(pln * prn)[0];
+}
+
+
 static Image3b VisualizeDisp(const Image1f& disp, int max_disp, int pm_downsample_factor)
 {
   Image1b disp8_1c;
@@ -86,9 +109,12 @@ TEST(PatchmatchTest, Test01)
 
   cv::imshow("Initialize", VisualizeDisp(disp, max_disp, pm_downsample_factor * 2));
 
-  pm.Propagate(iml_pm, imr_pm, disp, L1CostFunction, 5, 5);
-  pm.Propagate(iml_pm, imr_pm, disp, L1CostFunction, 5, 5);
-  pm.Propagate(iml_pm, imr_pm, disp, L1CostFunction, 5, 5);
+  pm.Propagate(iml_pm, imr_pm, disp, L1CostFunction, 3, 3);
+  pm.Propagate(iml_pm, imr_pm, disp, L1CostFunction, 3, 3);
+  pm.Propagate(iml_pm, imr_pm, disp, L1CostFunction, 3, 3);
+  // pm.Propagate(iml_pm, imr_pm, disp, ZNCC, 3, 3);
+  // pm.Propagate(iml_pm, imr_pm, disp, ZNCC, 7, 7);
+  // pm.Propagate(iml_pm, imr_pm, disp, ZNCC, 7, 7);
   LOG(INFO) << "Propagate disp took: " << timer.Elapsed().milliseconds() << " ms" << std::endl;
 
   cv::imshow("Propagate", VisualizeDisp(disp, max_disp, pm_downsample_factor * 2));
