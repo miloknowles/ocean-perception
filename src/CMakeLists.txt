@@ -1,6 +1,7 @@
 add_subdirectory(./external/anms)
 add_subdirectory(./vehicle)
 add_subdirectory(./sandbox/mesher_demo)
+add_subdirectory(./sandbox/cuda_examples)
 add_subdirectory(./tools/lcm_image_viewer)
 add_subdirectory(./tools/vio_dataset_player)
 add_subdirectory(./tools/zed_recorder)

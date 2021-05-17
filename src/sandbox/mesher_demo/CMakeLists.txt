@@ -11,4 +11,4 @@ target_link_libraries(mesher_demo
   ${PROJECT_NAME}_dataset
   ${PROJECT_NAME}_mesher)
 
-target_compile_options(mesher_demo PUBLIC "-std=c++11")
+target_compile_options(mesher_demo PUBLIC ${BM_CPP_DEFAULT_COMPILE_OPTIONS})

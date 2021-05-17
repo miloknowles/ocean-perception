@@ -39,7 +39,7 @@ FILE(GLOB_RECURSE SRC_FILES *.cpp)
 FILE(GLOB_RECURSE HDR_FILES *.hpp)
 
 ADD_EXECUTABLE(zed_recorder ${HDR_FILES} ${SRC_FILES})
-add_definitions(-std=c++11 -O3)
+# add_definitions(-std=c++11 -O3)
 
 if (LINK_SHARED_ZED)
   SET(ZED_LIBS ${ZED_LIBRARIES} ${CUDA_CUDA_LIBRARY} ${CUDA_CUDART_LIBRARY})
@@ -57,3 +57,5 @@ TARGET_LINK_LIBRARIES(zed_recorder
   ${PROJECT_NAME}_core
   ${PROJECT_NAME}_vision_core
   ${PROJECT_NAME}_dataset)
+
+  target_compile_options(zed_recorder PRIVATE ${BM_CPP_DEFAULT_COMPILE_OPTIONS})

@@ -44,7 +44,7 @@ function(MakeTestExecutable test_name test_sources)
   add_executable(${test_name} ${test_sources} ./gtest/gtest-all.cc)
   target_include_directories(${test_name} PRIVATE ${PROJECT_SOURCE_DIR}/src)
   target_include_directories(${test_name} PRIVATE ${PROJECT_SOURCE_DIR}/test)
-  target_compile_options(${test_name} PUBLIC "-std=c++11")
+  target_compile_options(${test_name} PUBLIC ${BM_CPP_DEFAULT_COMPILE_OPTIONS})
   target_link_libraries(${test_name}
     gtest
     ${PROJECT_NAME}_core
