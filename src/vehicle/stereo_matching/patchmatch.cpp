@@ -53,8 +53,6 @@ Image1f Patchmatch::Initialize(const Image1b& iml,
                                const Image1b& imr,
                                int downsample_factor)
 {
-  LOG(INFO) << "initalize" << std::endl;
-
   VecPoint2f left_kp;
   detector_.Detect(iml, VecPoint2f(), left_kp);
   const std::vector<double>& left_kp_disps = matcher_.MatchRectified(iml, imr, left_kp);
@@ -69,7 +67,7 @@ Image1f Patchmatch::Initialize(const Image1b& iml,
 
     // Skip negative disparity (invalid).
     if (d >= 0) {
-      disps.at<float>(std::round(kp.y), std::round(kp.x)) = (float)std::round(d);
+      disps.at<float>(std::round(kp.y), std::round(kp.x)) = (float)d;
     }
   }
 
@@ -80,7 +78,12 @@ Image1f Patchmatch::Initialize(const Image1b& iml,
   cv::dilate(disps, disps, element);
   cv::resize(disps, disps, disps.size() / downsample_factor, 0, 0, cv::INTER_NEAREST);
 
-  return disps / std::pow(2, downsample_factor);
+  disps /= std::pow(2, downsample_factor);
+
+  // Diversify the initial disparity estimates so the propagate step has more options to choose from.
+  // AddNoise(disps, 2.0*(float)downsample_factor, disps > 0);
+
+  return disps;
 }
 
 
@@ -95,6 +98,14 @@ static Image1b GetPatch(const Image1b& im, int x, int y, int pw, int ph)
 static Image1b GetPatchSubpix(const Image1b& im, float x, float y, int pw, int ph)
 {
   Image1b patch;
+  cv::getRectSubPix(im, cv::Size(pw, ph), cv::Point2f(x, y), patch);
+  return patch;
+}
+
+
+static Image1f GetPatchSubpix(const Image1f& im, float x, float y, int pw, int ph)
+{
+  Image1f patch;
   cv::getRectSubPix(im, cv::Size(pw, ph), cv::Point2f(x, y), patch);
   return patch;
 }
@@ -129,17 +140,35 @@ static Image3b VisualizeDisp(const Image1f& disp, int max_disp, int pm_downsampl
 }
 
 
+void Patchmatch::AddNoise(Image1f& disp, float amount, const Image1b& mask)
+{
+  Image1f disp_noise(disp.size(), 0);
+  cv::RNG rng(123);
+  rng.fill(disp_noise, cv::RNG::UNIFORM, -amount, amount, false);
+
+  if (!mask.empty()) {
+    cv::add(disp, disp_noise, disp, mask);
+  } else {
+    cv::add(disp, disp_noise, disp);
+  }
+  disp = cv::max(disp, 0);
+}
+
+
 static void PropagateNeighbors(const Image1b& iml,
                               const Image1b& imr,
+                              const Image1f& Gl,
+                              const Image1f& Gr,
                               float x, float y,
                               Image1f& disp,
-                              const CostFunctor& f,
+                              const CostFunctor2& f,
                               int patch_height,
                               int patch_width,
                               int side)
 {
   // Get the cost at current estimated disparity.
-  const Image1f& ref = GetPatchSubpix(iml, x, y, patch_width, patch_height);
+  const Image1b& ref = GetPatchSubpix(iml, x, y, patch_width, patch_height);
+  const Image1f& gref = GetPatchSubpix(Gl, x, y, patch_width, patch_height);
 
   float d0 = disp.at<float>(y, x); // NOTE: row, col.
   d0 = std::fmin(std::fmax(d0, 0), (float)x - patch_width / 2);
@@ -148,21 +177,24 @@ static void PropagateNeighbors(const Image1b& iml,
   const float dt = disp.at<float>(y + side, x);
 
   const Image1b& p0 = GetPatchSubpix(imr, x - d0, y, patch_width, patch_height);
-  const float cost_using_current = f(ref, p0);
+  const Image1f& g0 = GetPatchSubpix(Gr, x - d0, y, patch_width, patch_height);
+  const float cost_using_current = f(ref, p0, gref, g0);
 
   std::vector<float> disp_costs = { cost_using_current };
   std::vector<float> disp_candidates = { d0 };
 
   if (((float)x - dl) >= (patch_width / 2)) {
-    const Image1f& pl = GetPatchSubpix(imr, x - dl, y, patch_width, patch_height);
-    const float cost_using_left = f(ref, pl);
+    const Image1b& pl = GetPatchSubpix(imr, x - dl, y, patch_width, patch_height);
+    const Image1f& gl = GetPatchSubpix(Gr, x - dl, y, patch_width, patch_height);
+    const float cost_using_left = f(ref, pl, gref, gl);
     disp_costs.emplace_back(cost_using_left);
     disp_candidates.emplace_back(dl);
   }
 
   if ((x - dt) >= (patch_width / 2)) {
-    const Image1f& pt = GetPatchSubpix(imr, x - dt, y, patch_width, patch_height);
-    const float cost_using_top = f(ref, pt);
+    const Image1b& pt = GetPatchSubpix(imr, x - dt, y, patch_width, patch_height);
+    const Image1f& gt = GetPatchSubpix(Gr, x - dt, y, patch_width, patch_height);
+    const float cost_using_top = f(ref, pt, gref, gt);
     disp_costs.emplace_back(cost_using_top);
     disp_candidates.emplace_back(dt);
   }
@@ -174,8 +206,10 @@ static void PropagateNeighbors(const Image1b& iml,
 
 void Patchmatch::Propagate(const Image1b& iml,
                            const Image1b& imr,
+                           const Image1f& Gl,
+                           const Image1f& Gr,
                            Image1f& disp,
-                           const CostFunctor& f,
+                           const CostFunctor2& f,
                            int patch_height,
                            int patch_width)
 {
@@ -193,7 +227,7 @@ void Patchmatch::Propagate(const Image1b& iml,
           y > (h - patch_height / 2 - 1) || x > (w - patch_width / 2 - 1)) {
         continue;
       }
-      PropagateNeighbors(iml, imr, x, y, disp, f, patch_height, patch_width, -1);
+      PropagateNeighbors(iml, imr, Gl, Gr, x, y, disp, f, patch_height, patch_width, -1);
     }
   }
 
@@ -205,7 +239,7 @@ void Patchmatch::Propagate(const Image1b& iml,
           y > (h - patch_height / 2 - 1) || x > (w - patch_width / 2 - 1)) {
         continue;
       }
-      PropagateNeighbors(iml, imr, x, y, disp, f, patch_height, patch_width, 1);
+      PropagateNeighbors(iml, imr, Gl, Gr, x, y, disp, f, patch_height, patch_width, 1);
     }
   }
 }

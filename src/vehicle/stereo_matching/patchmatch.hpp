@@ -15,6 +15,7 @@ using namespace core;
 
 
 typedef std::function<float(const Image1b&, const Image1b&)> CostFunctor;
+typedef std::function<float(const Image1b&, const Image1b&, const Image1f&, const Image1f&)> CostFunctor2;
 
 
 // Returns a binary mask where "1" indicates foreground and "0" indicates background.
@@ -51,10 +52,14 @@ class Patchmatch final {
                      const Image1b& imr,
                      int downsample_factor);
 
+  void AddNoise(Image1f& disp, float amount, const Image1b& mask);
+
   void Propagate(const Image1b& iml,
                  const Image1b& imr,
+                 const Image1f& Gl,
+                 const Image1f& Gr,
                  Image1f& disp,
-                 const CostFunctor& f,
+                 const CostFunctor2& f,
                  int patch_height,
                  int patch_width);
 
