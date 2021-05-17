@@ -164,6 +164,47 @@ static void PropagateNeighbors(const Image1b& iml,
                               const CostFunctor2& f,
                               int patch_height,
                               int patch_width,
+                              int x_offset,
+                              int y_offset)
+{
+  // Get the cost at current estimated disparity.
+  const Image1b& ref = GetPatchSubpix(iml, x, y, patch_width, patch_height);
+  const Image1f& gref = GetPatchSubpix(Gl, x, y, patch_width, patch_height);
+
+  float d0 = disp.at<float>(y, x); // NOTE: row, col.
+  d0 = std::fmin(std::fmax(d0, 0), (float)x - patch_width / 2);
+
+  const float dl = disp.at<float>(y + y_offset, x + x_offset);
+
+  const Image1b& p0 = GetPatchSubpix(imr, x - d0, y, patch_width, patch_height);
+  const Image1f& g0 = GetPatchSubpix(Gr, x - d0, y, patch_width, patch_height);
+  const float cost_using_current = f(ref, p0, gref, g0);
+
+  std::vector<float> disp_costs = { cost_using_current };
+  std::vector<float> disp_candidates = { d0 };
+
+  if (((float)x - dl) >= (patch_width / 2)) {
+    const Image1b& pl = GetPatchSubpix(imr, x - dl, y, patch_width, patch_height);
+    const Image1f& gl = GetPatchSubpix(Gr, x - dl, y, patch_width, patch_height);
+    const float cost_using_left = f(ref, pl, gref, gl);
+    disp_costs.emplace_back(cost_using_left);
+    disp_candidates.emplace_back(dl);
+  }
+
+  const size_t ibest = Argmin(disp_costs);
+  disp.at<float>(y, x) = disp_candidates.at(ibest);
+}
+
+
+static void PropagateNeighbors(const Image1b& iml,
+                              const Image1b& imr,
+                              const Image1f& Gl,
+                              const Image1f& Gr,
+                              float x, float y,
+                              Image1f& disp,
+                              const CostFunctor2& f,
+                              int patch_height,
+                              int patch_width,
                               int side)
 {
   // Get the cost at current estimated disparity.
@@ -227,7 +268,19 @@ void Patchmatch::Propagate(const Image1b& iml,
           y > (h - patch_height / 2 - 1) || x > (w - patch_width / 2 - 1)) {
         continue;
       }
-      PropagateNeighbors(iml, imr, Gl, Gr, x, y, disp, f, patch_height, patch_width, -1);
+      // PropagateNeighbors(iml, imr, Gl, Gr, x, y, disp, f, patch_height, patch_width, -1);
+      PropagateNeighbors(iml, imr, Gl, Gr, x, y, disp, f, patch_height, patch_width, -1, 0);
+    }
+  }
+
+  for (float y = 1; y < (float)h; ++y) {
+    for (float x = 1; x < (float)w; ++x) {
+      // For now, skip pixels within patch dimensions of the border.
+      if (y < (patch_height / 2) || x < (patch_width / 2) ||
+          y > (h - patch_height / 2 - 1) || x > (w - patch_width / 2 - 1)) {
+        continue;
+      }
+      PropagateNeighbors(iml, imr, Gl, Gr, x, y, disp, f, patch_height, patch_width, 0, -1);
     }
   }
 
@@ -239,7 +292,69 @@ void Patchmatch::Propagate(const Image1b& iml,
           y > (h - patch_height / 2 - 1) || x > (w - patch_width / 2 - 1)) {
         continue;
       }
-      PropagateNeighbors(iml, imr, Gl, Gr, x, y, disp, f, patch_height, patch_width, 1);
+      // PropagateNeighbors(iml, imr, Gl, Gr, x, y, disp, f, patch_height, patch_width, 1);
+      PropagateNeighbors(iml, imr, Gl, Gr, x, y, disp, f, patch_height, patch_width, 1, 0);
+    }
+  }
+
+  // Pass starting in the bottom right.
+  for (int y = h - 2; y >= 0; --y) {
+    for (int x = w - 2; x >= 0; --x) {
+      // For now, skip pixels within patch dimensions of the border.
+      if (y < (patch_height / 2) || x < (patch_width / 2) ||
+          y > (h - patch_height / 2 - 1) || x > (w - patch_width / 2 - 1)) {
+        continue;
+      }
+      PropagateNeighbors(iml, imr, Gl, Gr, x, y, disp, f, patch_height, patch_width, 0, 1);
+    }
+  }
+}
+
+
+void Patchmatch::RemoveBackground(const Image1b& iml,
+                                  const Image1b& imr,
+                                  const Image1f& Gl,
+                                  const Image1f& Gr,
+                                  Image1f& disp,
+                                  const CostFunctor2& f,
+                                  int patch_height,
+                                  int patch_width,
+                                  float win_by_factor)
+{
+  CHECK(patch_height % 2 != 0);
+  CHECK(patch_width % 2 != 0);
+
+  const int w = iml.cols;
+  const int h = iml.rows;
+
+  // Pass starting in the top left.
+  for (float y = 1; y < (float)h; ++y) {
+    for (float x = 1; x < (float)w; ++x) {
+      // For now, skip pixels within patch dimensions of the border.
+      if (y < (patch_height / 2) || x < (patch_width / 2) ||
+          y > (h - patch_height / 2 - 1) || x > (w - patch_width / 2 - 1)) {
+        continue;
+      }
+
+      // Get the cost at current estimated disparity.
+      const Image1b& ref = GetPatchSubpix(iml, x, y, patch_width, patch_height);
+      const Image1f& gref = GetPatchSubpix(Gl, x, y, patch_width, patch_height);
+
+      float d0 = disp.at<float>(y, x); // NOTE: row, col.
+      d0 = std::fmin(std::fmax(d0, 0), (float)x - patch_width / 2);
+
+      const Image1b& p0 = GetPatchSubpix(imr, x - d0, y, patch_width, patch_height);
+      const Image1f& g0 = GetPatchSubpix(Gr, x - d0, y, patch_width, patch_height);
+      const float cost_using_current = f(ref, p0, gref, g0);
+
+      // Get the cost if disparity is set to zero.
+      const Image1b& p_bkgd = GetPatchSubpix(imr, x, y, patch_width, patch_height);
+      const Image1f& g_bkgd = GetPatchSubpix(Gr, x, y, patch_width, patch_height);
+      const float cost_no_disp = f(ref, p_bkgd, gref, g_bkgd);
+
+      if (cost_using_current > (cost_no_disp / win_by_factor)) {
+        disp.at<float>(y, x) = 0;
+      }
     }
   }
 }

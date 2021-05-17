@@ -126,11 +126,6 @@ TEST(PatchmatchTest, Test01)
   cv::imshow("left image", il);
   cv::imshow("right image", ir);
 
-  // Image3b lraw = cv::imread("./resources/caddy_32_left.jpg", cv::IMREAD_COLOR);
-  // Image3b rraw = cv::imread("./resources/caddy_32_right.jpg", cv::IMREAD_COLOR);
-  // Image3f Il = CastImage3bTo3f(lraw);
-  // Image3f Ir = CastImage3bTo3f(rraw);
-
   LOG(INFO) << "Image size: " << il.size() << std::endl;
 
   const int downsample_factor = 2;
@@ -175,26 +170,17 @@ TEST(PatchmatchTest, Test01)
   // pm.Propagate(iml_pm, imr_pm, disp, L1CostFunction<Image1b>, 3, 3);
   // pm.Propagate(iml_pm, imr_pm, disp, L1CostFunction<Image1b>, 3, 3);
   // pm.Propagate(iml_pm, imr_pm, disp, L1CostFunction<Image1b>, 3, 3);
-  // pm.AddNoise(disp, 64.0, disp > 0);
-  // pm.Propagate(iml_pm, imr_pm, Gl, Gr, disp, L1GradientCostFunction, 5, 5);
   pm.AddNoise(disp, 32.0, disp > 0);
   pm.Propagate(iml_pm, imr_pm, Gl, Gr, disp, L1GradientCostFunction, 5, 5);
-  // pm.AddNoise(disp, 16.0, disp > 0);
-  // pm.Propagate(iml_pm, imr_pm, Gl, Gr, disp, L1GradientCostFunction, 5, 5);
   pm.AddNoise(disp, 8.0, disp > 0);
   pm.Propagate(iml_pm, imr_pm, Gl, Gr, disp, L1GradientCostFunction, 5, 5);
-  // pm.AddNoise(disp, 4.0, disp > 0);
-  // pm.Propagate(iml_pm, imr_pm, Gl, Gr, disp, L1GradientCostFunction, 5, 5);
   pm.AddNoise(disp, 2.0, disp > 0);
-  pm.Propagate(iml_pm, imr_pm, Gl, Gr, disp, L1GradientCostFunction, 5, 5);
-  // pm.AddNoise(disp, 1.0, disp > 0);
-  // pm.Propagate(iml_pm, imr_pm, Gl, Gr, disp, L1GradientCostFunction, 5, 5);
+  pm.Propagate(iml_pm, imr_pm, Gl, Gr, disp, L1GradientCostFunction, 3, 3);
   pm.AddNoise(disp, 0.5, disp > 0);
-  pm.Propagate(iml_pm, imr_pm, Gl, Gr, disp, L1GradientCostFunction, 5, 5);
-  // pm.Propagate(iml_pm, imr_pm, disp, ZNCC, 3, 3);
-  // pm.Propagate(iml_pm, imr_pm, disp, ZNCC, 7, 7);
-  // pm.Propagate(iml_pm, imr_pm, disp, ZNCC, 7, 7);
+  pm.Propagate(iml_pm, imr_pm, Gl, Gr, disp, L1GradientCostFunction, 3, 3);
   LOG(INFO) << "Propagate disp took: " << timer.Elapsed().milliseconds() << " ms" << std::endl;
+
+  pm.RemoveBackground(iml_pm, imr_pm, Gl, Gr, disp, L1GradientCostFunction, 3, 3, 1.5);
 
   cv::imshow("Propagate", VisualizeDisp(disp, max_disp, pm_downsample_factor * 2));
 

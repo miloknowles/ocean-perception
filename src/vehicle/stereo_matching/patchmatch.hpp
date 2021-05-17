@@ -63,6 +63,16 @@ class Patchmatch final {
                  int patch_height,
                  int patch_width);
 
+  void RemoveBackground(const Image1b& iml,
+                        const Image1b& imr,
+                        const Image1f& Gl,
+                        const Image1f& Gr,
+                        Image1f& disp,
+                        const CostFunctor2& f,
+                        int patch_height,
+                        int patch_width,
+                        float win_by_factor = 2.0);
+
  private:
   Params params_;
 
