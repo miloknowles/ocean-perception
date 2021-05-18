@@ -15,7 +15,14 @@ list(INSERT CMAKE_MODULE_PATH 0 ${CMAKE_SOURCE_DIR}/cmake)
 # add_compile_options(-Wall -Wextra -O3 -faligned-new -g -ggdb -march=native)
 
 set(BM_CPP_DEFAULT_COMPILE_OPTIONS
-  "-std=c++11" "-Wall" "-Wextra" "-O3" "-faligned-new" "-g" "-ggdb" "-march=native")
+  "-std=c++11"
+  "-Wall"
+  "-Wextra"
+  "-O3"
+  "-faligned-new"
+  "-g"
+  "-ggdb"
+  "-march=native")
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -23,7 +30,7 @@ set(BM_CPP_DEFAULT_COMPILE_OPTIONS
 find_package(catkin REQUIRED)
 
 # Find non-catkin pacakges.
-find_package(OpenCV 3.2.0 EXACT REQUIRED)
+find_package(OpenCV 3.4.0 EXACT REQUIRED)
 find_package(Boost        REQUIRED COMPONENTS serialization system filesystem thread regex timer graph)
 find_package(Eigen3 3.3.0 REQUIRED)
 find_package(yaml-cpp     REQUIRED CONFIG PATHS ${YAML_PATHS}) # YAML library

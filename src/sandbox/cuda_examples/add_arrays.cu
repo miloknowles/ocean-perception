@@ -16,6 +16,7 @@ void add(int n, float *x, float *y)
 }
 
 
+// nvprof --unified-memory-profiling off ./add_arrays
 int main(int argc, char const *argv[])
 {
   int N = 1<<20;
@@ -38,6 +39,8 @@ int main(int argc, char const *argv[])
   // Free memory
   cudaFree(x);
   cudaFree(y);
+
+  std::cout << "Ran the CUDA code" << std::endl;
 
   return 0;
 }
