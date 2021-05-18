@@ -54,7 +54,10 @@ T GetSubpixel(const cu::PtrStepSz<T> im, float row, float col)
 
 
 __global__
-void GetRectSubpixel(const cu::PtrStepSz<float> im, float row0, float col0, int height, int width, cu::PtrStepSz<float> out)
+void GetRectSubpixel(const cu::PtrStepSz<float> im,
+                     float row0, float col0,
+                     int height, int width,
+                     cu::PtrStepSz<float> out)
 {
   const int tCol = blockIdx.x * blockDim.x + threadIdx.x;
   const int tRow = blockIdx.y * blockDim.y + threadIdx.y;
@@ -68,7 +71,123 @@ void GetRectSubpixel(const cu::PtrStepSz<float> im, float row0, float col0, int 
 }
 
 
-int main(int argc, char* argv[])
+__device__ __forceinline__
+void GetPatchSubpixel(const cu::PtrStepSz<float> im,
+                     float y, float x,
+                     int ph, int pw,
+                     cu::PtrStepSz<float> out)
+{
+  const float hh = __int2float_rd(ph / 2);
+  const float hw = __int2float_rd(pw / 2);
+
+  for (int py = 0; py < ph; ++py) {
+    for (int px = 0; px < pw; ++px) {
+      out(py, px) = GetSubpixel<float>(
+          im, y + __int2float_rd(py) - hh, x + __int2float_rd(px) - hw);
+    }
+  }
+}
+
+
+// Direction +1 means moving to the right, -1 to the left.
+__global__
+void PropagateRow(const cu::PtrStepSz<float> iml,
+                  const cu::PtrStepSz<float> imr,
+                  const cu::PtrStepSz<float> Gl,
+                  const cu::PtrStepSz<float> Gr,
+                  cu::PtrStepSz<float> disp,
+                  int direction,
+                  int patch_size)
+{
+  assert(patch_size % 2 != 0);
+  assert(direction == -1 || direction == 1);
+
+  // Only use 1D grid of blocks for this function.
+  const int tRow = blockIdx.x * blockDim.x + threadIdx.x;
+
+  // Skip rows where there is insufficient padding for patch.
+  if (tRow < (patch_size / 2) || tRow > (patch_size / 2 - 1)) {
+    return;
+  }
+
+  const int minCol = patch_size / 2;
+  const int maxCol = iml.cols - patch_size / 2 - 1;
+  const int start = (direction > 0) ? minCol : maxCol;
+  const int end = (direction > 0) ? maxCol : minCol;
+
+  const float y = __int2float_rd(tRow);
+
+  size_t step = patch_size * sizeof(float);
+  float *dataref = new float[patch_size*patch_size];
+  float *data0 = new float[patch_size*patch_size];
+  float *data1 = new float[patch_size*patch_size];
+
+  cu::PtrStepSz<float> ref(patch_size, patch_size, dataref, step); // Left image patch.
+  cu::PtrStepSz<float> p0(patch_size, patch_size, data0, step);  // Current right image patch.
+  cu::PtrStepSz<float> p1(patch_size, patch_size, data1, step);  // Proposed right image patch.
+
+  for (int col = start; col < end; col += direction) {
+    const float x = __int2float_rd(col);
+    const float d0 = disp(tRow, col);
+    const float d1 = disp(tRow, col - direction);
+    GetPatchSubpixel(iml, y, x, patch_size, patch_size, ref);
+    GetPatchSubpixel(iml, y, fmaxf(x - d0, minCol), patch_size, patch_size, p0);
+    GetPatchSubpixel(iml, y, fmaxf(x - d1, minCol), patch_size, patch_size, p1);
+  }
+
+  free(dataref);
+  free(data0);
+  free(data1);
+}
+
+
+static cu::GpuMat GradientMagnitude(const cu::GpuMat& im)
+{
+  // Compute the image gradient.
+  cv::Ptr<cu::Filter> sobel_x = cu::createSobelFilter(CV_32FC1, CV_32FC1, 1, 0, 3);
+  cv::Ptr<cu::Filter> sobel_y = cu::createSobelFilter(CV_32FC1, CV_32FC1, 0, 1, 3);
+
+  cv::cuda::GpuMat Gx, Gy, Gmag;
+  sobel_x->apply(im, Gx);
+  sobel_y->apply(im, Gy);
+  cu::magnitude(Gx, Gy, Gmag);
+
+  return Gmag;
+}
+
+
+cv::Mat Patchmatch()
+{
+  cv::Mat iml_host = cv::imread("./resources/farmsim_01_left.png", CV_LOAD_IMAGE_GRAYSCALE);
+  cv::Mat imr_host = cv::imread("./resources/farmsim_01_right.png", CV_LOAD_IMAGE_GRAYSCALE);
+
+  cu::GpuMat iml_gpu, imr_gpu, disp_gpu;
+  iml_gpu.upload(iml_host);
+  iml_gpu.convertTo(iml_gpu, CV_32FC1);
+
+  imr_gpu.upload(imr_host);
+  imr_gpu.convertTo(imr_gpu, CV_32FC1);
+
+  const cu::GpuMat Gl = GradientMagnitude(iml_gpu);
+  const cu::GpuMat Gr = GradientMagnitude(imr_gpu);
+
+  disp_gpu.create(iml_gpu.size(), CV_32FC1);
+
+  const dim3 block_rowprop(256);
+  const dim3 grid_rowprop(cu::device::divUp(iml_host.rows, block_rowprop.x));
+
+  PropagateRow<<<grid_rowprop, block_rowprop>>>(iml_gpu, imr_gpu, Gl, Gr, disp_gpu, 1, 3);
+
+  cudaDeviceSynchronize();
+
+  cv::Mat disp_host;
+  disp_gpu.download(disp_host);
+
+  return disp_host;
+}
+
+
+void GetPatch()
 {
   cv::Mat src_host = cv::imread("./resources/farmsim_01_left.png", CV_LOAD_IMAGE_GRAYSCALE);
   cv::cuda::GpuMat dst, src;
@@ -110,6 +229,14 @@ int main(int argc, char* argv[])
   cv::imshow("rect", rect_host);
   cv::imshow("Gmag", Gmag_host);
   cv::waitKey();
+}
+
+
+int main(int argc, char* argv[])
+{
+  const cv::Mat1f disp = Patchmatch();
+  cv::imshow("disp", disp);
+  cv::waitKey(0);
 
   return 0;
 }
