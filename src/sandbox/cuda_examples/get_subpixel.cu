@@ -89,6 +89,100 @@ void GetPatchSubpixel(const cu::PtrStepSz<float> im,
 }
 
 
+__device__ __forceinline__
+float L1GradientCost(const cu::PtrStepSz<float> pl,
+                     const cu::PtrStepSz<float> pr,
+                     const cu::PtrStepSz<float> gl,
+                     const cu::PtrStepSz<float> gr,
+                     float alpha)
+{
+  float cost = 0;
+  for (int row = 0; row < pl.rows; ++row) {
+    for (int col = 0; col < pl.cols; ++col) {
+      cost += alpha * (pl(row, col) - pr(row, col)) + (1 - alpha) * (gl(row, col) - gr(row, col));
+    }
+  }
+  return cost;
+}
+
+
+__device__ __forceinline__
+float L1GradientCost(const cu::PtrStepSz<float> Il,
+                     const cu::PtrStepSz<float> Ir,
+                     const cu::PtrStepSz<float> Gl,
+                     const cu::PtrStepSz<float> Gr,
+                     int yl, int xl,
+                     float yr, float xr,
+                     int ph, int pw,
+                     float alpha)
+{
+  float cost = 0;
+  for (int row = 0; row < ph; ++row) {
+    for (int col = 0; col < pw; ++col) {
+      const float yri = yr - ph / 2 + __int2float_rd(row);
+      const float xri = xr - pw / 2 + __int2float_rd(col);
+      const int yli = yl - ph / 2 + row;
+      const int xli = xl - pw / 2 + col;
+      cost += alpha       * (Il(yli, xli) - GetSubpixel(Ir, yri, xri)) +
+              (1 - alpha) * (Gl(yli, xli) - GetSubpixel(Gr, yri, xri));
+    }
+  }
+  return cost;
+}
+
+
+__global__
+void Propagate4(const cu::PtrStepSz<float> iml,
+                const cu::PtrStepSz<float> imr,
+                const cu::PtrStepSz<float> Gl,
+                const cu::PtrStepSz<float> Gr,
+                cu::PtrStepSz<float> disp,
+                int patch_size)
+{
+  assert(patch_size % 2 != 0);
+
+  const int tCol = blockIdx.x * blockDim.x + threadIdx.x;
+  const int tRow = blockIdx.y * blockDim.y + threadIdx.y;
+
+  // Skip rows where there is insufficient padding for patch.
+  if (tRow < (patch_size / 2) || tRow > (iml.rows - patch_size / 2 - 1) ||
+      tCol < (patch_size / 2) || tCol > (iml.cols - patch_size / 2 - 1)) {
+    return;
+  }
+
+  const float y = __int2float_rd(tRow);
+  const float x = __int2float_rd(tCol);
+
+  float lowest_cost = 1e9;
+  float best_disp = 0;
+
+  for (int tNb = 0; tNb < 5; ++tNb) {
+    int Nx = tCol;
+    int Ny = tRow;
+    if (tNb == 1) {         // Left.
+      Nx = tCol - 1;
+    } else if (tNb == 2) {  // Top.
+      Ny = tRow - 1;
+    } else if (tNb == 3) {  // Right.
+      Nx = tCol + 1;
+    } else {                // Bottom.
+      Ny = tRow + 1;
+    }
+
+    const float d0 = disp(Ny, Nx);
+    const float cost = L1GradientCost(
+        iml, imr, Gl, Gr, tRow, tCol, y, fmaxf(x - d0, patch_size / 2), patch_size, patch_size, 0.7);
+
+    if (cost < lowest_cost || tNb == 0) {
+      lowest_cost = cost;
+      best_disp = d0;
+    }
+  }
+
+  disp(tRow, tCol) = best_disp;
+}
+
+
 // Direction +1 means moving to the right, -1 to the left.
 __global__
 void PropagateRow(const cu::PtrStepSz<float> iml,
@@ -106,7 +200,7 @@ void PropagateRow(const cu::PtrStepSz<float> iml,
   const int tRow = blockIdx.x * blockDim.x + threadIdx.x;
 
   // Skip rows where there is insufficient padding for patch.
-  if (tRow < (patch_size / 2) || tRow > (patch_size / 2 - 1)) {
+  if (tRow < (patch_size / 2) || tRow > (iml.rows - patch_size / 2 - 1)) {
     return;
   }
 
@@ -122,22 +216,46 @@ void PropagateRow(const cu::PtrStepSz<float> iml,
   float *data0 = new float[patch_size*patch_size];
   float *data1 = new float[patch_size*patch_size];
 
-  cu::PtrStepSz<float> ref(patch_size, patch_size, dataref, step); // Left image patch.
-  cu::PtrStepSz<float> p0(patch_size, patch_size, data0, step);  // Current right image patch.
-  cu::PtrStepSz<float> p1(patch_size, patch_size, data1, step);  // Proposed right image patch.
+  float *gdataref = new float[patch_size*patch_size];
+  float *gdata0 = new float[patch_size*patch_size];
+  float *gdata1 = new float[patch_size*patch_size];
+
+  cu::PtrStepSz<float> ref(patch_size, patch_size, dataref, step);  // Left image patch.
+  cu::PtrStepSz<float> p0(patch_size, patch_size, data0, step);     // Current right image patch.
+  cu::PtrStepSz<float> p1(patch_size, patch_size, data1, step);     // Proposed right image patch.
+
+  cu::PtrStepSz<float> gref(patch_size, patch_size, gdataref, step);  // Left image patch.
+  cu::PtrStepSz<float> g0(patch_size, patch_size, gdata0, step);     // Current right image patch.
+  cu::PtrStepSz<float> g1(patch_size, patch_size, gdata1, step);     // Proposed right image patch.
 
   for (int col = start; col < end; col += direction) {
     const float x = __int2float_rd(col);
     const float d0 = disp(tRow, col);
     const float d1 = disp(tRow, col - direction);
     GetPatchSubpixel(iml, y, x, patch_size, patch_size, ref);
-    GetPatchSubpixel(iml, y, fmaxf(x - d0, minCol), patch_size, patch_size, p0);
-    GetPatchSubpixel(iml, y, fmaxf(x - d1, minCol), patch_size, patch_size, p1);
+    GetPatchSubpixel(imr, y, fmaxf(x - d0, minCol), patch_size, patch_size, p0);
+    GetPatchSubpixel(imr, y, fmaxf(x - d1, minCol), patch_size, patch_size, p1);
+
+    GetPatchSubpixel(Gl, y, x, patch_size, patch_size, gref);
+    GetPatchSubpixel(Gr, y, fmaxf(x - d0, minCol), patch_size, patch_size, g0);
+    GetPatchSubpixel(Gr, y, fmaxf(x - d1, minCol), patch_size, patch_size, g1);
+
+    const float cost0 = L1GradientCost(ref, p0, gref, g0, 0.7);
+    const float cost1 = L1GradientCost(ref, p1, gref, g1, 0.7);
+
+    // If using the neighboring disp improves cost, use it (and clip to valid range).
+    if (cost1 < cost0) {
+      disp(tRow, col) = fmaxf(x - d1, minCol);
+    }
   }
 
   free(dataref);
   free(data0);
   free(data1);
+
+  free(gdataref);
+  free(gdata0);
+  free(gdata1);
 }
 
 
@@ -173,10 +291,24 @@ cv::Mat Patchmatch()
 
   disp_gpu.create(iml_gpu.size(), CV_32FC1);
 
-  const dim3 block_rowprop(256);
-  const dim3 grid_rowprop(cu::device::divUp(iml_host.rows, block_rowprop.x));
+  // const dim3 block_rowprop(256);
+  // const dim3 grid_rowprop(cu::device::divUp(iml_host.rows, block_rowprop.x));
+  // PropagateRow<<<grid_rowprop, block_rowprop>>>(iml_gpu, imr_gpu, Gl, Gr, disp_gpu, 1, 3);
 
-  PropagateRow<<<grid_rowprop, block_rowprop>>>(iml_gpu, imr_gpu, Gl, Gr, disp_gpu, 1, 3);
+  // cu::PtrStepSz<float> costs[5];
+
+  // for (int i = 0; i < 5; ++i) {
+  //   costs[i] = cu::PtrStepSz<float>(
+  //       iml_gpu.rows, iml_gpu.cols,
+  //       new float[iml_gpu.rows*iml_gpu.cols],
+  //       iml_gpu.cols*sizeof(float));
+  // }
+
+  const dim3 block(16, 16);
+  const dim3 grid(cu::device::divUp(iml_host.cols, block.x),
+                  cu::device::divUp(iml_host.rows, block.y));
+                  // cu::device::divUp(5, block.z));
+  Propagate4<<<grid, block>>>(iml_gpu, imr_gpu, Gl, Gr, disp_gpu, 3);
 
   cudaDeviceSynchronize();
 
