@@ -2,6 +2,8 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/core/cuda.hpp>
 #include <opencv2/core/cuda/common.hpp>
+#include <opencv2/cudafilters.hpp>
+#include <opencv2/cudaimgproc.hpp>
 
 namespace cu = cv::cuda;
 
@@ -71,28 +73,42 @@ int main(int argc, char* argv[])
   cv::Mat src_host = cv::imread("./resources/farmsim_01_left.png", CV_LOAD_IMAGE_GRAYSCALE);
   cv::cuda::GpuMat dst, src;
   src.upload(src_host);
-
   src.convertTo(dst, CV_32FC1);
-  // cv::cuda::GpuMat rect(cv::Size(300, 300), CV_32FC1);
 
-  cv::cuda::GpuMat rect, rect1b;
-  rect.create(cv::Size(300, 300), CV_32FC1);
+  // Compute the image gradient.
+  cv::Ptr<cu::Filter> sobel_x = cu::createSobelFilter(CV_32FC1, CV_32FC1, 1, 0, 3);
+  cv::Ptr<cu::Filter> sobel_y = cu::createSobelFilter(CV_32FC1, CV_32FC1, 0, 1, 3);
+
+  cv::cuda::GpuMat Gx, Gy, Gmag;
+  sobel_x->apply(dst, Gx);
+  sobel_y->apply(dst, Gy);
+  cu::magnitude(Gx, Gy, Gmag);
+  // cu::pow(Gx, 2.0, Gx);
+  // cu::pow(Gy, 2.0, Gy);
+  // cu::add(Gx, Gy, Gmag);
+
+  cv::cuda::GpuMat rect(cv::Size(300, 300), CV_32FC1);
 
 	const dim3 block(16, 16);
   const dim3 grid(cu::device::divUp(rect.cols, block.x), cu::device::divUp(rect.rows, block.y));
   GetRectSubpixel<<<grid, block>>>(dst, 53.4, 11.123, rect.rows, rect.cols, rect);
 
+  cv::cuda::GpuMat rect1b, Gmag1b;
   rect.convertTo(rect1b, CV_8UC1);
+  Gmag.convertTo(Gmag1b, CV_8UC1);
+
+  cv::Mat rect_host, Gmag_host;
+  rect1b.download(rect_host);
+  Gmag1b.download(Gmag_host);
+
   cudaDeviceSynchronize();
 
-  cv::Mat rect_host;
-  rect1b.download(rect_host);
-
-  double minVal, maxVal;
-  cv::minMaxLoc(rect_host, &minVal, &maxVal);
-  printf("minVal=%f maxVal=%f\n", minVal, maxVal);
+  // double minVal, maxVal;
+  // cv::minMaxLoc(rect_host, &minVal, &maxVal);
+  // printf("minVal=%f maxVal=%f\n", minVal, maxVal);
 
   cv::imshow("rect", rect_host);
+  cv::imshow("Gmag", Gmag_host);
   cv::waitKey();
 
   return 0;
