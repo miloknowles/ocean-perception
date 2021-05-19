@@ -230,6 +230,46 @@ void PropagateCol(const cu::PtrStepSz<float> iml,
 }
 
 
+__global__
+void MaskBackground(const cu::PtrStepSz<float> iml,
+                    const cu::PtrStepSz<float> imr,
+                    const cu::PtrStepSz<float> Gl,
+                    const cu::PtrStepSz<float> Gr,
+                    cu::PtrStepSz<float> disp,
+                    int patch_size,
+                    float alpha,
+                    float improve_factor)
+{
+  assert(patch_size % 2 != 0);
+  const int patch_radius = patch_size / 2;
+
+  const int tCol = blockIdx.x * blockDim.x + threadIdx.x;
+  const int tRow = blockIdx.y * blockDim.y + threadIdx.y;
+
+  // Skip rows where there is insufficient padding for patch.
+  if (tRow < (patch_radius) || tRow > (iml.rows - patch_radius - 1) ||
+      tCol < (patch_radius) || tCol > (iml.cols - patch_radius - 1)) {
+    return;
+  }
+
+  const float y = __int2float_rd(tRow);
+  const float x = __int2float_rd(tCol);
+
+  const float d1 = disp(tRow, tCol);
+
+  const float cost0 = L1GradientCost3x3(
+      iml, imr, Gl, Gr, tRow, tCol, y, x, alpha);
+
+  const float cost1 = L1GradientCost3x3(
+      iml, imr, Gl, Gr, tRow, tCol, y, fmaxf(x - d1, patch_radius), alpha);
+
+  // If the estimated disparity does not improve cost by more than improve_factor, mark as background.
+  if (!(cost1 < improve_factor*cost0)) {
+    disp(tRow, tCol) = 0;
+  }
+}
+
+
 void AddForegroundNoise(cu::GpuMat& disp, const cu::GpuMat& unit_noise, float scale, cu::GpuMat& mask)
 {
   cu::threshold(disp, mask, 0.0, 1.0, CV_THRESH_BINARY);
@@ -308,7 +348,7 @@ void PatchmatchGpu::Match(const cu::GpuMat& iml,
                       cu::device::divUp(row_stripes, row_block.y));
 
   for (int iter = 0; iter < params_.patchmatch_iters; ++iter) {
-    AddForegroundNoise(disp, unit_noise_gpu_, 32 / std::pow(2.0, (float)iter), mask_gpu_);
+    AddForegroundNoise(disp, unit_noise_gpu_, 32.0 / std::pow(2.0, (float)iter), mask_gpu_);
     cudaDeviceSynchronize();
     PropagateRow<<<row_grid, row_block>>>(iml, imr, Gl, Gr, disp, 1, 3, params_.cost_alpha);
     cudaDeviceSynchronize();
@@ -318,6 +358,10 @@ void PatchmatchGpu::Match(const cu::GpuMat& iml,
     cudaDeviceSynchronize();
     PropagateCol<<<col_grid, col_block>>>(iml, imr, Gl, Gr, disp, -1, 3, params_.cost_alpha);
   }
+
+  const dim3 block(16, 16);
+  const dim3 grid(cu::device::divUp(iml.cols, block.x), cu::device::divUp(iml.rows, block.y));
+  MaskBackground<<<grid, block>>>(iml, imr, Gl, Gr, disp, 3, params_.cost_alpha, params_.cost_improve_factor);
 
   cudaDeviceSynchronize();
 }

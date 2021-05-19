@@ -46,6 +46,17 @@ void PropagateCol(const cu::PtrStepSz<float> iml,
                   float alpha);
 
 
+__global__
+void MaskBackground(const cu::PtrStepSz<float> iml,
+                    const cu::PtrStepSz<float> imr,
+                    const cu::PtrStepSz<float> Gl,
+                    const cu::PtrStepSz<float> Gr,
+                    cu::PtrStepSz<float> disp,
+                    int patch_size,
+                    float alpha,
+                    float improve_factor);
+
+
 void AddForegroundNoise(cu::GpuMat& disp,
                         const cu::GpuMat& unit_noise,
                         float scale,
@@ -69,6 +80,7 @@ class PatchmatchGpu final {
     float cost_alpha = 0.9;
     int patchmatch_iters = 3;
     int init_dilate_factor = 4;
+    float cost_improve_factor = 0.8;
 
    private:
     void LoadParams(const YamlParser& p) override;
