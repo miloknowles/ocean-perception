@@ -103,7 +103,7 @@ TEST(PatchmatchGpuTest, Sequence)
 
   PatchmatchGpu::Params params;
   float max_disp = 128;
-  int downsample_factor = 2;
+  int downsample_factor = 1;
 
   params.matcher_params.templ_cols = 31;
   params.matcher_params.templ_rows = 11;
