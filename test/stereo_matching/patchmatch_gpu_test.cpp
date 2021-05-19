@@ -58,7 +58,7 @@ TEST(PatchmatchGpuTest, Test01)
 
   LOG(INFO) << "Original image size: " << il.size() << std::endl;
 
-  const int downsample_factor = 1;
+  const int downsample_factor = 2;
   cv::resize(il, il, il.size() / downsample_factor);
   cv::resize(ir, ir, ir.size() / downsample_factor);
 
@@ -79,11 +79,13 @@ TEST(PatchmatchGpuTest, Test01)
 
   PatchmatchGpu pm(params);
   Image1f disp;
-  pm.Match(il, ir, disp);
 
-  Timer timer(true);
+  for (int i = 0; i < 5; ++i) {
+    Timer timer(true);
+    pm.Match(il, ir, disp);
+    LOG(INFO) << "Took " << timer.Elapsed().milliseconds() << " ms" << std::endl;
+  }
   cv::imshow("Propagate", VisualizeDisp(disp, max_disp, downsample_factor));
-  LOG(INFO) << "Took " << timer.Elapsed().milliseconds() << " ms" << std::endl;
 
   cv::waitKey(0);
 }

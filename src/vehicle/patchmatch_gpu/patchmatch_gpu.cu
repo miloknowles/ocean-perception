@@ -267,7 +267,15 @@ void PatchmatchGpu::Match(const Image1b& iml,
                           const Image1b& imr,
                           Image1f& disp)
 {
-  disp = SparseInit(iml, imr, 4);
+  disp = SparseInit(iml, imr, params_.init_dilate_factor);
+
+  // Only allocate the noise image once.
+  if (unit_noise_gpu_.empty()) {
+    Image1f tmp(iml.size(), 0);
+    cv::RNG rng(123);
+    rng.fill(tmp, cv::RNG::UNIFORM, -1, 1, true);
+    unit_noise_gpu_.upload(tmp);
+  }
 
   tmp_.upload(iml);
   tmp_.convertTo(iml_gpu_, CV_32FC1);
@@ -290,14 +298,6 @@ void PatchmatchGpu::Match(const cu::GpuMat& iml,
                           const cu::GpuMat& Gr,
                           cu::GpuMat& disp)
 {
-  // Only allocate the noise image once.
-  if (unit_noise_gpu_.empty()) {
-    Image1f tmp(iml.size(), 0);
-    cv::RNG rng(123);
-    rng.fill(tmp, cv::RNG::UNIFORM, -1, 1, true);
-    unit_noise_gpu_.upload(tmp);
-  }
-
   const int column_stripes = 16;
   const int row_stripes = 16;
   const dim3 row_block(column_stripes, 16);

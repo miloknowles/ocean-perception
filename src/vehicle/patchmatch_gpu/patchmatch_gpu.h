@@ -68,6 +68,7 @@ class PatchmatchGpu final {
 
     float cost_alpha = 0.9;
     int patchmatch_iters = 3;
+    int init_dilate_factor = 4;
 
    private:
     void LoadParams(const YamlParser& p) override;
