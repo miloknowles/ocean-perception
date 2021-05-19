@@ -270,6 +270,31 @@ void MaskBackground(const cu::PtrStepSz<float> iml,
 }
 
 
+__global__
+void MaskOcclusions(cu::PtrStepSz<float> displ,
+                    cu::PtrStepSz<float> dispr)
+{
+  const int tCol = blockIdx.x * blockDim.x + threadIdx.x;
+  const int tRow = blockIdx.y * blockDim.y + threadIdx.y;
+
+  // Skip rows where there is insufficient padding for patch.
+  if (tRow < 0 || (tRow > displ.rows - 1) ||
+      tCol < 0 || (tCol > displ.cols - 1)) {
+    return;
+  }
+
+  const float y = __int2float_rd(tRow);
+  const float x = __int2float_rd(tCol);
+  const float dl = displ(y, x);
+  const float dr = dispr(y, fmaxf(x - dl, 0));
+
+  // If a pixel has higher disparity in the right image, it is occluded in the left.
+  if (dr > 1.4*dl || dr < 0.7*dl) {
+    displ(y, x) = 0;
+  }
+}
+
+
 void AddForegroundNoise(cu::GpuMat& disp, const cu::GpuMat& unit_noise, float scale, cu::GpuMat& mask)
 {
   cu::threshold(disp, mask, 0.0, 1.0, CV_THRESH_BINARY);
@@ -305,7 +330,8 @@ PatchmatchGpu::PatchmatchGpu(const Params& params)
 
 void PatchmatchGpu::Match(const Image1b& iml,
                           const Image1b& imr,
-                          Image1f& disp)
+                          Image1f& disp,
+                          Image1f& dispr)
 {
   disp = SparseInit(iml, imr, params_.init_dilate_factor);
 
@@ -328,7 +354,25 @@ void PatchmatchGpu::Match(const Image1b& iml,
   disp_gpu_.upload(disp);
   Match(iml_gpu_, imr_gpu_, Gl_, Gr_, disp_gpu_);
 
+  cu::flip(iml_gpu_, iml_gpu_flip_, 1);
+  cu::flip(imr_gpu_, imr_gpu_flip_, 1);
+  cu::flip(Gl_, Gl_flip_, 1);
+  cu::flip(Gr_, Gr_flip_, 1);
+
+  Image1b iml_flip, imr_flip;
+  cv::flip(iml, iml_flip, 1);
+  cv::flip(imr, imr_flip, 1);
+  disp = SparseInit(imr_flip, iml_flip, params_.init_dilate_factor);
+  disp_gpu_r_.upload(disp);
+  Match(imr_gpu_flip_, iml_gpu_flip_, Gr_flip_, Gl_flip_, disp_gpu_r_);
+  cu::flip(disp_gpu_r_, disp_gpu_r_, 1);
+
+  const dim3 block(16, 16);
+  const dim3 grid(cu::device::divUp(iml.cols, block.x), cu::device::divUp(iml.rows, block.y));
+  MaskOcclusions<<<grid, block>>>(disp_gpu_, disp_gpu_r_);
+
   disp_gpu_.download(disp);
+  disp_gpu_r_.download(dispr);
 }
 
 

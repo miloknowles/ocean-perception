@@ -79,11 +79,11 @@ TEST(PatchmatchGpuTest, Test01)
   params.patchmatch_iters = 3;
 
   PatchmatchGpu pm(params);
-  Image1f disp;
+  Image1f disp, dispr;
 
   for (int i = 0; i < 5; ++i) {
     Timer timer(true);
-    pm.Match(il, ir, disp);
+    pm.Match(il, ir, disp, dispr);
     LOG(INFO) << "Took " << timer.Elapsed().milliseconds() << " ms" << std::endl;
   }
   cv::imshow("Propagate", VisualizeDisp(disp, max_disp, downsample_factor));
@@ -97,7 +97,8 @@ TEST(PatchmatchGpuTest, Sequence)
   const std::string folder = "/home/milo/datasets/Unity3D/farmsim/waypoints1";
   dataset::EurocDataset dataset(folder);
 
-  cv::namedWindow("disp", cv::WINDOW_AUTOSIZE);
+  cv::namedWindow("disp", cv::WINDOW_NORMAL);
+  cv::namedWindow("disp_right", cv::WINDOW_NORMAL);
 
   PatchmatchGpu::Params params;
   float max_disp = 128;
@@ -114,7 +115,7 @@ TEST(PatchmatchGpuTest, Sequence)
   params.patchmatch_iters = 3;
 
   PatchmatchGpu pm(params);
-  Image1f disp;
+  Image1f disp, disp_right;
   Image1b iml, imr;
 
   dataset::StereoCallback1b stereo_cb = [&](const StereoImage1b& stereo_pair)
@@ -123,8 +124,15 @@ TEST(PatchmatchGpuTest, Sequence)
         iml, stereo_pair.left_image.size() / downsample_factor);
     cv::resize(MaybeConvertToGray(stereo_pair.right_image),
         imr, stereo_pair.right_image.size() / downsample_factor);
-    pm.Match(iml, imr, disp);
+    pm.Match(iml, imr, disp, disp_right);
+
+
+    // cv::flip(iml, iml, 1);
+    // cv::flip(imr, imr, 1);
+    // pm.Match(imr, iml, disp_right);
+    // cv::flip(disp_right, disp_right, 1);
     cv::imshow("disp", VisualizeDisp(disp, max_disp, downsample_factor));
+    cv::imshow("disp_right", VisualizeDisp(disp_right, max_disp, downsample_factor));
     cv::waitKey(1);
   };
 

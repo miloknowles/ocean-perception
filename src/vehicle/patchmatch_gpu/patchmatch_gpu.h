@@ -57,6 +57,11 @@ void MaskBackground(const cu::PtrStepSz<float> iml,
                     float improve_factor);
 
 
+__global__
+void MaskOcclusions(cu::PtrStepSz<float> displ,
+                    cu::PtrStepSz<float> dispr);
+
+
 void AddForegroundNoise(cu::GpuMat& disp,
                         const cu::GpuMat& unit_noise,
                         float scale,
@@ -93,7 +98,8 @@ class PatchmatchGpu final {
  public:
   void Match(const Image1b& iml,
              const Image1b& imr,
-             Image1f& disp);
+             Image1f& disp,
+             Image1f& dispr);
 
   void Match(const cu::GpuMat& iml,
              const cu::GpuMat& imr,
@@ -114,6 +120,7 @@ class PatchmatchGpu final {
   // Pre-allocate these GpuMats to save on allocation time.
   cu::GpuMat mask_gpu_, unit_noise_gpu_;
   cu::GpuMat iml_gpu_, imr_gpu_, Gx_, Gy_, Gl_, Gr_, disp_gpu_, tmp_;
+  cu::GpuMat iml_gpu_flip_, imr_gpu_flip_, Gl_flip_, Gr_flip_, disp_gpu_r_;
 };
 
 }
