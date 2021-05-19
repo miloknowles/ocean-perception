@@ -94,7 +94,8 @@ TEST(PatchmatchGpuTest, Test01)
 
 TEST(PatchmatchGpuTest, Sequence)
 {
-  const std::string folder = "/home/milo/datasets/Unity3D/farmsim/waypoints1";
+  // const std::string folder = "/home/milo/datasets/Unity3D/farmsim/waypoints1";
+  const std::string folder = "/home/milo/datasets/zed_dataset";
   dataset::EurocDataset dataset(folder);
 
   cv::namedWindow("disp", cv::WINDOW_NORMAL);

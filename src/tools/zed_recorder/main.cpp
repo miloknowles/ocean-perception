@@ -1,6 +1,7 @@
 #include <glog/logging.h>
 
 #include "zed_recorder.hpp"
+#include "core/path_util.hpp"
 
 using namespace bm;
 using namespace zed;
@@ -15,7 +16,7 @@ int main(int argc, char const *argv[])
   const char* path = std::getenv("BM_DATASETS_DIR");
   CHECK(path != nullptr) << "No environment variable $BM_DATASETS_DIR. Did you source setup.bash?" << std::endl;
 
-  const std::string datasets_path(path);
+  const std::string datasets_path(core::Join(path, "zed_dataset"));
   ZedRecorder zr(datasets_path);
   zr.Run(true);
   return 0;
