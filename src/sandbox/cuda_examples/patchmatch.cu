@@ -32,14 +32,10 @@ template <typename T>
 __device__ __forceinline__
 T GetSubpixel(const cu::PtrStepSz<T> im, float row, float col)
 {
-  if (row < 0 || row >= im.rows || col < 0 || col >= im.cols) {
-    return 0;
-  }
-
   const int row0 = __float2int_rd(row);
-  const int row1 = min(__float2int_ru(row), im.rows - 1);
+  const int row1 = __float2int_ru(row);
   const int col0 = __float2int_rd(col);
-  const int col1 = min(__float2int_ru(col), im.cols - 1);
+  const int col1 = __float2int_ru(col);
 
   const float c00 = im(row0, col0);
   const float c01 = im(row0, col1);
@@ -51,7 +47,10 @@ T GetSubpixel(const cu::PtrStepSz<T> im, float row, float col)
 
   const float c0 = (1.0f - trow) * c00 + trow * c10;
   const float c1 = (1.0f - trow) * c01 + trow * c11;
-
+  // const float c0 = (1.0f - (row - floorf(row))) * im(__float2int_rd(row), __float2int_rd(col)) +
+  //                   (row - floorf(row)) * im(__float2int_rd(row), __float2int_ru(col));
+  // const float c1 = (1.0f - (row - floorf(row))) * im(__float2int_ru(row), __float2int_rd(col)) +
+  //                   (row - floorf(row)) * im(__float2int_ru(row), __float2int_ru(col));
   return (1.0f - tcol) * c0 + tcol * c1;
 }
 
@@ -98,28 +97,28 @@ float L1GradientCost3x3(const cu::PtrStepSz<float> Il,
   cost += alpha     * fabsf(Il(yl - 1, xl - 1) - GetSubpixel(Ir, yr - 1, xr - 1)) +
           (1 - alpha) * fabsf(Gl(yl - 1, xl - 1) - GetSubpixel(Gr, yr - 1, xr - 1));
 
-  cost += alpha     * fabsf(Il(yl - 1, xl) - GetSubpixel(Ir, yr - 1, xr)) +
-          (1 - alpha) * fabsf(Gl(yl - 1, xl) - GetSubpixel(Gr, yr - 1, xr));
+  // cost += alpha     * fabsf(Il(yl - 1, xl) - GetSubpixel(Ir, yr - 1, xr)) +
+  //         (1 - alpha) * fabsf(Gl(yl - 1, xl) - GetSubpixel(Gr, yr - 1, xr));
 
   cost += alpha     * fabsf(Il(yl - 1, xl + 1) - GetSubpixel(Ir, yr - 1, xr + 1)) +
           (1 - alpha) * fabsf(Gl(yl - 1, xl + 1) - GetSubpixel(Gr, yr - 1, xr + 1));
 
   // ROW 1
-  cost += alpha     * fabsf(Il(yl, xl - 1) - GetSubpixel(Ir, yr, xr - 1)) +
-          (1 - alpha) * fabsf(Gl(yl, xl - 1) - GetSubpixel(Gr, yr, xr - 1));
+  // cost += alpha     * fabsf(Il(yl, xl - 1) - GetSubpixel(Ir, yr, xr - 1)) +
+  //         (1 - alpha) * fabsf(Gl(yl, xl - 1) - GetSubpixel(Gr, yr, xr - 1));
 
   cost += alpha     * fabsf(Il(yl, xl) - GetSubpixel(Ir, yr, xr)) +
           (1 - alpha) * fabsf(Gl(yl, xl) - GetSubpixel(Gr, yr, xr));
 
-  cost += alpha     * fabsf(Il(yl, xl + 1) - GetSubpixel(Ir, yr, xr + 1)) +
-          (1 - alpha) * fabsf(Gl(yl, xl + 1) - GetSubpixel(Gr, yr, xr + 1));
+  // cost += alpha     * fabsf(Il(yl, xl + 1) - GetSubpixel(Ir, yr, xr + 1)) +
+  //         (1 - alpha) * fabsf(Gl(yl, xl + 1) - GetSubpixel(Gr, yr, xr + 1));
 
   // ROW 2
   cost += alpha     * fabsf(Il(yl + 1, xl - 1) - GetSubpixel(Ir, yr + 1, xr - 1)) +
           (1 - alpha) * fabsf(Gl(yl + 1, xl - 1) - GetSubpixel(Gr, yr + 1, xr - 1));
 
-  cost += alpha     * fabsf(Il(yl + 1, xl) - GetSubpixel(Ir, yr + 1, xr)) +
-          (1 - alpha) * fabsf(Gl(yl + 1, xl) - GetSubpixel(Gr, yr + 1, xr));
+  // cost += alpha     * fabsf(Il(yl + 1, xl) - GetSubpixel(Ir, yr + 1, xr)) +
+  //         (1 - alpha) * fabsf(Gl(yl + 1, xl) - GetSubpixel(Gr, yr + 1, xr));
 
   cost += alpha       * fabsf(Il(yl + 1, xl + 1) - GetSubpixel(Ir, yr + 1, xr + 1)) +
           (1 - alpha) * fabsf(Gl(yl + 1, xl + 1) - GetSubpixel(Gr, yr + 1, xr + 1));
@@ -224,8 +223,8 @@ void PropagateRow(const cu::PtrStepSz<float> iml,
   // Each thread get a "chunk" of a row.
   const int chunkSize = iml.cols / blockDim.x;
 
-  const int minCol = max(tColChunk * chunkSize, patch_radius);
-  const int maxCol = min((tColChunk + 1)*chunkSize, iml.cols - patch_radius - 1);
+  const int minCol = max(tColChunk * chunkSize - 5, patch_radius);
+  const int maxCol = min((tColChunk + 1)*chunkSize + 5, iml.cols - patch_radius - 1);
 
   // Skip invalid cols.
   if (minCol >= iml.cols) {
@@ -241,12 +240,6 @@ void PropagateRow(const cu::PtrStepSz<float> iml,
     const float x = __int2float_rd(col);
     const float d0 = disp(tRow, col);
     const float d1 = disp(tRow, col - direction);
-
-    // const float cost0 = L1GradientCost(
-    //     iml, imr, Gl, Gr, tRow, col, y, fmaxf(x - d0, patch_radius), patch_size, patch_size, 0.7);
-
-    // const float cost1 = L1GradientCost(
-    //     iml, imr, Gl, Gr, tRow, col, y, fmaxf(x - d1, patch_radius), patch_size, patch_size, 0.7);
 
     const float cost0 = L1GradientCost3x3(
         iml, imr, Gl, Gr, tRow, col, y, fmaxf(x - d0, patch_radius), alpha);
@@ -288,8 +281,8 @@ void PropagateCol(const cu::PtrStepSz<float> iml,
   // Each thread get a "chunk" of a row.
   const int chunkSize = iml.rows / blockDim.y;
 
-  const int minRow = max(tRowChunk * chunkSize, patch_radius);
-  const int maxRow = min((tRowChunk + 1)*chunkSize, iml.rows - patch_radius - 1);
+  const int minRow = max(tRowChunk * chunkSize - 5, patch_radius);
+  const int maxRow = min((tRowChunk + 1)*chunkSize + 5, iml.rows - patch_radius - 1);
 
   // Skip invalid cols.
   if (minRow >= iml.rows) {
@@ -317,6 +310,15 @@ void PropagateCol(const cu::PtrStepSz<float> iml,
       disp(row, tCol) = fminf(d1, x - patch_radius);
     }
   }
+}
+
+
+void AddForegroundNoise(cu::GpuMat& disp, const cu::GpuMat& unit_noise, float scale, cu::GpuMat& mask)
+{
+  cu::threshold(disp, mask, 0.0, 1.0, CV_THRESH_BINARY);
+  cu::scaleAdd(unit_noise, scale, disp, disp);
+  cu::multiply(disp, mask, disp);
+  cu::max(disp, 0, disp);
 }
 
 
@@ -365,6 +367,8 @@ cv::Mat PatchmatchGpu()
   cv::resize(il, iml_pm, il.size() / pm_downsample_factor, 0, 0, cv::INTER_LINEAR);
   cv::resize(ir, imr_pm, ir.size() / pm_downsample_factor, 0, 0, cv::INTER_LINEAR);
 
+  printf("Image dimensions: %d %d\n", il.cols, il.rows);
+
   cu::GpuMat iml_gpu, imr_gpu, disp_gpu, tmp;
   tmp.upload(iml_pm);
   tmp.convertTo(iml_gpu, CV_32FC1);
@@ -375,38 +379,39 @@ cv::Mat PatchmatchGpu()
   GradientMagnitude(iml_gpu, _Gx, _Gy, Gl);
   GradientMagnitude(imr_gpu, _Gx, _Gy, Gr);
 
+  cu::GpuMat mask;
+
+  bms::Image1f unit_noise(disp.size(), 0);
+  cu::GpuMat unit_noise_gpu;
+  cv::RNG rng(123);
+  rng.fill(unit_noise, cv::RNG::UNIFORM, -1, 1, true);
+  unit_noise_gpu.upload(unit_noise);
+
   // disp_gpu.create(iml_gpu.size(), CV_32FC1);
   disp_gpu.upload(disp);
 
-  const int column_stripes = 8;
-  const int row_stripes = 8;
-  const dim3 row_block(column_stripes, 32);
+  const int column_stripes = 16;
+  const int row_stripes = 16;
+  const dim3 row_block(column_stripes, 16);
   const dim3 row_grid(cu::device::divUp(column_stripes, row_block.x),
                       cu::device::divUp(iml_pm.rows, row_block.y));
-  const dim3 col_block(32, row_stripes);
+  const dim3 col_block(16, row_stripes);
   const dim3 col_grid(cu::device::divUp(iml_pm.cols, row_block.x),
                       cu::device::divUp(row_stripes, row_block.y));
 
-  const int iters = 8;
+  const int iters = 3;
+  const float alpha = 0.9;
   for (int iter = 0; iter < iters; ++iter) {
+    AddForegroundNoise(disp_gpu, unit_noise_gpu, 32 / std::pow(2.0, (float)iter), mask);
     cudaDeviceSynchronize();
-    PropagateRow<<<row_grid, row_block>>>(iml_gpu, imr_gpu, Gl, Gr, disp_gpu, 1, 3, 0.5);
+    PropagateRow<<<row_grid, row_block>>>(iml_gpu, imr_gpu, Gl, Gr, disp_gpu, 1, 3, alpha);
     cudaDeviceSynchronize();
-    PropagateCol<<<col_grid, col_block>>>(iml_gpu, imr_gpu, Gl, Gr, disp_gpu, 1, 3, 0.5);
+    PropagateCol<<<col_grid, col_block>>>(iml_gpu, imr_gpu, Gl, Gr, disp_gpu, 1, 3, alpha);
     cudaDeviceSynchronize();
-    PropagateRow<<<row_grid, row_block>>>(iml_gpu, imr_gpu, Gl, Gr, disp_gpu, -1, 3, 0.5);
+    PropagateRow<<<row_grid, row_block>>>(iml_gpu, imr_gpu, Gl, Gr, disp_gpu, -1, 3, alpha);
     cudaDeviceSynchronize();
-    PropagateCol<<<col_grid, col_block>>>(iml_gpu, imr_gpu, Gl, Gr, disp_gpu, -1, 3, 0.5);
+    PropagateCol<<<col_grid, col_block>>>(iml_gpu, imr_gpu, Gl, Gr, disp_gpu, -1, 3, alpha);
   }
-
-  // const dim3 block(16, 16);
-  // const dim3 grid(cu::device::divUp(iml_pm.cols, block.x),
-  //                 cu::device::divUp(iml_pm.rows, block.y));
-
-  // for (int i = 0; i < 10; ++i) {
-  //   Propagate4<<<grid, block>>>(iml_gpu, imr_gpu, Gl, Gr, disp_gpu, 5);
-  //   cudaDeviceSynchronize();
-  // }
 
   cudaDeviceSynchronize();
 
