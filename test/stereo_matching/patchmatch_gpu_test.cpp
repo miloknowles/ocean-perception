@@ -123,12 +123,12 @@ TEST(PatchmatchGpuTest, Sequence)
         iml, stereo_pair.left_image.size() / downsample_factor);
     cv::resize(MaybeConvertToGray(stereo_pair.right_image),
         imr, stereo_pair.right_image.size() / downsample_factor);
-    pm.Match(stereo_pair.left_image, stereo_pair.right_image, disp);
+    pm.Match(iml, imr, disp);
     cv::imshow("disp", VisualizeDisp(disp, max_disp, downsample_factor));
     cv::waitKey(1);
   };
 
   dataset.RegisterStereoCallback(stereo_cb);
-  dataset.Playback(10.0f, false);
+  dataset.Playback(20.0f, false);
   LOG(INFO) << "DONE" << std::endl;
 }
