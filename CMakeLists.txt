@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.3.0)
-project(vehicle)
+project(vehicle LANGUAGES CXX CUDA C)
 
 # Make sure that custom modules like FindXXXX are found
 # Prefer to use system installation of gflags/glog
@@ -36,6 +36,9 @@ find_package(Eigen3 3.3.0 REQUIRED)
 find_package(yaml-cpp     REQUIRED CONFIG PATHS ${YAML_PATHS}) # YAML library
 find_package(Glog 0.3.5 REQUIRED)
 find_package(GTSAM 4.1.0 REQUIRED)
+
+find_package(CUDA 10.2 EXACT REQUIRED)
+include_directories(${CUDA_INCLUDE_DIRS})
 
 include_directories(
   /usr/include/

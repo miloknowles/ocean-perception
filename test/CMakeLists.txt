@@ -37,6 +37,7 @@ set(RRT_TEST_SOURCES
 
 set(STEREO_TEST_SOURCES
   stereo_matching/patchmatch_test.cpp
+  stereo_matching/patchmatch_gpu_test.cpp
   stereo_matching/sgbm_test.cpp)
 
 # Function for defining a test executable.
@@ -56,6 +57,7 @@ function(MakeTestExecutable test_name test_sources)
     ${PROJECT_NAME}_mesher
     ${PROJECT_NAME}_rrt
     ${PROJECT_NAME}_stereo_matching
+    ${PROJECT_NAME}_pm_gpu
     ${OpenCV_LIBRARIES}
     gtsam
     gtsam_unstable
