@@ -17,7 +17,7 @@ using namespace core;
 using namespace pm;
 
 
-Image1b Normalize1b(const Image1f& im)
+static Image1b Normalize1b(const Image1f& im)
 {
   double minVal, maxVal;
   cv::minMaxLoc(im, &minVal, &maxVal);
@@ -58,7 +58,7 @@ TEST(PatchmatchGpuTest, Test01)
 
   LOG(INFO) << "Original image size: " << il.size() << std::endl;
 
-  const int downsample_factor = 2;
+  const int downsample_factor = 1;
   cv::resize(il, il, il.size() / downsample_factor);
   cv::resize(ir, ir, ir.size() / downsample_factor);
 

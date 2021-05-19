@@ -269,19 +269,18 @@ void PatchmatchGpu::Match(const Image1b& iml,
 {
   disp = SparseInit(iml, imr, 4);
 
-  cu::GpuMat iml_gpu, imr_gpu, disp_gpu, tmp;
-  tmp.upload(iml);
-  tmp.convertTo(iml_gpu, CV_32FC1);
-  tmp.upload(imr);
-  tmp.convertTo(imr_gpu, CV_32FC1);
+  tmp_.upload(iml);
+  tmp_.convertTo(iml_gpu_, CV_32FC1);
+  tmp_.upload(imr);
+  tmp_.convertTo(imr_gpu_, CV_32FC1);
 
-  cu::GpuMat _Gx, _Gy, Gl, Gr;
-  GradientMagnitude(iml_gpu, _Gx, _Gy, Gl);
-  GradientMagnitude(imr_gpu, _Gx, _Gy, Gr);
+  GradientMagnitude(iml_gpu_, Gx_, Gy_, Gl_);
+  GradientMagnitude(imr_gpu_, Gx_, Gy_, Gr_);
 
-  Match(iml_gpu, imr_gpu, Gl, Gr, disp_gpu);
+  disp_gpu_.upload(disp);
+  Match(iml_gpu_, imr_gpu_, Gl_, Gr_, disp_gpu_);
 
-  disp_gpu.download(disp);
+  disp_gpu_.download(disp);
 }
 
 

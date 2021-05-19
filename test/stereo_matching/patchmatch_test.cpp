@@ -18,7 +18,7 @@ using namespace stereo;
 
 
 template <typename ImageT>
-float L1CostFunction(const ImageT& pl, const ImageT& pr)
+static float L1CostFunction(const ImageT& pl, const ImageT& pr)
 {
   cv::Mat diff;
   cv::absdiff(pl, pr, diff);
@@ -27,7 +27,7 @@ float L1CostFunction(const ImageT& pl, const ImageT& pr)
 
 
 // https://www.microsoft.com/en-us/research/wp-content/uploads/2011/01/PatchMatchStereo_BMVC2011_6MB.pdf
-float L1GradientCostFunction(const Image1b& pl,
+static float L1GradientCostFunction(const Image1b& pl,
                              const Image1b& pr,
                              const Image1b& gl,
                              const Image1b& gr)
@@ -45,7 +45,7 @@ float L1GradientCostFunction(const Image1b& pl,
 }
 
 
-void ComputeGradient(const Image1b& im, Image1f& gmag)
+static void ComputeGradient(const Image1b& im, Image1f& gmag)
 {
   cv::Mat Dx;
   cv::Sobel(im, Dx, CV_32F, 1, 0, 3);
@@ -64,7 +64,7 @@ void ComputeGradient(const Image1b& im, Image1f& gmag)
 }
 
 
-Image1b Normalize1b(const Image1f& im)
+static Image1b Normalize1b(const Image1f& im)
 {
   double minVal, maxVal;
   cv::minMaxLoc(im, &minVal, &maxVal);
@@ -76,7 +76,7 @@ Image1b Normalize1b(const Image1f& im)
 }
 
 
-float ZNCC(const Image1b& pl, const Image1b& pr)
+static float ZNCC(const Image1b& pl, const Image1b& pr)
 {
   Image1f pln, prn;
 

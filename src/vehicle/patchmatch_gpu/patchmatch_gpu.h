@@ -98,7 +98,9 @@ class PatchmatchGpu final {
   ft::FeatureDetector detector_;
   ft::StereoMatcher matcher_;
 
+  // Pre-allocate these GpuMats to save on allocation time.
   cu::GpuMat mask_gpu_, unit_noise_gpu_;
+  cu::GpuMat iml_gpu_, imr_gpu_, Gx_, Gy_, Gl_, Gr_, disp_gpu_, tmp_;
 };
 
 }
