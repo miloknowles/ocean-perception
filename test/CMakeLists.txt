@@ -32,12 +32,20 @@ set(VIO_TEST_SOURCES
 set(LCM_TEST_SOURCES
   lcmtypes/test_publish.cpp)
 
+set(RRT_TEST_SOURCES
+  rrt/rrt_test.cpp)
+
+set(STEREO_TEST_SOURCES
+  stereo_matching/patchmatch_test.cpp
+  stereo_matching/patchmatch_gpu_test.cpp
+  stereo_matching/sgbm_test.cpp)
+
 # Function for defining a test executable.
 function(MakeTestExecutable test_name test_sources)
   add_executable(${test_name} ${test_sources} ./gtest/gtest-all.cc)
   target_include_directories(${test_name} PRIVATE ${PROJECT_SOURCE_DIR}/src)
   target_include_directories(${test_name} PRIVATE ${PROJECT_SOURCE_DIR}/test)
-  target_compile_options(${test_name} PUBLIC "-std=c++11")
+  target_compile_options(${test_name} PUBLIC ${BM_CPP_DEFAULT_COMPILE_OPTIONS})
   target_link_libraries(${test_name}
     gtest
     ${PROJECT_NAME}_core
@@ -47,6 +55,9 @@ function(MakeTestExecutable test_name test_sources)
     ${PROJECT_NAME}_dataset
     ${PROJECT_NAME}_ft
     ${PROJECT_NAME}_mesher
+    ${PROJECT_NAME}_rrt
+    ${PROJECT_NAME}_stereo_matching
+    ${PROJECT_NAME}_pm_gpu
     ${OpenCV_LIBRARIES}
     gtsam
     gtsam_unstable
@@ -66,6 +77,8 @@ MakeTestExecutable(dataset_gtest_all "${DATASET_TEST_SOURCES}")
 MakeTestExecutable(vio_gtest_all "${VIO_TEST_SOURCES}")
 MakeTestExecutable(lcm_gtest_all "${LCM_TEST_SOURCES}")
 MakeTestExecutable(mesher_gtest_all "${MESHER_TEST_SOURCES}")
+MakeTestExecutable(rrt_gtest_all "${RRT_TEST_SOURCES}")
+MakeTestExecutable(stereo_gtest_all "${STEREO_TEST_SOURCES}")
 
 # NOTE(milo): Using the "copy" command didn't seem to work...
 # Move resource files to the install location so that tests can use them.

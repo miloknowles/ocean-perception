@@ -19,4 +19,4 @@ target_link_libraries(vio_dataset_player
   ${GLOG_LIBRARIES})
 
 target_compile_options(vio_dataset_player
-  PUBLIC "-std=c++11")
+  PUBLIC ${BM_CPP_DEFAULT_COMPILE_OPTIONS})

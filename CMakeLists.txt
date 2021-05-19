@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.3.0)
-project(vehicle)
+project(vehicle LANGUAGES CXX CUDA C)
 
 # Make sure that custom modules like FindXXXX are found
 # Prefer to use system installation of gflags/glog
@@ -12,7 +12,17 @@ list(INSERT CMAKE_MODULE_PATH 0 ${CMAKE_SOURCE_DIR}/cmake)
 # See: http://eigen.tuxfamily.org/dox-devel/group__TopicStlContainers.html
 # These seemed to show up when creating a shared_ptr for a struct that has Eigen member types.
 # NOTE(milo): Add -03 or -0fast for much faster code.
-add_compile_options(-Wall -Wextra -O3 -faligned-new -g -ggdb -march=native)
+# add_compile_options(-Wall -Wextra -O3 -faligned-new -g -ggdb -march=native)
+
+set(BM_CPP_DEFAULT_COMPILE_OPTIONS
+  "-std=c++11"
+  "-Wall"
+  "-Wextra"
+  "-O3"
+  "-faligned-new"
+  "-g"
+  "-ggdb"
+  "-march=native")
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -20,12 +30,15 @@ add_compile_options(-Wall -Wextra -O3 -faligned-new -g -ggdb -march=native)
 find_package(catkin REQUIRED)
 
 # Find non-catkin pacakges.
-find_package(OpenCV 3.2.0 EXACT REQUIRED)
+find_package(OpenCV 3.4.0 EXACT REQUIRED)
 find_package(Boost        REQUIRED COMPONENTS serialization system filesystem thread regex timer graph)
 find_package(Eigen3 3.3.0 REQUIRED)
 find_package(yaml-cpp     REQUIRED CONFIG PATHS ${YAML_PATHS}) # YAML library
 find_package(Glog 0.3.5 REQUIRED)
 find_package(GTSAM 4.1.0 REQUIRED)
+
+find_package(CUDA 10.2 EXACT REQUIRED)
+include_directories(${CUDA_INCLUDE_DIRS})
 
 include_directories(
   /usr/include/

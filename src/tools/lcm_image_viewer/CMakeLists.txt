@@ -11,4 +11,4 @@ target_link_libraries(lcm_image_viewer
   lcm
   ${GLOG_LIBRARIES})
 
-target_compile_options(lcm_image_viewer PUBLIC "-std=c++11")
+target_compile_options(lcm_image_viewer PUBLIC ${BM_CPP_DEFAULT_COMPILE_OPTIONS})

@@ -19,7 +19,6 @@ static const int kTranslationStartIndex = 3;
 
 typedef gtsam::RangeFactorWithTransform<gtsam::Pose3, gtsam::Point3> RangeFactor;
 typedef gtsam::MagPoseFactor<gtsam::Pose3> MagFactor;
-// typedef gtsam::PartialPriorFactor<gtsam::Pose3> DepthFactor;
 typedef gtsam::PartialPosePriorFactor<gtsam::Pose3> DepthFactor;
 
 typedef gtsam::noiseModel::Robust RobustModel;

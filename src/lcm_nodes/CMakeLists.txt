@@ -17,7 +17,7 @@ target_link_libraries(state_estimator_lcm
   ${GLOG_LIBRARIES})
 
 target_compile_options(state_estimator_lcm
-  PUBLIC "-std=c++11")
+  PUBLIC ${BM_CPP_DEFAULT_COMPILE_OPTIONS})
 
 #===============================================================================
 add_executable(object_mesher_lcm
@@ -36,4 +36,4 @@ target_link_libraries(object_mesher_lcm
   ${GLOG_LIBRARIES})
 
 target_compile_options(object_mesher_lcm
-  PUBLIC "-std=c++11")
+  PUBLIC ${BM_CPP_DEFAULT_COMPILE_OPTIONS})
