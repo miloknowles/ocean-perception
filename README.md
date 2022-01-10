@@ -1,10 +1,36 @@
 # Blue Meadow Vehicle Software
 
-Main codebase for AUV/USV perception, planning, and controls software.
+Main codebase for AUV/USV perception, ~~planning~~, and ~~controls~~ software.
+***
+
+## Overview
+
+I spent about a year working on a startup called Blue Meadow. Our original idea was to develop an
+autonomous robot for monitoring and performing tasks on offshore aquaculture farms (primarily
+seaweed and oysters). Most ocean robots are extremely expensive due to their reliance on acoustic
+navigation (e.g sidescan sonar). One of our main goals was to reduce cost by adopting a "camera-first" approach to
+ocean robotics. This repository contains a few months of work on that project.
+
+The main software modules are located in `src/vehicle`:
+- `core`: widely used math and data types
+- `dataset`: classes for working with a few underwater stereo datasets
+- `feature_tracking`: classes for sparse feature detection, optical flow, and stereo matching
+- `imaging`: underwater image enhancement algorithms
+- `lcm_util`: utils to convert between internal C++ types and LCM types
+- `mesher`: applies Delaunay triangulation to tracked stereo features in order to approximate local obstacles
+- `params`: a home-grown system for loading params into C++ classes
+- `patchmatch_gpu`: faster CUDA implementation of the Patchmatch stereo algorithm
+- `rrt`: ignore; not fully implemented or tested
+- `stereo`: classic OpenCV block matching and a Patchmatch implementation
+- `vio`: a full stereo visual odometry pipeline, using GTSAM as a backend
+- `vision_core`: widely used computer vision types
+
+The modules I'm most proud of are `vio` and `patchmatch_gpu`.
+
 
 ## First-Time Setup
 
-Add these lines to your `.bashrc`:
+(Optional) Add these lines to your `.bashrc`:
 ```bash
 # Run this once before developing in a new terminal window.
 alias bm-shell='source ~/blue-meadow/catkin_ws/src/vehicle/setup/setup.bash'
@@ -34,6 +60,8 @@ sudo apt install openjdk-8-jdk
 - Clone our [fork](https://github.com/bluemeadowrobotics/lcm) of LCM
 - This has a fix for `lcm-spy` (latest version `1.4.0` fails on Ubuntu 18.04)
 - `mkdir build && cd build && cmake .. && sudo make install`
+
+#
 
 ## Some Notes on Using Eigen
 
