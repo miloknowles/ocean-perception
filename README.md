@@ -1,6 +1,6 @@
-# :ocean: Blue Meadow's Perception Software
+# :ocean: Underwater Robotic Vision Software
 
-Main codebase for AUV/USV perception, ~~planning~~, and ~~controls~~ software.
+Main codebase for AUV/USV vision software.
 ***
 
 ## :bulb: Background
@@ -9,7 +9,10 @@ I spent about a year working on a startup called Blue Meadow. Our original idea 
 autonomous robot for monitoring and performing tasks on offshore aquaculture farms (primarily
 seaweed and oysters). Most ocean robots are extremely expensive due to their reliance on acoustic
 navigation (e.g sidescan sonar). One of our main goals was to reduce cost by adopting a "camera-first" approach to
-ocean robotics. This repository contains a few months of work on that project.
+vehicle perception.
+
+This repository contains a few months of work on that project. It's not in a very
+user-friendly state right now, but I'm working on making it easier for others to use.
 
 ## :memo: Repository Overview
 
@@ -32,12 +35,12 @@ The main software modules are located in `src/vehicle`:
 ## :soon: Next Steps
 
 - [x] Make repository public
-- [ ] Improve setup/build/demo documentation
-- [ ] Stop using catkin; make build more lightweight
-- [ ] Add documentation to each module
 - [ ] Add better demos and pictures of outputs
-- [ ] Remove abandoned modules
+- [ ] Stop using catkin; make build more lightweight
 - [ ] Reduce dependencies; try to make standalone modules
+- [ ] Improve setup/build/demo documentation
+- [ ] Add documentation to each module
+- [ ] Remove abandoned modules
 
 ## :hammer: First-Time Setup
 
