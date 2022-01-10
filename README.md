@@ -1,7 +1,8 @@
 # :ocean: Underwater Robotic Vision Software
 
 Main codebase for AUV/USV vision software.
-***
+
+![Patchmatch GPU implementation example](/resources/patchmatch_gpu_example.png)
 
 ## :bulb: Background
 
@@ -11,8 +12,15 @@ seaweed and oysters). Most ocean robots are extremely expensive due to their rel
 navigation (e.g sidescan sonar). One of our main goals was to reduce cost by adopting a "camera-first" approach to
 vehicle perception.
 
-This repository contains a few months of work on that project. It's not in a very
-user-friendly state right now, but I'm working on making it easier for others to use.
+<div class="panel panel-warning">
+**Warning**
+{: .panel-heading}
+<div class="panel-body">
+NOTE: This repository contains a few months of work on that project. It's not in a very
+user-friendly state right now, but I'm working on making it easier for others to use. If there are
+particular modules you're interested, let me know and I can prioritize those.
+</div>
+</div>
 
 ## :memo: Repository Overview
 
