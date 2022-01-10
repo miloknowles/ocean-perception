@@ -20,6 +20,10 @@ vehicle perception.
   </div>
 </div>
 
+===NOTE: This repository contains a few months of work on that project. It's not in a very
+user-friendly state right now, but I'm working on making it easier for others to use. If there are
+particular modules you're interested, let me know and I can prioritize those.===
+
 ## :memo: Repository Overview
 
 The main software modules are located in `src/vehicle`:
