@@ -12,6 +12,7 @@ seaweed and oysters). Most ocean robots are extremely expensive due to their rel
 navigation (e.g sidescan sonar). One of our main goals was to reduce cost by adopting a "camera-first" approach to
 vehicle perception.
 
+<pre>
 <div class="panel panel-warning">
 **Warning**
 {: .panel-heading}
@@ -21,6 +22,7 @@ user-friendly state right now, but I'm working on making it easier for others to
 particular modules you're interested, let me know and I can prioritize those.
 </div>
 </div>
+</pre>
 
 ## :memo: Repository Overview
 
