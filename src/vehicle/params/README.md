@@ -7,24 +7,24 @@ We use a YAML based param system for several reasons:
 - It avoids passing tons of params into a constructor
 - It allows us easily nest paramaters in a hierarchical structure
 
-Each `C++` class has a param struct, and that param struct has a 1:1 representation in a YAML file.
+## Module-Specific Params vs. Shared Params
 
-## Module Params vs. Shared Params
-
-Some params are *module-specific*, and others are shared across modules. For example, camera calibration data, the direction of gravity, etc. are all *shared params*, while specific input parameters to an algorithm are module-specific.
+Some params are **module-specific**, and others are shared across modules. For example, camera calibration data, the direction of gravity, etc. are all **shared params**, while specific input parameters to an algorithm are module-specific.
 
 When constructing a params struct, we always pass in a path to the module-specific YAML, and optionally include a path to the shared YAML.
 
 For example:
 ```cpp
-  ObjectMesherLcm::Params params(
-    config_path(module_params_path),
-    config_path(shared_params_path));
+ObjectMesherLcm::Params params(
+  config_path(module_params_path),
+  config_path(shared_params_path));
 
-  ObjectMesherLcm node(params);
+ObjectMesherLcm node(params);
 ```
 
-## Simple Example
+## Reading YAML into a C++ Struct
+
+Each `C++` class has a param struct, and that param struct has a 1:1 representation in a YAML file.
 
 For example, in `feature_tracker.hpp`:
 ```c++
@@ -50,7 +50,7 @@ Every `Params` struct overrides the `LoadParams` member function. In `feature_tr
 // Override the LoadParams member function.
 void FeatureTracker::Params::LoadParams(const YamlParser& parser)
 {
-  // Get the YAML node named "klt_maxiters" and store it in the member "klt_maxiters".
+  // Here, we get the YAML node named "klt_maxiters" and store it in the member "klt_maxiters".
   parser.GetParam("klt_maxiters", &klt_maxiters);
   parser.GetParam("klt_epsilon", &klt_epsilon);
   parser.GetParam("klt_winsize", &klt_winsize);
@@ -68,7 +68,7 @@ klt_max_level: 4
 
 ## Nested Parameters
 
-Some high-level classes have other clases as members. The param system allows for this composition.
+Some high-level classes have other clases as members. The param system is designed to allow class composition through nested params.
 
 For example, in `stereo_tracker.hpp`:
 ```cpp
@@ -86,9 +86,7 @@ class StereoTracker final {
     StereoMatcher::Params matcher_params;
 
     double stereo_max_depth = 30.0;
-    double stereo_min_depth = 0.5;
-
-    // etc ...
+    // ...
 
    private:
     void LoadParams(const YamlParser& parser) override;
@@ -101,6 +99,7 @@ StereoTracker:
     stereo_max_depth: 20.0 # m
     # ...
 
+    # Nested subtree!
     FeatureDetector:
       max_features_per_frame: 200
       subpixel_corners: 0 # bool
@@ -121,7 +120,7 @@ In the high level class' `LoadParams`, we can recursively load params for the in
 ```cpp
 void StereoTracker::Params::LoadParams(const YamlParser& parser)
 {
-  // Each sub-module has a subtree in the params.yaml.
+  // Each sub-module has a subtree in the params.yaml
   detector_params = FeatureDetector::Params(parser.GetNode("FeatureDetector"));
   tracker_params = FeatureTracker::Params(parser.GetNode("FeatureTracker"));
   matcher_params = StereoMatcher::Params(parser.GetNode("StereoMatcher"));
@@ -129,7 +128,7 @@ void StereoTracker::Params::LoadParams(const YamlParser& parser)
   parser.GetParam("stereo_max_depth", &stereo_max_depth);
   // ...
 
-  // Can also validate params within this function.
+  // NOTE: Can also validate params like this!
   CHECK(retrack_frames_k >= 1 && retrack_frames_k < 8);
 }
 ```
