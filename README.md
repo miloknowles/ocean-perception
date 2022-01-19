@@ -1,4 +1,4 @@
-# :ocean: Underwater visual-intertial navigation
+# :ocean: Underwater Perception Software
 
 A codebase with examples of visual-inertial odometry, mesh-based obstacle avoidance, underwater image enhancement, and stereo depth estimation.
 
@@ -50,9 +50,9 @@ Most of these modules have correspond tests in the `test` directory.
 
 ### Configuration Files
 
-We use a homegrown system for loading YAML configuration files into C++ classes, allowing parameters to change without recompiling. It also avoids having to write massive contructors for classes, or write boilerplate code for setting param values.
+We use a homegrown system for loading YAML configuration files into C++ classes, allowing parameters to change without recompiling. It also avoids having to write massive contructors for classes, or set lots of class members manually.
 
-The YAML configuration files in the `config` folder.
+The YAML configuration files in the `config` folder. For a guide on how our param system is designed, see `src/vehicle/params/README.md`.
 
 ### LCM (Lightweight Communications and Marshalling)
 
@@ -72,6 +72,9 @@ See `lcmtypes` for message type definitions.
 ## :hammer: First-Time Setup
 
 ### Installing GTSAM
+
+[GTSAM](https://gtsam.org/) is the Georgia-Tech Smoothing and Mapping library. It's used widely
+in the robotics community to represent and solve problems as factor graphs.
 
 I'm working off of a fork of GTSAM [here](https://github.com/miloknowles/gtsam). It has a couple
 factors that aren't fixed/merged into the GTSAM develop branch yet.
@@ -95,6 +98,15 @@ sudo apt install openjdk-8-jdk
 - Clone our [fork](https://github.com/bluemeadowrobotics/lcm) of LCM
 - This has a fix for `lcm-spy` (latest version `1.4.0` fails on Ubuntu 18.04)
 - `mkdir build && cd build && cmake .. && sudo make install`
+
+### Building this Repository
+
+Use the usual `cmake` process:
+```bash
+mkdir build && cd build
+cmake ..
+make -j8
+```
 
 ## :question: Other
 
