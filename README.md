@@ -53,7 +53,7 @@ The main software modules are located in `src/vehicle`:
 
 Most of these modules have correspond tests in the `test` directory.
 
-**If you're taking a quick glance at this codebase, the modules I'm most proud of are `vio` and `patchmatch_gpu`.**
+**If you're taking a quick glance at this codebase, the modules I'm most proud of are `vio`, `mesher`, and `patchmatch_gpu`.**
 
 ### Configuration Files
 

@@ -98,12 +98,12 @@ TEST(PatchmatchGpuTest, Sequence)
   const std::string folder = "/home/milo/datasets/zed_dataset";
   dataset::EurocDataset dataset(folder);
 
+  cv::namedWindow("rgb", cv::WINDOW_NORMAL);
   cv::namedWindow("disp", cv::WINDOW_NORMAL);
-  cv::namedWindow("disp_right", cv::WINDOW_NORMAL);
 
   PatchmatchGpu::Params params;
   float max_disp = 128;
-  int downsample_factor = 1;
+  int downsample_factor = 2;
 
   params.matcher_params.templ_cols = 31;
   params.matcher_params.templ_rows = 11;
@@ -127,13 +127,8 @@ TEST(PatchmatchGpuTest, Sequence)
         imr, stereo_pair.right_image.size() / downsample_factor);
     pm.Match(iml, imr, disp, disp_right);
 
-
-    // cv::flip(iml, iml, 1);
-    // cv::flip(imr, imr, 1);
-    // pm.Match(imr, iml, disp_right);
-    // cv::flip(disp_right, disp_right, 1);
+    cv::imshow("rgb", stereo_pair.left_image);
     cv::imshow("disp", VisualizeDisp(disp, max_disp, downsample_factor));
-    cv::imshow("disp_right", VisualizeDisp(disp_right, max_disp, downsample_factor));
     cv::waitKey(1);
   };
 

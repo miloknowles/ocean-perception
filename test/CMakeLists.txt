@@ -85,4 +85,5 @@ add_custom_command(
   TARGET core_gtest_all POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E copy_directory
           ${CMAKE_SOURCE_DIR}/test/resources/
-          ${CATKIN_DEVEL_PREFIX}/${CATKIN_PACKAGE_BIN_DESTINATION}/resources/)
+          ${CMAKE_SOURCE_DIR}/build/test/resources/
+)
