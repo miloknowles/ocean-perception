@@ -6,12 +6,21 @@ Main codebase for AUV/USV vision software.
 
 ## :bulb: Background
 
-I spent about a year working on a startup called Blue Meadow. Our original idea was to develop an
+I spent about 15 months working on a startup called Blue Meadow. Our original idea was to develop an
 autonomous robot for monitoring and performing tasks on offshore aquaculture farms (primarily
-seaweed and oysters). Most ocean robots are extremely expensive due to their reliance on acoustic
-navigation (e.g sidescan sonar). One of our main goals was to reduce cost by adopting a "camera-first" approach to
-vehicle perception. This repository contains a few months of work on that project.
+seaweed and oysters). This would help farmers detect disease, optimize growing conditions, and
+reduce labor costs through fewer visits to the farm site.
 
+Most ocean robots are extremely expensive due to their reliance on acoustic
+navigation (e.g sidescan sonar). One of our main goals was to reduce hardware cost by adopting a
+visual-inertial approach to navigation, which relies on a cheap IMU and camera. To help the vehicle
+constrain its absolute position in the world, it also receives range measurements from one or more
+acoustic beacons attached to the farm.
+
+Eventually, we moved away from the idea of a mobile task-automating robot, and started developing
+and simpler static sensor package. Since I spent a significant amount of time developing a vision-based
+navigation system for our original idea, I thought I'd make the code public in case it's useful
+or interesting to others.
 
 **NOTE**: This codebase is not in a very user-friendly state right now, but I'm working on making
 it easier for others to use. If there are particular modules you're interested, let me know
@@ -39,7 +48,7 @@ The main software modules are located in `src/vehicle`:
 
 - [x] Make repository public
 - [ ] Add better demos and pictures of outputs
-- [ ] Stop using catkin; make build more lightweight
+- [x] Stop using `catkin`; switch to `cmake` and make build more lightweight
 - [ ] Reduce dependencies; try to make standalone modules
 - [ ] Improve setup/build/demo documentation
 - [ ] Add documentation to each module
