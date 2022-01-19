@@ -2,7 +2,8 @@
 
 A codebase with examples of visual-inertial odometry, mesh-based obstacle avoidance, underwater image enhancement, and stereo depth estimation.
 
-![Patchmatch GPU implementation example](/resources/patchmatch_gpu_example.png)
+![Patchmatch GPU implementation example](/resources/patchmatch_example.png)
+![Underwater navigation demo](/resources/navigation_example.png)
 
 ## :bulb: Background
 
