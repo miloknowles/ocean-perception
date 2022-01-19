@@ -26,6 +26,13 @@ or interesting to others.
 it easier for others to use. If there are particular modules you're interested, let me know
 and I can prioritize those.
 
+## :tv: Demos
+
+- [Underwater navigation and object meshing in a simulated environment](https://youtu.be/yT-qm5_dXxk)
+- [A demo of the hybrid smoother/filter state estimator](https://youtu.be/Q3swMWAAizs)
+- [Stereo object meshing algorithm (simulated)](https://youtu.be/F7nSvaf0kpo)
+- [Stereo object meshing algorithm (real world; ZED camera)](https://www.youtube.com/watch?v=TdSf_Qc2J94)
+
 ## :memo: Repository Overview
 
 ### Software Modules
