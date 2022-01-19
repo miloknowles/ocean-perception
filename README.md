@@ -1,6 +1,6 @@
-# :ocean: Underwater Robotic Vision Software
+# :ocean: Underwater visual-intertial navigation
 
-Main codebase for AUV/USV vision software.
+A codebase with examples of visual-inertial odometry, mesh-based obstacle avoidance, underwater image enhancement, and stereo depth estimation.
 
 ![Patchmatch GPU implementation example](/resources/patchmatch_gpu_example.png)
 
@@ -28,6 +28,8 @@ and I can prioritize those.
 
 ## :memo: Repository Overview
 
+### Software Modules
+
 The main software modules are located in `src/vehicle`:
 - `core`: widely used math and data types
 - `dataset`: classes for working with a few underwater stereo datasets
@@ -37,34 +39,37 @@ The main software modules are located in `src/vehicle`:
 - `mesher`: applies Delaunay triangulation to tracked stereo features in order to approximate local obstacles
 - `params`: a home-grown system for loading params into C++ classes
 - `patchmatch_gpu`: faster CUDA implementation of the Patchmatch stereo algorithm
-- `rrt`: ignore; not fully implemented or tested
+- ~~`rrt`: ignore; not fully implemented or tested~~
 - `stereo`: classic OpenCV block matching and a Patchmatch implementation
 - `vio`: a full stereo visual odometry pipeline, using GTSAM as a backend
 - `vision_core`: widely used computer vision types
 
-**The modules I'm most proud of are `vio` and `patchmatch_gpu`.**
+Most of these modules have correspond tests in the `test` directory.
+
+**If you're taking a quick glance at this codebase, the modules I'm most proud of are `vio` and `patchmatch_gpu`.**
+
+### Configuration Files
+
+We use a homegrown system for loading YAML configuration files into C++ classes, allowing parameters to change without recompiling. It also avoids having to write massive contructors for classes, or write boilerplate code for setting param values.
+
+The YAML configuration files in the `config` folder.
+
+### LCM (Lightweight Communications and Marshalling)
+
+We use the [LCM](https://lcm-proj.github.io/) library for communicating across processes and languages. This allows us to define a message type once, and generate bindings in `C++`, `Python`, and our `C#` Unity simulator.
+
+See `lcmtypes` for message type definitions.
 
 ## :construction: Next Steps
 
 - [x] Make repository public
 - [ ] Add better demos and pictures of outputs
 - [x] Stop using `catkin`; switch to `cmake` and make build more lightweight
-- [ ] Reduce dependencies; try to make standalone modules
-- [ ] Improve setup/build/demo documentation
+- [x] Improve setup/build/demo documentation
 - [ ] Add documentation to each module
 - [ ] Remove abandoned modules
 
 ## :hammer: First-Time Setup
-
-(Optional) Add these lines to your `.bashrc`:
-```bash
-# Run this once before developing in a new terminal window.
-alias bm-shell='source ~/blue-meadow/catkin_ws/src/vehicle/setup/setup.bash'
-```
-
-### Create Catkin Workspace
-
-Clone this repo inside of catkin workspace.
 
 ### Installing GTSAM
 
@@ -96,8 +101,7 @@ sudo apt install openjdk-8-jdk
 ### Some Notes on Using Eigen
 
 - https://github.com/ethz-asl/eigen_catkin/wiki/Eigen-Memory-Issues#mixed-use-of-StdVector
-- I've run into a boatload of issues when using Eigen types and structs containing Eigne types with `std::vector`, `std::make_shared` and other memory-allocating things.
+- I've run into a boatload of issues when using Eigen types and structs containing Eigen types with `std::vector`, `std::make_shared` and other memory-allocating things.
 - DO NOT include `eigen3/Eigen/StdVector> and try to use that workaround. It only caused lower-level bugs to show up.
 - DO use `EIGEN_MAKE_ALIGNED_OPERATOR_NEW` in any struct that has an Eigen type member
 - `std::bad_alloc` exceptions seem to implicate an Eigen type allocation issue
-

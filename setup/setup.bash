@@ -1,3 +1,4 @@
+# TODO(milo): Fix this now that we've stopped using catkin!
 #-------------------------------------------------------------------------------
 # Sets up a development environment for Blue Meadow.
 # ** Assumes the following directory structure **

@@ -1,3 +1,6 @@
+# Script for generating C# bindings of lcmtypes and copying into the Unity simulation.
+# Need to run this whenever lcmtypes are changed.
+
 echo "||=============== Generating C# lcmtypes ===============||"
 
 if [[ -z $BM_DID_SOURCE_SETUP ]]; then
