@@ -1,23 +1,41 @@
-# :ocean: Underwater Robotic Vision Software
+# :ocean: Underwater Robotic Perception Software
 
-Main codebase for AUV/USV vision software.
+A codebase with examples of visual-inertial odometry, mesh-based obstacle avoidance, underwater image enhancement, and stereo depth estimation.
 
 ![Patchmatch GPU implementation example](/resources/patchmatch_gpu_example.png)
 
 ## :bulb: Background
 
-I spent about a year working on a startup called Blue Meadow. Our original idea was to develop an
+I spent about 15 months working on a startup called Blue Meadow. Our original idea was to develop an
 autonomous robot for monitoring and performing tasks on offshore aquaculture farms (primarily
-seaweed and oysters). Most ocean robots are extremely expensive due to their reliance on acoustic
-navigation (e.g sidescan sonar). One of our main goals was to reduce cost by adopting a "camera-first" approach to
-vehicle perception. This repository contains a few months of work on that project.
+seaweed and oysters). This would help farmers detect disease, optimize growing conditions, and
+reduce labor costs through fewer visits to the farm site.
 
+Most ocean robots are extremely expensive due to their reliance on acoustic
+navigation (e.g sidescan sonar). One of our main goals was to reduce hardware cost by adopting a
+visual-inertial approach to navigation, which relies on a cheap IMU and camera. To help the vehicle
+constrain its absolute position in the world, it also receives range measurements from one or more
+acoustic beacons attached to the farm.
+
+Eventually, we moved away from the idea of a mobile task-automating robot, and started developing
+and simpler static sensor package. Since I spent a significant amount of time developing a vision-based
+navigation system for our original idea, I thought I'd make the code public in case it's useful
+or interesting to others.
 
 **NOTE**: This codebase is not in a very user-friendly state right now, but I'm working on making
 it easier for others to use. If there are particular modules you're interested, let me know
 and I can prioritize those.
 
+## :tv: Demos
+
+- [Underwater navigation a simulated ocean environment](https://youtu.be/yT-qm5_dXxk)
+- [Hybrid smoother/filter state estimator demo](https://youtu.be/Q3swMWAAizs)
+- [Stereo object meshing algorithm (simulated)](https://youtu.be/F7nSvaf0kpo)
+- [Stereo object meshing algorithm (real world; ZED camera)](https://www.youtube.com/watch?v=TdSf_Qc2J94)
+
 ## :memo: Repository Overview
+
+### Software Modules
 
 The main software modules are located in `src/vehicle`:
 - `core`: widely used math and data types
@@ -28,36 +46,42 @@ The main software modules are located in `src/vehicle`:
 - `mesher`: applies Delaunay triangulation to tracked stereo features in order to approximate local obstacles
 - `params`: a home-grown system for loading params into C++ classes
 - `patchmatch_gpu`: faster CUDA implementation of the Patchmatch stereo algorithm
-- `rrt`: ignore; not fully implemented or tested
+- ~~`rrt`: ignore; not fully implemented or tested~~
 - `stereo`: classic OpenCV block matching and a Patchmatch implementation
 - `vio`: a full stereo visual odometry pipeline, using GTSAM as a backend
 - `vision_core`: widely used computer vision types
 
-**The modules I'm most proud of are `vio` and `patchmatch_gpu`.**
+Most of these modules have correspond tests in the `test` directory.
+
+**If you're taking a quick glance at this codebase, the modules I'm most proud of are `vio`, `mesher`, and `patchmatch_gpu`.**
+
+### Configuration Files
+
+We use a homegrown system for loading YAML configuration files into C++ classes, allowing parameters to change without recompiling. It also avoids having to write massive contructors for classes, or set lots of class members manually.
+
+The YAML configuration files in the `config` folder. For a guide on how our param system is designed, see `src/vehicle/params/README.md`.
+
+### LCM (Lightweight Communications and Marshalling)
+
+We use the [LCM](https://lcm-proj.github.io/) library for communicating across processes and languages. This allows us to define a message type once, and generate bindings in `C++`, `Python`, and our `C#` Unity simulator.
+
+See `lcmtypes` for message type definitions.
 
 ## :construction: Next Steps
 
 - [x] Make repository public
 - [ ] Add better demos and pictures of outputs
-- [ ] Stop using catkin; make build more lightweight
-- [ ] Reduce dependencies; try to make standalone modules
-- [ ] Improve setup/build/demo documentation
+- [x] Stop using `catkin`; switch to `cmake` and make build more lightweight
+- [x] Improve setup/build/demo documentation
 - [ ] Add documentation to each module
 - [ ] Remove abandoned modules
 
 ## :hammer: First-Time Setup
 
-(Optional) Add these lines to your `.bashrc`:
-```bash
-# Run this once before developing in a new terminal window.
-alias bm-shell='source ~/blue-meadow/catkin_ws/src/vehicle/setup/setup.bash'
-```
-
-### Create Catkin Workspace
-
-Clone this repo inside of catkin workspace.
-
 ### Installing GTSAM
+
+[GTSAM](https://gtsam.org/) is the Georgia-Tech Smoothing and Mapping library. It's used widely
+in the robotics community to represent and solve problems as factor graphs.
 
 I'm working off of a fork of GTSAM [here](https://github.com/miloknowles/gtsam). It has a couple
 factors that aren't fixed/merged into the GTSAM develop branch yet.
@@ -82,13 +106,21 @@ sudo apt install openjdk-8-jdk
 - This has a fix for `lcm-spy` (latest version `1.4.0` fails on Ubuntu 18.04)
 - `mkdir build && cd build && cmake .. && sudo make install`
 
+### Building this Repository
+
+Use the usual `cmake` process:
+```bash
+mkdir build && cd build
+cmake ..
+make -j8
+```
+
 ## :question: Other
 
 ### Some Notes on Using Eigen
 
 - https://github.com/ethz-asl/eigen_catkin/wiki/Eigen-Memory-Issues#mixed-use-of-StdVector
-- I've run into a boatload of issues when using Eigen types and structs containing Eigne types with `std::vector`, `std::make_shared` and other memory-allocating things.
+- I've run into a boatload of issues when using Eigen types and structs containing Eigen types with `std::vector`, `std::make_shared` and other memory-allocating things.
 - DO NOT include `eigen3/Eigen/StdVector> and try to use that workaround. It only caused lower-level bugs to show up.
 - DO use `EIGEN_MAKE_ALIGNED_OPERATOR_NEW` in any struct that has an Eigen type member
 - `std::bad_alloc` exceptions seem to implicate an Eigen type allocation issue
-

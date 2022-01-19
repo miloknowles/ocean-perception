@@ -1,6 +1,5 @@
 # add_subdirectory(./imaging)
 add_subdirectory(./stereo_matching)
-# add_subdirectory(./tag_detector)
 add_subdirectory(./core)
 add_subdirectory(./vision_core)
 add_subdirectory(./params)
