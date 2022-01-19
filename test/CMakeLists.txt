@@ -47,7 +47,6 @@ function(MakeTestExecutable test_name test_sources)
   target_include_directories(${test_name} PRIVATE ${PROJECT_SOURCE_DIR}/test)
   target_compile_options(${test_name} PUBLIC ${BM_CPP_DEFAULT_COMPILE_OPTIONS})
   target_link_libraries(${test_name}
-    gtest
     ${PROJECT_NAME}_core
     ${PROJECT_NAME}_vision_core
     ${PROJECT_NAME}_params

@@ -1,4 +1,4 @@
-# :ocean: Underwater Perception Software
+# :ocean: Underwater Robotic Perception Software
 
 A codebase with examples of visual-inertial odometry, mesh-based obstacle avoidance, underwater image enhancement, and stereo depth estimation.
 
@@ -28,8 +28,8 @@ and I can prioritize those.
 
 ## :tv: Demos
 
-- [Underwater navigation and object meshing in a simulated environment](https://youtu.be/yT-qm5_dXxk)
-- [A demo of the hybrid smoother/filter state estimator](https://youtu.be/Q3swMWAAizs)
+- [Underwater navigation a simulated ocean environment](https://youtu.be/yT-qm5_dXxk)
+- [Hybrid smoother/filter state estimator demo](https://youtu.be/Q3swMWAAizs)
 - [Stereo object meshing algorithm (simulated)](https://youtu.be/F7nSvaf0kpo)
 - [Stereo object meshing algorithm (real world; ZED camera)](https://www.youtube.com/watch?v=TdSf_Qc2J94)
 
